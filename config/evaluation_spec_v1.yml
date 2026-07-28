@@ -1,0 +1,66 @@
+# Pre-registered evaluation spec. Frozen BEFORE the post-publication run.
+# Do not edit in response to results. If it must change, bump spec_version and
+# report both the original and the revised spec.
+spec_version: 1
+registered_utc: "2026-07-29"
+
+evaluation_start: "2024-05-01"   # first version of the paper, sample ends 2024-04
+subperiods:
+  - full_sample
+  - pre_publication          # .. 2024-04-30
+  - post_publication         # 2024-05-01 ..
+
+profiles:
+  - official_sample_compatible
+  - paper_spec
+  - corrected_execution
+
+tiers:
+  headline: paper_ready
+  also_report: [halt_aware, exploratory]
+
+dividends:
+  headline: with_dividends
+  also_report: ignore_dividends
+
+slippage_per_share: [0.001, 0.0025, 0.005, 0.010]
+
+decomposition:
+  - long_vs_short
+  - entry_time_bucket
+  - volatility_regime_quintile
+  - signal_count
+  - average_holding_minutes
+  - turnover
+  - gross_edge_per_traded_share
+  - cost_per_traded_share
+
+benchmark:
+  computed_in_engine: true
+  series: [spy_price_return, spy_total_return]
+  metrics: [excess_cagr, beta, alpha_annualised, information_ratio]
+
+decision_rule: |
+  The question is not the full-sample CAGR. It is whether, after 2024-05-01,
+  gross edge per traded share still exceeds execution + financing + borrow cost
+  per traded share.
+  - gross edge ~ 0        -> the signal is gone; parameter optimisation would be
+                             fitting a known-dead sample and must not proceed.
+  - gross edge > 0, eaten -> study execution, trade frequency and capacity.
+
+provenance_required:
+  - spec_sha256
+  - engine_script_sha256
+  - data_script_sha256
+  - data_run_id
+  - source_sha256
+  - dividend_sha256
+  - git_commit
+  - git_dirty
+
+naming: |
+  Call this the "post-publication evaluation period", not an untouched
+  out-of-sample test. We have already observed results in this window and
+  revised the engine afterwards. The methodological fixes were justified on
+  their own terms, but from this spec forward the cut point, cost grid and code
+  hash are fixed and the report is issued once.
