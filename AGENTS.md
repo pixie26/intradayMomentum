@@ -42,7 +42,7 @@ Run reports (tied to a specific `data/processed/runs/<run_id>/`):
 | `config/data_release_v1.yml` | Candidate data-v1.0 contract. Currently blocked by 13 missing leading XNYS sessions. |
 | `docs/` | All documentation (see above). |
 | `previous_research/` | Archived original baseline scripts + charts. Historical reference only; do not extend them. |
-| `src/`, `tests/` | Byte-identical delivery copies of the root files (2026-07-29 snapshot, hashed in `manifest/`). Edit the root files; treat these as frozen. |
+| `manifest/`, `original_uploads/` | 2026-07-29 delivery record (hashes + original filenames). Historical only. |
 | `data/processed/` | Generated pipeline runs. Not yet created in this workspace. |
 
 ## Core invariants

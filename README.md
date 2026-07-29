@@ -11,11 +11,11 @@
 5. `config/evaluation_spec_v1.yml`：冻结的post-publication评估spec；
 6. `config/data_release_v1.yml`：data-v1.0候选边界与环境契约；
 7. 项目根目录的 `prepare_spy_data.py`、`im_engine_v4.py`；
-8. `test_engine.py`。`src/` 和 `tests/` 同时保留规范化副本。
+8. `test_engine.py`。
 
 ## 文件说明
 
-- `src/`、`tests/`：2026-07-29交付快照的冻结副本；当前修改只在根目录工作副本；
+- 根目录三个Python文件为唯一工作副本；原 `src/`、`tests/` 交付快照副本已于2026-07-30移除（避免与根目录分歧，`prepare_spy_data.py` 当时已领先快照），其SHA记录保留在 `manifest/` 与git历史中；
 - `docs/`：最新README、完整研究记录和历史review；
 - `config/`：原始预注册spec v1；
 - `original_uploads/`：保留用户上传时的原始文件名和内容；
@@ -36,7 +36,7 @@ data-v1.0候选契约会在生成任何正式run前阻断缺失的样本边界�
 - 真实raw边界审计确认观察范围为2008-01-22至2026-07-09；按
   2008-01-01预期起点运行时，13个前置XNYS交易日缺失，data-v1.0暂不冻结；
 - 57项engine tests为既有项目记录，本次data-layer修正未重跑；
-- 本包保留原始上传和规范化副本，二者SHA可核对。
+- 本包保留原始上传文件，其SHA与 `manifest/` 记录可核对。
 
 
 ## 快速验证
