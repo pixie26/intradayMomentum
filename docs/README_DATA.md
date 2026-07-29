@@ -10,11 +10,11 @@ python prepare_spy_data.py \
   --release-config config/data_release_v1.yml \
   --preflight-self-test \
   --input SPY_1min_2008_202607_merged.parquet \
-  --dividends spy_dividends_full.csv \
+  --dividends data/reference/spy_dividends_state_street_20260730.csv \
   --output-dir data/processed \
   --input-timezone America/New_York \
   --bar-label start \
-  --expected-start 2008-01-01 \
+  --expected-start 2008-01-22 \
   --expected-end 2026-07-09 \
   --max-boundary-sessions-missing 0 \
   --duplicate-policy error \
@@ -26,8 +26,10 @@ python prepare_spy_data.py \
 The canonical release settings are recorded in `config/data_release_v1.yml`;
 `--release-config` verifies that every declared setting matches the CLI and
 records the config hash in the manifest.
-That candidate is currently blocked: the real source begins on 2008-01-22, so
-13 expected XNYS sessions from 2008-01-02 through 2008-01-18 are missing.
+The data-v1.0 sample deliberately begins on 2008-01-22, the source's first
+observed and complete XNYS session. This boundary is a documented data-
+availability decision, not a result-selected parameter; see
+`DATA_V1_START_DATE_DECISION_ZH.md`.
 
 ## Release boundaries and environment
 
@@ -53,6 +55,8 @@ Duplicate timestamp conflicts are separated:
   policy.
 - Vendor VWAP or transaction-count conflicts write
   `conflicting_optional_metadata.csv`.
+- Conflict, off-grid, and invalid-OHLC audit CSVs are always published; a
+  clean run writes a header-only file so absence cannot be confused with zero.
 - Vendor VWAP conflicts fail when `--strategy-vwap-source vendor_bar_vwap` is
   selected. For `hlc3`/`ohlc4`, the ambiguous unused vendor value is set to NaN
   instead of inheriting arbitrary file order.
@@ -202,6 +206,21 @@ the fatal evidence remains inspectable. These directories have no `_SUCCESS`
 and are never consumable data. A failure in the narrow window *after* the move
 but before the pointer update can leave an orphan run directory carrying
 `_SUCCESS`; it is inert because consumers resolve runs through `latest.json`.
+
+After two clean-HEAD formal runs have passed, publish the immutable release
+atomically:
+
+```bash
+python scripts/publish_data_release.py \
+  data/processed/runs/<first_run_id> \
+  data/processed/runs/<second_run_id> \
+  data_release_v1
+```
+
+The publisher rechecks the release contract, boundaries, conflicts, invalid
+rows, halts, 28 preflight tests, Git provenance, dependency/config hashes, and
+byte-identical deterministic outputs. It refuses to overwrite an existing
+release directory and writes `_SUCCESS` last.
 
 ## Invariants
 

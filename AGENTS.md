@@ -34,7 +34,8 @@ Run reports (tied to a specific `data/processed/runs/<run_id>/`):
 | Path | Role |
 |---|---|
 | `SPY_1min_2008_202607_merged.parquet` | Raw 1-min bars (1.8M rows). Read-only input. |
-| `spy_dividends_full.csv` | 74 quarterly dividends. Input. (Git-ignored by `*.csv`.) |
+| `spy_dividends_full.csv` | Legacy rounded 74-row dividend input. Preserve for provenance; not the data-v1.0 candidate. |
+| `data/reference/spy_dividends_state_street_20260730.csv` | Exact 74-row State Street dividend input for the data-v1.0 candidate; metadata and extraction script are tracked beside/in `scripts/`. |
 | `prepare_spy_data.py` | Data layer v5 candidate: explicit release boundaries, duplicate conflict classes, return-gap audit, dependency lock, component validity, and atomic publish. `--self-test` = 28 checks. |
 | `im_engine_v4.py` | Engine: three profiles (`official_sample_compatible`, `paper_spec`, `corrected_execution`). Working copy. |
 | `test_engine.py` | 57 engine checks. Run: `python test_engine.py`. |
@@ -82,25 +83,23 @@ Run reports (tied to a specific `data/processed/runs/<run_id>/`):
 
 ## Current state
 
-Candidate: data layer v5 passes its synthetic audit suite but data-v1.0 is not
-frozen: the explicit 2008-01-01 boundary exposes 13 missing leading XNYS
-sessions before the first observed bar on 2008-01-22. Frozen: engine (three
-profiles) and evaluation spec v1. Mechanics baseline (zero
+Frozen: data-v1.0 begins on 2008-01-22, the raw source's first observed and
+complete XNYS session; the documented re-scope is in
+`docs/DATA_V1_START_DATE_DECISION_ZH.md`. Also frozen: engine (three profiles)
+and evaluation spec v1. Mechanics baseline (zero
 dividends/financing, full sample): official
 17.0% CAGR / 1.15 Sharpe; paper_spec 16.8% / 1.16; corrected_execution
 14.2% / 1.01 — see `docs/PROJECT_WORK_LOG_ZH.md` §6 for the full table.
 
 Pending, in priority order:
 
-1. Resolve the data-v1.0 start boundary: backfill the 13 missing sessions or
-   explicitly re-scope the research start with rationale.
-2. Real-dividend double run (with / ignore); headlines use with-dividends.
-3. Executable evaluation runner driving `profile × tier × dividend × cost`.
-4. Signals / fills / round-trip ledger for the pre-registered decomposition.
-5. Financing time-integral (cash / borrowed cash / long / short notional
+1. Real-dividend double run (with / ignore); headlines use with-dividends.
+2. Executable evaluation runner driving `profile × tier × dividend × cost`.
+3. Signals / fills / round-trip ledger for the pre-registered decomposition.
+4. Financing time-integral (cash / borrowed cash / long / short notional
    separately; current `avg_signed_notional` nets longs against shorts).
-6. Independent daily SPY raw-close benchmark.
-7. Evaluation spec v2, then the single post-publication report.
+5. Independent daily SPY raw-close benchmark.
+6. Evaluation spec v2, then the single post-publication report.
 
 Explicitly deferred: parameter optimisation, Qlib, machine learning, live
 deployment.

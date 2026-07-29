@@ -24,17 +24,19 @@
 ## 本地数据状态
 
 当前工作区包含只读输入 `SPY_1min_2008_202607_merged.parquet`（1,813,340
-rows）和 `spy_dividends_full.csv`。尚未发布新的
-`data/processed/runs/<run_id>/`，也没有独立daily SPY benchmark文件。
-data-v1.0候选契约会在生成任何正式run前阻断缺失的样本边界。
+rows）以及 State Street 精确分红参考输入。data-v1.0 的研究起点已正式
+重定界为 2008-01-22，即原始源中首个观察到且完整的 XNYS session；
+该选择由数据可得性决定，不依据策略结果。不可变 release 由两次正式
+run 的逐字节复现结果发布，并由 `data-v1.0` tag 绑定源码；尚无独立
+daily SPY benchmark 正式发布文件。
 
 ## 验证状态
 
 - 最新三个Python文件在本次交付环境中通过 `python -m py_compile`；
 - 2026-07-30 本工作区运行 `python prepare_spy_data.py --self-test`，
   28项data-layer checks通过；
-- 真实raw边界审计确认观察范围为2008-01-22至2026-07-09；按
-  2008-01-01预期起点运行时，13个前置XNYS交易日缺失，data-v1.0暂不冻结；
+- 真实raw边界审计确认观察范围为2008-01-22至2026-07-09；data-v1.0
+  已用独立决策记录把预期起点固定为2008-01-22；
 - 57项engine tests为既有项目记录，本次data-layer修正未重跑；
 - 本包保留原始上传文件，其SHA与 `manifest/` 记录可核对。
 

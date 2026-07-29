@@ -1,22 +1,21 @@
-# Candidate contract for the first frozen data release.
+# Frozen contract for the first immutable data release.
 # This is intentionally stricter than an exploratory pipeline invocation.
 release_id: data-v1.0
-status: candidate
+status: frozen_contract
 
 input: SPY_1min_2008_202607_merged.parquet
-dividends: spy_dividends_full.csv
+dividends: data/reference/spy_dividends_state_street_20260730.csv
 calendar: XNYS
 input_timezone: America/New_York
 bar_label: start
 source_split: 2016-01-04
 halt_bar_policy: absent
 
-# The research claim begins in 2008, so the contract starts at the first
-# calendar day of that year rather than silently accepting the first observed
-# bar. The current source begins 2008-01-22; freezing remains blocked until the
-# 13 earlier XNYS sessions are backfilled or the research start is explicitly
-# re-scoped with rationale.
-expected_start: 2008-01-01
+# Deliberate sample re-scope approved on 2026-07-30. 2008-01-22 is the raw
+# source's first observed and complete XNYS session. It is fixed by data
+# availability, not selected from strategy results. See
+# docs/DATA_V1_START_DATE_DECISION_ZH.md.
+expected_start: 2008-01-22
 expected_end: 2026-07-09
 max_boundary_sessions_missing: 0
 

@@ -403,13 +403,19 @@ def git_provenance() -> dict:
             "show", f"{commit}:{SCRIPT_PATH.name}", text=False).stdout
         head_script_sha256 = hashlib.sha256(head_script).hexdigest()
         script_sha256 = sha256_file(SCRIPT_PATH)
+        script_diff = subprocess.run(
+            ["git", "diff", "--quiet", "HEAD", "--", SCRIPT_PATH.name],
+            cwd=repo, check=False)
         return {
             "available": True,
             "commit": commit,
             "dirty": bool(status.strip()),
             "script_sha256": script_sha256,
             "head_script_sha256": head_script_sha256,
-            "script_matches_head": script_sha256 == head_script_sha256,
+            # Git applies checkout/clean filters (notably CRLF<->LF) when
+            # deciding whether a tracked file matches HEAD. Preserve both exact
+            # byte hashes above, but use Git semantics for the acceptance gate.
+            "script_matches_head": script_diff.returncode == 0,
         }
     except (OSError, subprocess.CalledProcessError) as exc:
         return {
@@ -631,7 +637,14 @@ def resolve_duplicate_rows(
     duplicate_rows_removed = int(df.duplicated("timestamp", keep="first").sum())
     dup = df[df.duplicated("timestamp", keep=False)].copy()
     empty = pd.Index([], dtype=UTC_NS)
+    ohlcv_path = reports / "conflicting_ohlcv.csv"
+    optional_path = reports / "conflicting_optional_metadata.csv"
     if dup.empty:
+        df.iloc[0:0].to_csv(ohlcv_path, index=False)
+        optional_report = df.iloc[0:0].copy()
+        for col in OPTIONAL_NUMERIC:
+            optional_report[f"conflict_{col}"] = pd.Series(dtype=bool)
+        optional_report.to_csv(optional_path, index=False)
         return df, {
             "duplicate_rows_removed": 0,
             "conflicting_duplicate_timestamps": 0,
@@ -654,16 +667,13 @@ def resolve_duplicate_rows(
         optional_union = optional_union.union(idx)
     all_conflicts = ohlcv_conflicts.union(optional_union)
 
-    if len(ohlcv_conflicts):
-        df[df["timestamp"].isin(ohlcv_conflicts)].to_csv(
-            reports / "conflicting_ohlcv.csv", index=False)
-    if len(optional_union):
-        optional_report = df[df["timestamp"].isin(optional_union)].copy()
-        for col, timestamps in optional_conflicts.items():
-            optional_report[f"conflict_{col}"] = \
-                optional_report["timestamp"].isin(timestamps)
-        optional_report.to_csv(
-            reports / "conflicting_optional_metadata.csv", index=False)
+    df[df["timestamp"].isin(ohlcv_conflicts)].to_csv(
+        ohlcv_path, index=False)
+    optional_report = df[df["timestamp"].isin(optional_union)].copy()
+    for col, timestamps in optional_conflicts.items():
+        optional_report[f"conflict_{col}"] = \
+            optional_report["timestamp"].isin(timestamps)
+    optional_report.to_csv(optional_path, index=False)
 
     precedence = _parse_source_precedence(source_precedence)
     if len(ohlcv_conflicts):
@@ -1785,8 +1795,8 @@ def _run_into(args: argparse.Namespace, out_dir: Path, reports: Path,
 
     outside = df.loc[~df["is_rth"]]
     outside_rth_rows = int(len(outside))
-    if outside_rth_rows:
-        outside.head(200_000).to_csv(reports / "outside_rth_rows.csv", index=False)
+    outside.head(200_000).to_csv(
+        reports / "outside_rth_rows.csv", index=False)
     df = df.loc[df["is_rth"]].copy()
     if df.empty:
         raise DataValidationError(
@@ -1797,8 +1807,9 @@ def _run_into(args: argparse.Namespace, out_dir: Path, reports: Path,
     off_grid = (df["timestamp"].dt.second.ne(0) | df["timestamp"].dt.microsecond.ne(0)
                 | df["timestamp"].dt.nanosecond.ne(0))
     off_grid_rows = int(off_grid.sum())
+    df.loc[off_grid].head(100_000).to_csv(
+        reports / "off_grid_rows.csv", index=False)
     if off_grid_rows:
-        df.loc[off_grid].head(100_000).to_csv(reports / "off_grid_rows.csv", index=False)
         raise DataValidationError(
             f"{off_grid_rows} timestamps are not on minute boundaries; see "
             f"{reports / 'off_grid_rows.csv'}.")
@@ -1809,8 +1820,8 @@ def _run_into(args: argparse.Namespace, out_dir: Path, reports: Path,
     invalid_per_session = (df.loc[invalid].groupby("session_date", observed=True).size()
                            if invalid_count else pd.Series(dtype="int64"))
     invalid_dropped = 0
+    df.loc[invalid].to_csv(reports / "invalid_ohlc_rows.csv", index=False)
     if invalid_count:
-        df.loc[invalid].to_csv(reports / "invalid_ohlc_rows.csv", index=False)
         frac = invalid_count / max(len(df), 1)
         if args.invalid_row_policy == "error":
             raise DataValidationError(
@@ -2210,6 +2221,19 @@ def self_test(verbose: bool = True) -> int:
         if man["environment_lock"]["sha256"] != sha256_file(
                 SCRIPT_PATH.with_name("requirements.lock")):
             fails.append("requirements lock hash missing or wrong in manifest")
+        required_zero_row_reports = {
+            "conflicting_ohlcv.csv",
+            "conflicting_optional_metadata.csv",
+            "off_grid_rows.csv",
+            "invalid_ohlc_rows.csv",
+        }
+        missing_zero_row_reports = sorted(
+            name for name in required_zero_row_reports
+            if not (rd / "reports" / name).exists())
+        if missing_zero_row_reports:
+            fails.append(
+                "zero-row audit reports were not published with headers: "
+                f"{missing_zero_row_reports}")
 
         # 5 explicit expected boundaries expose a wholly missing leading session
         expected_end = str(d["caldt"].dt.date.max())

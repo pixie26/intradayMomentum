@@ -1,1 +1,11 @@
-﻿SPY_1min_2008_202607_merged.csv
+SPY_1min_2008_202607_merged.csv
+
+# Rebuildable data-pipeline outputs. Frozen releases are identified by
+# manifest hashes and Git tags, not committed as large binary artifacts.
+data/candidates/
+data/processed/
+data_release_v1/
+
+# Local validation scratch space.
+.codex_spreadsheet_tmp/
+__pycache__/

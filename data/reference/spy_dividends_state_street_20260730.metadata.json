@@ -1,0 +1,18 @@
+{
+  "symbol": "SPY",
+  "source_name": "State Street SPDR Historical Distributions",
+  "source_url": "https://www.ssga.com/library-content/products/fund-data/etfs/us/spdr-etf-historical-distributions.xlsx",
+  "downloaded_at": "2026-07-30T00:50:09+08:00",
+  "source_sha256": "bf9e8ba5825c62bb48b123070929b9db2b8e5e7249b826b858c3b869ca84ac1a",
+  "source_sheet": "dividend",
+  "source_range": "A1:J13074",
+  "filter": {
+    "ticker": "SPY",
+    "start": "2008-01-22",
+    "end": "2026-07-09"
+  },
+  "output": "spy_dividends_state_street_20260730.csv",
+  "output_rows": 74,
+  "output_sha256": "7f11b4419d6497e4c9c6d13878d99c4baff6a817377aaecf67aaeba500be0fa7",
+  "generated_by": "scripts/extract_state_street_dividends.py"
+}

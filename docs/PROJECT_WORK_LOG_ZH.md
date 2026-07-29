@@ -190,12 +190,13 @@ is_scheduled_decision_minute
 - 新增并强制校验 `requirements.lock`；`bar_label=start` 固定在
   `config/data_release_v1.yml`。
 
-真实 raw parquet 的观察范围是 2008-01-22 至 2026-07-09。按照项目
-“2008 年起”的候选契约，将 `expected_start` 固定为 2008-01-01 后，
-程序正确识别出 2008-01-02 至 2008-01-18 共 13 个前置 XNYS session
-缺失并拒绝发布。因此当前判断改为：**component-validity primitives
-已经稳定，但 data-v1.0 尚不能冻结；必须先补齐这 13 日，或用明确研究
-理由重新定义样本起点。**
+真实 raw parquet 的观察范围是 2008-01-22 至 2026-07-09。最初按
+`expected_start=2008-01-01` 探测时，程序正确识别出 2008-01-02 至
+2008-01-18 共 13 个前置 XNYS session 缺失并拒绝发布。2026-07-30
+正式决定把 data-v1.0 研究起点重定界为 **2008-01-22**：这是原始源中
+首个观察到且完整的 XNYS session，由数据可得性决定，不依据策略结果；
+以后所有报告必须显示精确起点，不得表述为覆盖完整 2008 年。完整理由见
+`DATA_V1_START_DATE_DECISION_ZH.md`。
 
 ---
 
@@ -527,9 +528,7 @@ short_notional_time_integral
 
 ### 尚未冻结
 
-- data-v1.0 边界：当前缺少 2008-01-02 至 2008-01-18 的 13 个 XNYS
-  session；
-- 真实分红；
+- data-v1.0 不可变发布目录与 Git tag；
 - 完整融资time-integral；
 - trade/fill ledger；
 - executable evaluation runner；
