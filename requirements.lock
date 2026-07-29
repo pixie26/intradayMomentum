@@ -1,0 +1,14 @@
+# Exact Windows/Python 3.13 environment used for the data-v1.0 candidate.
+# The pipeline verifies every installed version below before publishing.
+numpy==2.1.3
+pandas==2.2.3
+pyarrow==25.0.0
+exchange-calendars==4.13.2
+python-dateutil==2.9.0.post0
+pytz==2024.1
+tzdata==2025.2
+pyluach==2.3.0
+toolz==1.0.0
+korean-lunar-calendar==0.4.0
+six==1.17.0
+PyYAML==6.0.2

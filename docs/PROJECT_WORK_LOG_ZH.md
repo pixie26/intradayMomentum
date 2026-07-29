@@ -159,7 +159,9 @@ is_scheduled_decision_minute
 - truncated-open：`open_valid=False`，但 `close_valid` 仍可能为 True；
 - interior gap：gap 后 `vwap_valid=False`，独立的 `move_open_obs_valid` 仍可能为 True；
 - trailing truncation：当日 close 和跨该日 daily return 无效；
-- halt minute：不可执行，但不应被当成普通缺失，也不应破坏真实累计 VWAP。
+- halt minute：不可执行，但不应被当成普通缺失，也不应破坏真实累计 VWAP；
+  即使 vendor 在 `allow_present` 模式下保留 phantom bar，也不得进入
+  `move_open_obs_valid` 或后续同分钟 `sigma_open` 历史。
 
 ### 4.5 发布和审计工程
 
@@ -173,9 +175,27 @@ is_scheduled_decision_minute
 - pipeline/schema/version；
 - 输入、脚本、输出和报告 SHA-256；
 - 极端一分钟收益、stale、zero-volume 和 source-format 异常报告；
-- 18 项 data self-test。
+- 28 项 data self-test。
 
-当前判断：**数据摄取、清洗和 component-validity primitives 可以冻结。**
+### 4.6 data-v1.0 冻结前审计补强
+
+2026-07-30 完成数据层 v5 candidate：
+
+- 新增显式 `expected_start` / `expected_end`，manifest 同时记录观察边界
+  和首尾缺失交易日；
+- OHLCV duplicate conflict 与 `vendor_bar_vwap` / `transactions` metadata
+  conflict 分开报告；headline policy 对 OHLCV 冲突硬失败，transactions
+  冲突必须使用明确 source precedence；
+- 相邻可得行收益拆成真正连续一分钟、普通 gap 和 halt reopen 三类；
+- 新增并强制校验 `requirements.lock`；`bar_label=start` 固定在
+  `config/data_release_v1.yml`。
+
+真实 raw parquet 的观察范围是 2008-01-22 至 2026-07-09。按照项目
+“2008 年起”的候选契约，将 `expected_start` 固定为 2008-01-01 后，
+程序正确识别出 2008-01-02 至 2008-01-18 共 13 个前置 XNYS session
+缺失并拒绝发布。因此当前判断改为：**component-validity primitives
+已经稳定，但 data-v1.0 尚不能冻结；必须先补齐这 13 日，或用明确研究
+理由重新定义样本起点。**
 
 ---
 
@@ -493,7 +513,7 @@ short_notional_time_integral
 
 ### 基本冻结
 
-- 数据摄取和时间戳；
+- 时间戳解析和 component-validity 语义；
 - XNYS calendar / half-day / halt；
 - component validity primitives；
 - 三profile；
@@ -507,6 +527,8 @@ short_notional_time_integral
 
 ### 尚未冻结
 
+- data-v1.0 边界：当前缺少 2008-01-02 至 2008-01-18 的 13 个 XNYS
+  session；
 - 真实分红；
 - 完整融资time-integral；
 - trade/fill ledger；

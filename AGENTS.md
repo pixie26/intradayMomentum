@@ -21,7 +21,9 @@ order before non-trivial work:
    code vs this implementation, item by item.
 3. `docs/README_DATA.md` / `docs/README_ENGINE.md` — layer contracts.
 4. `config/evaluation_spec_v1.yml` — frozen post-publication evaluation.
-5. `docs/HISTORICAL_V3_REVIEW.md` — data-layer review history.
+5. `config/data_release_v1.yml` — candidate data-v1.0 boundary, timestamp,
+   duplicate and environment contract.
+6. `docs/HISTORICAL_V3_REVIEW.md` — data-layer review history.
 
 Run reports (tied to a specific `data/processed/runs/<run_id>/`):
 - `docs/DATA_AUDIT_20260729_ZH.md` — first local full-sample data audit:
@@ -33,10 +35,11 @@ Run reports (tied to a specific `data/processed/runs/<run_id>/`):
 |---|---|
 | `SPY_1min_2008_202607_merged.parquet` | Raw 1-min bars (1.8M rows). Read-only input. |
 | `spy_dividends_full.csv` | 74 quarterly dividends. Input. (Git-ignored by `*.csv`.) |
-| `prepare_spy_data.py` | Data layer v4: validation, XNYS calendar, halts, component validity, session tiers, atomic `runs/<run_id>/` publish. `--self-test` = 18 checks. |
+| `prepare_spy_data.py` | Data layer v5 candidate: explicit release boundaries, duplicate conflict classes, return-gap audit, dependency lock, component validity, and atomic publish. `--self-test` = 28 checks. |
 | `im_engine_v4.py` | Engine: three profiles (`official_sample_compatible`, `paper_spec`, `corrected_execution`). Working copy. |
 | `test_engine.py` | 57 engine checks. Run: `python test_engine.py`. |
 | `config/evaluation_spec_v1.yml` | Pre-registered evaluation; do not edit in response to results. |
+| `config/data_release_v1.yml` | Candidate data-v1.0 contract. Currently blocked by 13 missing leading XNYS sessions. |
 | `docs/` | All documentation (see above). |
 | `previous_research/` | Archived original baseline scripts + charts. Historical reference only; do not extend them. |
 | `src/`, `tests/` | Byte-identical delivery copies of the root files (2026-07-29 snapshot, hashed in `manifest/`). Edit the root files; treat these as frozen. |
@@ -79,28 +82,33 @@ Run reports (tied to a specific `data/processed/runs/<run_id>/`):
 
 ## Current state
 
-Frozen: data layer v4, engine (three profiles), test suites, evaluation spec
-v1. Mechanics baseline (zero dividends/financing, full sample): official
+Candidate: data layer v5 passes its synthetic audit suite but data-v1.0 is not
+frozen: the explicit 2008-01-01 boundary exposes 13 missing leading XNYS
+sessions before the first observed bar on 2008-01-22. Frozen: engine (three
+profiles) and evaluation spec v1. Mechanics baseline (zero
+dividends/financing, full sample): official
 17.0% CAGR / 1.15 Sharpe; paper_spec 16.8% / 1.16; corrected_execution
 14.2% / 1.01 — see `docs/PROJECT_WORK_LOG_ZH.md` §6 for the full table.
 
 Pending, in priority order:
 
-1. Real-dividend double run (with / ignore); headlines use with-dividends.
-2. Executable evaluation runner driving `profile × tier × dividend × cost`.
-3. Signals / fills / round-trip ledger for the pre-registered decomposition.
-4. Financing time-integral (cash / borrowed cash / long / short notional
+1. Resolve the data-v1.0 start boundary: backfill the 13 missing sessions or
+   explicitly re-scope the research start with rationale.
+2. Real-dividend double run (with / ignore); headlines use with-dividends.
+3. Executable evaluation runner driving `profile × tier × dividend × cost`.
+4. Signals / fills / round-trip ledger for the pre-registered decomposition.
+5. Financing time-integral (cash / borrowed cash / long / short notional
    separately; current `avg_signed_notional` nets longs against shorts).
-5. Independent daily SPY raw-close benchmark.
-6. Evaluation spec v2, then the single post-publication report.
+6. Independent daily SPY raw-close benchmark.
+7. Evaluation spec v2, then the single post-publication report.
 
 Explicitly deferred: parameter optimisation, Qlib, machine learning, live
 deployment.
 
 ## Working rules
 
-- Dependencies: `pip install -r requirements.txt` (numpy, pandas,
-  exchange-calendars, pyarrow). No local conda env currently has them.
+- Dependencies: `pip install -r requirements.txt`; it resolves to the exact
+  `requirements.lock`, which the data pipeline verifies before publication.
 - After engine edits run `python test_engine.py`; after data-layer edits run
   `python prepare_spy_data.py --self-test`. Report what actually ran and the
   date range used; never claim an unrun check passed.

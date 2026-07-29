@@ -137,7 +137,7 @@ accounting and minimum-commission conventions, the final-bar round-trip guard,
 filtering of the volatility window, `ignore_dividends`, unknown-exit exclusion,
 parameter plumbing (`trade_freq`, `sigma_window`, `use_vwap`, `sizing`),
 dividend band adjustment, cost decomposition and the calendar time axis.
-`python prepare_spy_data.py --self-test` — 18 data-layer checks.
+`python prepare_spy_data.py --self-test` — 28 data-layer checks.
 
 ## Not yet implemented
 

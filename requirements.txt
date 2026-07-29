@@ -1,4 +1,2 @@
-numpy
-pandas
-exchange-calendars
-pyarrow
+# Reproducible runtime for data releases. Update requirements.lock deliberately.
+-r requirements.lock

@@ -1,20 +1,79 @@
-# SPY minute-data preparation — v4
+# SPY minute-data preparation — v5 candidate
 
 ## Run
 
 ```bash
-python prepare_spy_data.py --self-test        # 18 checks, no data needed
+python -m pip install -r requirements.txt
+python prepare_spy_data.py --self-test        # 28 checks, no market data needed
 
 python prepare_spy_data.py \
+  --release-config config/data_release_v1.yml \
+  --preflight-self-test \
   --input SPY_1min_2008_202607_merged.parquet \
   --dividends spy_dividends_full.csv \
   --output-dir data/processed \
   --input-timezone America/New_York \
   --bar-label start \
+  --expected-start 2008-01-01 \
+  --expected-end 2026-07-09 \
+  --max-boundary-sessions-missing 0 \
+  --duplicate-policy error \
+  --strategy-vwap-source hlc3 \
   --source-split 2016-01-04
 ```
 
 `--input-timezone` has no default. A tz-naive input without it is a hard error.
+The canonical release settings are recorded in `config/data_release_v1.yml`;
+`--release-config` verifies that every declared setting matches the CLI and
+records the config hash in the manifest.
+That candidate is currently blocked: the real source begins on 2008-01-22, so
+13 expected XNYS sessions from 2008-01-02 through 2008-01-18 are missing.
+
+## Release boundaries and environment
+
+An inferred calendar cannot detect a missing prefix or suffix. Formal releases
+therefore supply both `--expected-start` and `--expected-end`; supplying only one
+is an error. The manifest records `expected_start`, `expected_end`,
+`observed_start`, `observed_end`, and leading/trailing
+`boundary_sessions_missing`. With the formal default of
+`--max-boundary-sessions-missing 0`, a missing boundary session prevents
+publication even when overall coverage exceeds 98%.
+
+`requirements.txt` installs the exact `requirements.lock`. The pipeline checks
+every locked package version before reading or publishing data and records the
+lock SHA-256 plus installed versions in the manifest. `bar_label: start` is
+fixed in `config/data_release_v1.yml`; changing it requires a different release
+contract, not another invocation under the same release ID.
+
+## Duplicate semantics
+
+Duplicate timestamp conflicts are separated:
+
+- OHLCV conflicts write `conflicting_ohlcv.csv` and fail the default/headline
+  policy.
+- Vendor VWAP or transaction-count conflicts write
+  `conflicting_optional_metadata.csv`.
+- Vendor VWAP conflicts fail when `--strategy-vwap-source vendor_bar_vwap` is
+  selected. For `hlc3`/`ohlc4`, the ambiguous unused vendor value is set to NaN
+  instead of inheriting arbitrary file order.
+- Transaction-count conflicts require a real source column and an explicit
+  `--source-precedence`.
+
+`--duplicate-policy last` is legacy exploratory behaviour and now also requires
+`--confirm-file-order-precedence`. It is forbidden by the formal release config.
+
+## Return anomaly semantics
+
+An adjacent available row is not necessarily one minute later. Reports now
+separate:
+
+- `extreme_continuous_1min_returns.csv`: prior executable minute is exactly
+  `m-1`;
+- `gap_returns.csv`: non-halt discontinuities, with elapsed minutes recorded;
+- `halt_reopen_returns.csv`: the first executable bar immediately after a
+  declared halt, measured from the last pre-halt executable close.
+
+Regime-level “1-minute return” counts use only the first category.
 
 ## The data → engine contract
 
@@ -48,7 +107,7 @@ Components have different dependency structures:
 
 | component | depends on | an interior gap at 11:19 … |
 |---|---|---|
-| `move_open_obs_valid` | session open + this bar | still valid at 12:00 |
+| `move_open_obs_valid` | session open + this non-halt bar | still valid at 12:00 |
 | `vwap_valid` | every required minute from the open through m | false from 11:19 onward |
 | `close_valid` / next `prev_close_valid` | that session's last scheduled minute | unaffected |
 
@@ -59,7 +118,9 @@ opposite and is worse: 2019-08-12 kills its own daily return *and* 2019-08-13's
 previous close.
 
 Halt minutes are exempt from `vwap_valid`: no volume traded, so nothing is
-missing.
+missing. A vendor-retained phantom bar under `--halt-bar-policy allow_present`
+is nevertheless excluded from `move_open_obs_valid` and cannot enter later
+same-minute `sigma_open` history.
 
 `sigma_history_valid` and `daily_vol_history_valid` are derived at the
 `--trade-freq` / `--sigma-window` passed on the command line. They are a
@@ -113,8 +174,10 @@ previous close, and vol warm-up consumes more. Quote both.
 ```
 data/processed/
   latest.json                       # pointer to the newest published run
+  failed_audits/<run_id>/           # CSV diagnostics + failure.json; never consumable
   runs/<run_id>/
     _SUCCESS
+    audit_summary.md                 # actual run gates + non-paper-ready dates
     spy_1min_clean.parquet          # features are computed from this
     spy_1min_paper_ready.parquet
     spy_1min_halt_aware.parquet
@@ -125,20 +188,29 @@ data/processed/
     reports/
       data_manifest.json            # all paths RELATIVE to the run directory
       session_quality.csv  minute_coverage.csv  halt_minutes.csv
-      extreme_return_rows.csv  longest_zero_volume_runs.csv
+      extreme_continuous_1min_returns.csv
+      gap_returns.csv  halt_reopen_returns.csv
+      conflicting_ohlcv.csv  conflicting_optional_metadata.csv
+      longest_zero_volume_runs.csv
       longest_stale_bar_runs.csv
 ```
 
-Staged in a temp directory and moved into place atomically. A failure at any
-point before the move leaves nothing and does not touch `latest.json`. A failure
-in the narrow window *after* the move but before the pointer update can leave an
-orphan run directory carrying `_SUCCESS`; it is inert — consumers resolve runs
-through `latest.json` — but it is not literally "no artefacts".
+Staged in a temp directory and moved into place atomically. A failure before the
+move never creates `runs/<run_id>/` and never touches `latest.json`; any CSVs
+already produced are copied to `failed_audits/<run_id>/` with `failure.json` so
+the fatal evidence remains inspectable. These directories have no `_SUCCESS`
+and are never consumable data. A failure in the narrow window *after* the move
+but before the pointer update can leave an orphan run directory carrying
+`_SUCCESS`; it is inert because consumers resolve runs through `latest.json`.
 
 ## Invariants
 
 - Raw OHLC is never adjusted or forward-filled; no missing bar is imputed.
 - Row conservation is asserted.
+- Explicit expected boundaries are checked independently of overall coverage.
+- The exact dependency lock is verified before publication.
+- OHLCV conflict resolution never uses file order in a headline run.
+- Only consecutive executable minutes are called one-minute returns.
 - Session grading compares **minute sets**, not bar counts.
 - Minute coverage counts **usable** observations, not bar presence: a session
   opening at 11:15 has a 15:59 bar, but its `move_open` anchors on the 11:15
@@ -152,5 +224,6 @@ through `latest.json` — but it is not literally "no artefacts".
   vendor identification. Prefer a real `source` column or `--source-split`.
 - The raw-vs-adjusted test is reported as `evidence_supports_raw_prices`.
 - `--dividend-duplicate-policy sum` requires either a `dividend_type` column
-  showing distinct types on the conflicting ex-dates, or `--confirm-dividend-sum`.
+  showing exactly one `regular` and one `special` row on every conflicting
+  ex-date, or `--confirm-dividend-sum` when no type evidence is available.
 - Full-sample runtime ~60s, dominated by the 1.8M-row scheduled-minute grid.

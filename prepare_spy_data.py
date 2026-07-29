@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 """Prepare SPY 1-minute data for a reproducible intraday-momentum backtest.
 
-v4.  Principles unchanged: raw OHLCV is never adjusted or forward-filled;
+v5.  Principles unchanged: raw OHLCV is never adjusted or forward-filled;
 ambiguity fails loudly; missing bars are diagnosed, not fabricated.
+
+Changes in v5
+-------------
+The data-release contract now supports explicit expected boundaries, separates
+OHLCV duplicate conflicts from optional metadata conflicts, classifies true
+one-minute / ordinary-gap / halt-reopen returns independently, and verifies an
+exact dependency lock before publishing.
 
 Changes in v4
 -------------
@@ -75,9 +82,11 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.metadata
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import time
@@ -88,10 +97,12 @@ from typing import Iterable
 import exchange_calendars as xcals
 import numpy as np
 import pandas as pd
+import yaml
 from pandas.api.types import is_datetime64_any_dtype, is_numeric_dtype
 
 UTC_NS = "datetime64[ns, UTC]"
 SCRIPT_PATH = Path(__file__).resolve()
+DATA_SELF_TEST_COUNT = 28
 
 # Plausible calendar range for any interpretation of an input timestamp.
 # Anything outside this is a parsing error, not data.
@@ -149,6 +160,8 @@ class AuditCounts:
     bad_timestamp_rows: int
     duplicate_rows_removed: int
     conflicting_duplicate_timestamps: int
+    conflicting_ohlcv_timestamps: int
+    conflicting_optional_metadata_timestamps: int
     outside_rth_rows: int
     off_grid_rows: int
     invalid_ohlc_rows_dropped: int
@@ -192,14 +205,41 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--epoch-unit", choices=("auto", "s", "ms", "us", "ns"),
                    default="auto")
     p.add_argument("--bar-label", choices=("start", "end"), default="start")
+    p.add_argument("--expected-start", default=None,
+                   help="Expected first calendar date of the release, YYYY-MM-DD. "
+                        "Must be supplied together with --expected-end.")
+    p.add_argument("--expected-end", default=None,
+                   help="Expected last calendar date of the release, YYYY-MM-DD. "
+                        "Must be supplied together with --expected-start.")
+    p.add_argument("--max-boundary-sessions-missing", type=int, default=0,
+                   help="Maximum entirely absent exchange sessions before the "
+                        "first or after the last observed session inside explicit "
+                        "expected boundaries. Formal releases should keep 0.")
 
     # policies
-    p.add_argument("--duplicate-policy", choices=("error", "last"), default="error")
+    p.add_argument("--duplicate-policy",
+                   choices=("error", "source_precedence", "last"), default="error",
+                   help="Resolution for OHLCV-conflicting duplicate timestamps. "
+                        "'error' is required for headline releases. "
+                        "'source_precedence' requires --source-precedence; legacy "
+                        "'last' also requires --confirm-file-order-precedence.")
+    p.add_argument("--source-precedence", default=None,
+                   help="Comma-separated source values from highest to lowest "
+                        "quality. Required to resolve transactions conflicts or "
+                        "when --duplicate-policy source_precedence is selected.")
+    p.add_argument("--confirm-file-order-precedence", action="store_true",
+                   help="Explicitly permit legacy --duplicate-policy last. File "
+                        "order is not a quality signal; never use for headline runs.")
+    p.add_argument("--strategy-vwap-source",
+                   choices=("hlc3", "ohlc4", "vendor_bar_vwap"), default="hlc3",
+                   help="VWAP source intended downstream. Conflicting vendor VWAP "
+                        "metadata is fatal only for vendor_bar_vwap.")
     p.add_argument("--invalid-row-policy", choices=("error", "drop"), default="error")
     p.add_argument("--confirm-dividend-sum", action="store_true",
-                   help="Required alongside --dividend-duplicate-policy sum. "
-                        "Summing is only correct for a genuine regular+special "
-                        "pair; without this flag a re-scraped event is doubled.")
+                   help="Required alongside --dividend-duplicate-policy sum "
+                        "when no dividend_type evidence is available. Summing "
+                        "is only correct for a genuine regular+special pair; "
+                        "without confirmation a re-scraped event is doubled.")
     p.add_argument("--dividend-duplicate-policy",
                    choices=("error", "sum", "first"), default="error",
                    help="Same ex-date appearing more than once with different "
@@ -223,6 +263,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--source-split", default=None,
                    help="Comma-separated known splice dates, e.g. '2016-01-04'. "
                         "Always more reliable than the heuristic.")
+    p.add_argument("--requirements-lock", type=Path,
+                   default=SCRIPT_PATH.with_name("requirements.lock"),
+                   help="Exact environment lock. Installed versions are checked "
+                        "before a run is published.")
+    p.add_argument("--release-config", type=Path, default=None,
+                   help="Frozen YAML release contract. When supplied, every "
+                        "declared pipeline setting must match the CLI.")
 
     # thresholds
     p.add_argument("--max-bad-timestamp-frac", type=float, default=0.005)
@@ -236,6 +283,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--keep-runs", type=int, default=10,
                    help="How many historical run directories to retain.")
     p.add_argument("--self-test", action="store_true")
+    p.add_argument("--preflight-self-test", action="store_true",
+                   help="Run and require the complete synthetic data test suite "
+                        "before processing market data; required by data-v1.0.")
     return p.parse_args(argv)
 
 
@@ -249,6 +299,124 @@ def sha256_file(path: Path, chunk: int = 8 * 1024 * 1024) -> str:
         while block := fh.read(chunk):
             d.update(block)
     return d.hexdigest()
+
+
+def validate_environment_lock(path: Path) -> dict:
+    """Require the running environment to match an exact requirements lock."""
+    if not path.exists():
+        raise DataValidationError(
+            f"Dependency lock not found: {path}. A publishable data run must use "
+            "an exact, versioned environment.")
+    locked: dict[str, str] = {}
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "==" not in line or line.startswith(("-", "--")):
+            raise DataValidationError(
+                f"Unsupported requirements lock entry {line!r}; expected name==version.")
+        name, version = (x.strip() for x in line.split("==", 1))
+        locked[name] = version
+
+    mismatches = []
+    installed = {}
+    for name, expected in locked.items():
+        try:
+            actual = importlib.metadata.version(name)
+        except importlib.metadata.PackageNotFoundError:
+            actual = None
+        installed[name] = actual
+        if actual != expected:
+            mismatches.append(
+                {"package": name, "expected": expected, "installed": actual})
+    if mismatches:
+        raise DataValidationError(
+            f"Environment does not match {path}: {mismatches}. "
+            f"Install with `python -m pip install -r {path}`.")
+    return {
+        "path": str(path),
+        "sha256": sha256_file(path),
+        "packages": installed,
+    }
+
+
+def validate_release_contract(
+        path: Path | None, args: argparse.Namespace) -> dict | None:
+    if path is None:
+        return None
+    if not path.exists():
+        raise DataValidationError(f"Release config not found: {path}.")
+    loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if not isinstance(loaded, dict):
+        raise DataValidationError(f"Release config must be a mapping: {path}.")
+
+    metadata_keys = {"release_id", "status"}
+    path_keys = {"input", "dividends", "requirements_lock"}
+    date_string_keys = {"source_split", "expected_start", "expected_end"}
+    mismatches = []
+    for key, expected in loaded.items():
+        if key in metadata_keys:
+            continue
+        if not hasattr(args, key):
+            raise DataValidationError(
+                f"Release config declares unsupported setting {key!r}.")
+        actual = getattr(args, key)
+        if key in path_keys:
+            expected_value = (
+                None if expected is None
+                else str((SCRIPT_PATH.parent / str(expected)).resolve()))
+            actual_value = (
+                None if actual is None else str(Path(actual).resolve()))
+        elif key in date_string_keys:
+            expected_value = None if expected is None else str(expected)
+            actual_value = actual
+        else:
+            expected_value = expected
+            actual_value = actual
+        if actual_value != expected_value:
+            mismatches.append({
+                "setting": key, "config": expected_value, "cli": actual_value})
+    if mismatches:
+        raise DataValidationError(
+            f"CLI does not match release config {path}: {mismatches}.")
+    return {
+        "path": str(path.resolve()),
+        "sha256": sha256_file(path),
+        "release_id": loaded.get("release_id"),
+        "status": loaded.get("status"),
+    }
+
+
+def git_provenance() -> dict:
+    """Tie a data run to both the worktree bytes and the current Git commit."""
+    repo = SCRIPT_PATH.parent
+
+    def call(*argv: str, text: bool = True):
+        return subprocess.run(
+            ["git", *argv], cwd=repo, check=True, capture_output=True,
+            text=text)
+
+    try:
+        commit = call("rev-parse", "HEAD").stdout.strip()
+        status = call("status", "--porcelain").stdout
+        head_script = call(
+            "show", f"{commit}:{SCRIPT_PATH.name}", text=False).stdout
+        head_script_sha256 = hashlib.sha256(head_script).hexdigest()
+        script_sha256 = sha256_file(SCRIPT_PATH)
+        return {
+            "available": True,
+            "commit": commit,
+            "dirty": bool(status.strip()),
+            "script_sha256": script_sha256,
+            "head_script_sha256": head_script_sha256,
+            "script_matches_head": script_sha256 == head_script_sha256,
+        }
+    except (OSError, subprocess.CalledProcessError) as exc:
+        return {
+            "available": False,
+            "error": str(exc),
+            "script_sha256": sha256_file(SCRIPT_PATH),
+        }
 
 
 def read_table(path: Path) -> pd.DataFrame:
@@ -439,9 +607,142 @@ def conflicting_timestamps(df: pd.DataFrame, value_columns: list[str]) -> pd.Ind
     if dup.empty:
         return pd.Index([], dtype=UTC_NS)
     key = dup[value_columns].astype(object).where(dup[value_columns].notna(), "<NA>")
-    key = key.assign(timestamp=dup["timestamp"].values)
+    # `.values` strips timezone information from a tz-aware Series.
+    key = key.assign(timestamp=dup["timestamp"].array)
     counts = key.drop_duplicates().groupby("timestamp", sort=False).size()
     return pd.Index(counts[counts > 1].index, dtype=UTC_NS)
+
+
+def _parse_source_precedence(value: str | None) -> list[str]:
+    if not value:
+        return []
+    out = [x.strip().lower() for x in value.split(",") if x.strip()]
+    if len(out) != len(set(out)):
+        raise DataValidationError(
+            f"--source-precedence contains duplicates: {value!r}.")
+    return out
+
+
+def resolve_duplicate_rows(
+        df: pd.DataFrame, reports: Path, policy: str,
+        strategy_vwap_source: str, source_precedence: str | None,
+        confirm_file_order: bool, source_column: str | None) -> tuple[pd.DataFrame, dict]:
+    """Classify duplicate conflicts and resolve only under explicit semantics."""
+    duplicate_rows_removed = int(df.duplicated("timestamp", keep="first").sum())
+    dup = df[df.duplicated("timestamp", keep=False)].copy()
+    empty = pd.Index([], dtype=UTC_NS)
+    if dup.empty:
+        return df, {
+            "duplicate_rows_removed": 0,
+            "conflicting_duplicate_timestamps": 0,
+            "conflicting_ohlcv_timestamps": 0,
+            "conflicting_optional_metadata_timestamps": 0,
+            "vendor_bar_vwap_conflict_timestamps": 0,
+            "transactions_conflict_timestamps": 0,
+            "resolution": "none",
+            "source_precedence": [],
+        }
+
+    ohlcv_cols = [*PRICE_COLUMNS, "volume"]
+    ohlcv_conflicts = conflicting_timestamps(df, ohlcv_cols)
+    optional_conflicts = {
+        c: conflicting_timestamps(df, [c]) if c in df.columns else empty
+        for c in OPTIONAL_NUMERIC
+    }
+    optional_union = empty
+    for idx in optional_conflicts.values():
+        optional_union = optional_union.union(idx)
+    all_conflicts = ohlcv_conflicts.union(optional_union)
+
+    if len(ohlcv_conflicts):
+        df[df["timestamp"].isin(ohlcv_conflicts)].to_csv(
+            reports / "conflicting_ohlcv.csv", index=False)
+    if len(optional_union):
+        optional_report = df[df["timestamp"].isin(optional_union)].copy()
+        for col, timestamps in optional_conflicts.items():
+            optional_report[f"conflict_{col}"] = \
+                optional_report["timestamp"].isin(timestamps)
+        optional_report.to_csv(
+            reports / "conflicting_optional_metadata.csv", index=False)
+
+    precedence = _parse_source_precedence(source_precedence)
+    if len(ohlcv_conflicts):
+        if policy == "error":
+            raise DataValidationError(
+                f"{len(ohlcv_conflicts)} duplicate timestamps conflict on OHLCV; "
+                f"headline runs must fail. See {reports / 'conflicting_ohlcv.csv'}.")
+        if policy == "source_precedence" and not precedence:
+            raise DataValidationError(
+                "--duplicate-policy source_precedence requires "
+                "--source-precedence.")
+        if policy == "last" and not confirm_file_order:
+            raise DataValidationError(
+                "--duplicate-policy last uses arbitrary file order and requires "
+                "--confirm-file-order-precedence. Never use it for headline runs.")
+
+    vendor_conflicts = optional_conflicts["vendor_bar_vwap"]
+    transaction_conflicts = optional_conflicts["transactions"]
+    if len(vendor_conflicts) and strategy_vwap_source == "vendor_bar_vwap":
+        raise DataValidationError(
+            f"{len(vendor_conflicts)} duplicate timestamps conflict on "
+            "vendor_bar_vwap, which is the selected strategy VWAP source; see "
+            f"{reports / 'conflicting_optional_metadata.csv'}.")
+    if len(transaction_conflicts) and not precedence:
+        raise DataValidationError(
+            f"{len(transaction_conflicts)} duplicate timestamps conflict on "
+            "transactions. Supply an explicit --source-precedence; file order "
+            "is not a quality rule.")
+
+    needs_precedence = (
+        (len(ohlcv_conflicts) and policy == "source_precedence")
+        or len(transaction_conflicts)
+    )
+    work = df.copy()
+    if needs_precedence:
+        if source_column is None or source_column not in work.columns:
+            raise DataValidationError(
+                "Source precedence was requested but the input has no source/"
+                "vendor/provider column.")
+        rank = {name: i for i, name in enumerate(precedence)}
+        affected_sources = (
+            work.loc[work["timestamp"].isin(all_conflicts), source_column]
+            .astype(str).str.strip().str.lower())
+        unknown = sorted(set(affected_sources) - set(rank))
+        if unknown:
+            raise DataValidationError(
+                "Conflicting duplicates contain sources absent from "
+                f"--source-precedence: {unknown}.")
+        work["_source_rank"] = (
+            work[source_column].astype(str).str.strip().str.lower()
+            .map(rank).fillna(len(rank)).astype("int64"))
+        work = work.sort_values(
+            ["timestamp", "_source_rank"], kind="mergesort")
+        work = work.drop_duplicates("timestamp", keep="first") \
+            .drop(columns="_source_rank")
+        resolution = "source_precedence"
+    elif policy == "last" and len(ohlcv_conflicts):
+        work = work.drop_duplicates("timestamp", keep="last")
+        resolution = "confirmed_file_order_last"
+    else:
+        # Optional vendor metadata that is not used by the strategy must still
+        # not acquire an arbitrary value from file order.
+        if len(vendor_conflicts):
+            work.loc[work["timestamp"].isin(vendor_conflicts),
+                     "vendor_bar_vwap"] = np.nan
+        work = work.drop_duplicates("timestamp", keep="first")
+        resolution = ("unused_vendor_vwap_conflicts_nulled"
+                      if len(vendor_conflicts) else "identical_rows_collapsed")
+
+    return work.reset_index(drop=True), {
+        "duplicate_rows_removed": duplicate_rows_removed,
+        "conflicting_duplicate_timestamps": int(len(all_conflicts)),
+        "conflicting_ohlcv_timestamps": int(len(ohlcv_conflicts)),
+        "conflicting_optional_metadata_timestamps": int(len(optional_union)),
+        "vendor_bar_vwap_conflict_timestamps": int(len(vendor_conflicts)),
+        "transactions_conflict_timestamps": int(len(transaction_conflicts)),
+        "resolution": resolution,
+        "source_precedence": precedence,
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -760,8 +1061,11 @@ def build_feature_validity(bars: pd.DataFrame, diagnostics: pd.DataFrame,
     grid = grid.sort_values(["session_date", "minute_of_session"])
     grid["open_valid"] = grid["session_date"].map(sess["open_valid"]).to_numpy()
 
-    # move_open uses the session open and this bar only
-    grid["move_open_obs_valid"] = grid["open_valid"] & grid["bar_present"]
+    # move_open uses the session open and this executable observation only.
+    # Under allow_present a vendor may retain a phantom bar during a declared
+    # halt; it is neither a price observation nor sigma_open history.
+    grid["move_open_obs_valid"] = (
+        grid["open_valid"] & grid["bar_present"] & ~grid["is_halt_minute"])
 
     # cumulative VWAP: every required minute from the open through m must exist.
     # Halt minutes are exempt -- no volume traded, so nothing is missing.
@@ -879,7 +1183,16 @@ def assign_regime(df: pd.DataFrame, explicit: str | None,
 def profile_regimes(df: pd.DataFrame, extreme: float) -> list[dict]:
     out = []
     for seg, g in df.groupby("regime", observed=True):
-        ret = g["close"].groupby(g["session_date"], observed=True).pct_change()
+        prev_minute = g["minute_of_session"].groupby(
+            g["session_date"], observed=True).shift(1)
+        prev_executable = g["is_executable_minute"].groupby(
+            g["session_date"], observed=True).shift(1).fillna(False)
+        continuous = (
+            g["is_executable_minute"] & prev_executable
+            & g["minute_of_session"].sub(prev_minute).eq(1)
+        )
+        ret = g["close"].groupby(
+            g["session_date"], observed=True).pct_change().where(continuous)
         stale = (g["open"].eq(g["high"]) & g["high"].eq(g["low"])
                  & g["low"].eq(g["close"]))
         out.append({
@@ -899,19 +1212,93 @@ def profile_regimes(df: pd.DataFrame, extreme: float) -> list[dict]:
     return out
 
 
-def anomaly_details(df: pd.DataFrame, extreme: float, out_dir: Path) -> dict:
+def classified_intraday_returns(
+        df: pd.DataFrame, halt_min: pd.DataFrame) -> pd.DataFrame:
+    """Classify returns by elapsed executable minutes, never by row adjacency."""
+    work = df.sort_values(
+        ["session_date", "minute_of_session"], kind="mergesort").copy()
+    executable = work["is_executable_minute"].astype(bool)
+    group = work["session_date"]
+
+    exec_close = work["close"].where(executable)
+    exec_minute = work["minute_of_session"].where(executable)
+    prev_close = exec_close.groupby(group, observed=True).ffill() \
+        .groupby(group, observed=True).shift(1)
+    prev_minute = exec_minute.groupby(group, observed=True).ffill() \
+        .groupby(group, observed=True).shift(1)
+    elapsed = work["minute_of_session"].sub(prev_minute)
+    returns = work["close"].div(prev_close).sub(1).where(executable)
+
+    reopen_keys = pd.MultiIndex.from_arrays(
+        [pd.DatetimeIndex([], dtype="datetime64[ns]"),
+         pd.Index([], dtype="int64")],
+        names=["session_date", "minute_of_session"])
+    if len(halt_min):
+        hm = halt_min.sort_values(
+            ["session_date", "minute_of_session"]).copy()
+        brk = (
+            hm["session_date"].ne(hm["session_date"].shift())
+            | hm["minute_of_session"].ne(hm["minute_of_session"].shift() + 1)
+        )
+        ends = (hm.assign(_block=brk.cumsum())
+                .groupby("_block", observed=True)
+                .agg(session_date=("session_date", "first"),
+                     minute_of_session=("minute_of_session", "max")))
+        ends["minute_of_session"] += 1
+        reopen_keys = pd.MultiIndex.from_frame(
+            ends[["session_date", "minute_of_session"]])
+    row_keys = pd.MultiIndex.from_arrays(
+        [work["session_date"], work["minute_of_session"]])
+    halt_reopen = pd.Series(
+        row_keys.isin(reopen_keys), index=work.index) & executable & prev_close.notna()
+    continuous = executable & prev_close.notna() & elapsed.eq(1) & ~halt_reopen
+    gap = executable & prev_close.notna() & ~continuous & ~halt_reopen
+
+    work["prior_executable_minute"] = prev_minute
+    work["minutes_since_prior_executable"] = elapsed
+    work["continuous_1min_return"] = returns.where(continuous)
+    work["gap_return"] = returns.where(gap)
+    work["halt_reopen_return"] = returns.where(halt_reopen)
+    return work
+
+
+def anomaly_details(df: pd.DataFrame, extreme: float, out_dir: Path,
+                    halt_min: pd.DataFrame) -> dict:
     """A single bad print can manufacture a band breakout and a large PnL, so
     emit the rows, not just a count."""
     written = {}
-    ret = df["close"].groupby(df["session_date"], observed=True).pct_change()
-    ex = df.loc[ret.abs() > extreme].assign(ret_1min=ret[ret.abs() > extreme])
-    if len(ex):
-        cols = ["timestamp_local", "session_date", "minute_of_session", "regime",
-                "open", "high", "low", "close", "volume", "ret_1min"]
-        ex[[c for c in cols if c in ex.columns]] \
-            .sort_values("ret_1min", key=abs, ascending=False) \
-            .to_csv(out_dir / "extreme_return_rows.csv", index=False)
-        written["extreme_return_rows"] = int(len(ex))
+    returns = classified_intraday_returns(df, halt_min)
+    context = [
+        "timestamp_local", "session_date", "minute_of_session",
+        "prior_executable_minute", "minutes_since_prior_executable", "regime",
+        "open", "high", "low", "close", "volume",
+    ]
+
+    continuous = returns.loc[
+        returns["continuous_1min_return"].abs() > extreme]
+    if len(continuous):
+        continuous[[*context, "continuous_1min_return"]] \
+            .sort_values("continuous_1min_return", key=abs, ascending=False) \
+            .to_csv(out_dir / "extreme_continuous_1min_returns.csv", index=False)
+    written["extreme_continuous_1min_return_rows"] = int(len(continuous))
+
+    gaps = returns.loc[returns["gap_return"].notna()]
+    if len(gaps):
+        gaps[[*context, "gap_return"]] \
+            .sort_values("gap_return", key=abs, ascending=False) \
+            .to_csv(out_dir / "gap_returns.csv", index=False)
+    written["gap_return_rows"] = int(len(gaps))
+    written["extreme_gap_return_rows"] = int(
+        (gaps["gap_return"].abs() > extreme).sum())
+
+    reopens = returns.loc[returns["halt_reopen_return"].notna()]
+    if len(reopens):
+        reopens[[*context, "halt_reopen_return"]] \
+            .sort_values("halt_reopen_return", key=abs, ascending=False) \
+            .to_csv(out_dir / "halt_reopen_returns.csv", index=False)
+    written["halt_reopen_return_rows"] = int(len(reopens))
+    written["extreme_halt_reopen_return_rows"] = int(
+        (reopens["halt_reopen_return"].abs() > extreme).sum())
 
     def runs(mask: pd.Series, name: str) -> None:
         if not mask.any():
@@ -1048,21 +1435,32 @@ def clean_dividends(path: Path, out_dir: Path, symbol: str,
 
     if policy == "sum" and len(conflict_dates):
         # v3 promised in the help text that summation was only for genuine
-        # regular+special pairs, then summed anything. Enforce it.
+        # regular+special pairs, then summed anything. Enforce that evidence
+        # independently on every ex-date: a valid pair on one date must not
+        # bless a duplicated scrape on another.
         if "dividend_type" in norm.columns:
-            types = (norm.loc[norm["ex_date"].isin(conflict_dates), "dividend_type"]
-                     .astype(str).str.lower())
-            if types.nunique() < 2:
-                raise DataValidationError(
-                    "--dividend-duplicate-policy sum requested but the "
-                    f"conflicting rows all share dividend_type={sorted(types.unique())}. "
-                    "Identical types on one ex-date is a duplicated scrape, not a "
-                    "regular+special pair.")
+            conflict_rows = norm.loc[norm["ex_date"].isin(conflict_dates)]
+            for ex_date, group in conflict_rows.groupby("ex_date", observed=True):
+                types = (group["dividend_type"].astype(str)
+                         .str.lower().str.strip())
+                valid_pair = (
+                    len(types) == 2
+                    and types.value_counts().to_dict()
+                    == {"regular": 1, "special": 1}
+                )
+                if not valid_pair:
+                    raise DataValidationError(
+                        "--dividend-duplicate-policy sum requested but "
+                        f"{pd.Timestamp(ex_date).date()} has dividend_type="
+                        f"{sorted(types.tolist())}. Each conflicting ex-date "
+                        "must contain exactly one regular and one special "
+                        "dividend; otherwise it may be a duplicated scrape.")
         elif not confirm_sum:
             raise DataValidationError(
                 "--dividend-duplicate-policy sum requires either a "
-                "`dividend_type` column showing distinct types on the "
-                "conflicting ex-dates, or an explicit --confirm-dividend-sum.")
+                "`dividend_type` column showing exactly one regular and one "
+                "special row on every conflicting ex-date, or an explicit "
+                "--confirm-dividend-sum.")
     cleaned = (grouped.sum() if policy == "sum" else grouped.first()) \
         .reset_index().sort_values("ex_date")
     cleaned.insert(0, "symbol", symbol.upper())
@@ -1090,6 +1488,109 @@ def clean_dividends(path: Path, out_dir: Path, symbol: str,
     return cleaned, manifest
 
 
+def render_audit_summary(manifest: dict, reports: Path) -> str:
+    """Render release gates from actual run outputs, not source promises."""
+    quality = pd.read_csv(reports / "session_quality.csv")
+    non_paper = quality.loc[~quality["is_paper_ready"].astype(bool)].copy()
+    known_quality = non_paper["quality"].notna() & \
+        non_paper["quality"].isin(QUALITY_ORDER)
+    halt = manifest["halt_validation"]
+    counts = manifest["counts"]
+    boundary = manifest["boundary_sessions_missing"]
+    duplicate = manifest["duplicate_audit"]
+    dividends = manifest.get("dividends")
+    tests = manifest["data_self_tests"]
+    git = manifest["git"]
+
+    gates = [
+        ("Unexplained OHLCV conflicts",
+         duplicate["conflicting_ohlcv_timestamps"] == 0,
+         str(duplicate["conflicting_ohlcv_timestamps"])),
+        ("Off-grid rows", counts["off_grid_rows"] == 0,
+         str(counts["off_grid_rows"])),
+        ("Unapproved invalid-row deletion",
+         counts["invalid_ohlc_rows_dropped"] == 0,
+         str(counts["invalid_ohlc_rows_dropped"])),
+        ("Expected boundaries complete",
+         boundary["known"] and boundary["total"] == 0,
+         f"known={boundary['known']}, missing={boundary['total']}"),
+        ("Every non-paper-ready session classified",
+         bool(known_quality.all()),
+         f"{len(non_paper)} non-paper-ready sessions"),
+        ("Halt minutes explained",
+         halt["sessions_with_unexpected_minutes"] == 0
+         and (halt["halt_bar_policy"] == "allow_present"
+              or halt["sessions_with_bars_present_during_halt"] == 0),
+         f"unexpected={halt['sessions_with_unexpected_minutes']}, "
+         f"present_in_halt={halt['sessions_with_bars_present_during_halt']}"),
+        ("Dividend file validated", dividends is not None,
+         "present" if dividends is not None else "missing"),
+        ("Data self-tests passed",
+         tests["passed"] and tests["checks"] == DATA_SELF_TEST_COUNT,
+         f"{tests['checks']}/{DATA_SELF_TEST_COUNT}"),
+        ("Script matches clean Git HEAD",
+         bool(git.get("available") and not git.get("dirty")
+              and git.get("script_matches_head")),
+         f"commit={git.get('commit')}, dirty={git.get('dirty')}, "
+         f"matches_head={git.get('script_matches_head')}"),
+    ]
+
+    lines = [
+        "# Data release audit summary",
+        "",
+        f"- Run ID: `{manifest.get('run_id', 'pending')}`",
+        f"- Source SHA-256: `{manifest['source_sha256']}`",
+        f"- Script SHA-256: `{manifest['script_sha256']}`",
+        f"- Expected range: `{manifest['expected_start']}` to "
+        f"`{manifest['expected_end']}`",
+        f"- Observed range: `{manifest['observed_start']}` to "
+        f"`{manifest['observed_end']}`",
+        "",
+        "## Acceptance gates",
+        "",
+        "| Gate | Status | Evidence |",
+        "|---|---:|---|",
+    ]
+    for label, passed, evidence in gates:
+        lines.append(
+            f"| {label} | {'PASS' if passed else 'FAIL'} | {evidence} |")
+    lines += [
+        "| Deterministic rerun hashes | PENDING | compare a second run |",
+        "",
+        "## Non-paper-ready sessions",
+        "",
+    ]
+    if non_paper.empty:
+        lines.append("None.")
+    else:
+        cols = [
+            "session_date", "quality", "leading_missing", "interior_missing",
+            "trailing_missing", "halt_minutes", "present_during_halt",
+            "invalid_ohlc_rows",
+        ]
+        lines += [
+            "| " + " | ".join(cols) + " |",
+            "|" + "|".join(["---"] * len(cols)) + "|",
+        ]
+        for row in non_paper[cols].itertuples(index=False, name=None):
+            lines.append("| " + " | ".join(map(str, row)) + " |")
+    lines += [
+        "",
+        "## Return anomaly classification",
+        "",
+    ]
+    for key, value in manifest["anomaly_reports"].items():
+        lines.append(f"- `{key}`: {value}")
+    lines += [
+        "",
+        "This file is generated from this run's manifest and CSV reports. "
+        "It is not an acceptance signature until every gate, including the "
+        "deterministic rerun comparison, passes.",
+        "",
+    ]
+    return "\n".join(lines)
+
+
 # --------------------------------------------------------------------------- #
 # main
 # --------------------------------------------------------------------------- #
@@ -1108,12 +1609,50 @@ def run(args: argparse.Namespace) -> dict:
 
     try:
         manifest = _run_into(args, staging, reports, run_id)
-    except BaseException:
-        shutil.rmtree(staging, ignore_errors=True)
+    except BaseException as exc:
+        # Failed data never enters runs/ and never updates latest.json, but audit
+        # CSVs must survive; otherwise a fatal duplicate report points to a
+        # staging path that is deleted before the caller can inspect it.
+        try:
+            report_files = sorted(p for p in reports.iterdir() if p.is_file())
+            if report_files:
+                failed_dir = args.output_dir / "failed_audits" / run_id
+                if failed_dir.exists():
+                    failed_dir = failed_dir.with_name(f"{run_id}_{os.getpid()}")
+                failed_dir.mkdir(parents=True)
+                for report in report_files:
+                    shutil.copy2(report, failed_dir / report.name)
+                (failed_dir / "failure.json").write_text(
+                    json.dumps({
+                        "run_id": run_id,
+                        "exception_type": type(exc).__name__,
+                        "message": str(exc),
+                        "reports": [p.name for p in report_files],
+                    }, indent=2), encoding="utf-8")
+                if isinstance(exc, DataValidationError):
+                    exc.args = (
+                        f"{exc}. Audit files preserved at {failed_dir}.",
+                    )
+        except Exception as preserve_exc:
+            if isinstance(exc, DataValidationError):
+                exc.args = (
+                    f"{exc}. Additionally failed to preserve audit files: "
+                    f"{preserve_exc}",
+                )
+        finally:
+            shutil.rmtree(staging, ignore_errors=True)
         raise
 
     manifest["run_id"] = run_id
     manifest["runtime_seconds"] = round(time.time() - t0, 2)
+    audit_summary = staging / "audit_summary.md"
+    audit_summary.write_text(
+        render_audit_summary(manifest, reports), encoding="utf-8")
+    manifest["outputs"]["audit_summary"] = {
+        "path": "audit_summary.md",
+        "sha256": sha256_file(audit_summary),
+        "note": "run-specific acceptance gates rendered from actual reports",
+    }
     (reports / "data_manifest.json").write_text(
         json.dumps(manifest, indent=2, default=str), encoding="utf-8")
     (staging / "_SUCCESS").write_text(run_id, encoding="utf-8")
@@ -1148,6 +1687,9 @@ def run(args: argparse.Namespace) -> dict:
 
 def _run_into(args: argparse.Namespace, out_dir: Path, reports: Path,
               run_id: str) -> dict:
+    release_contract = validate_release_contract(args.release_config, args)
+    environment_lock = validate_environment_lock(args.requirements_lock)
+    git = git_provenance()
     raw = read_table(args.input)
     input_rows = len(raw)
 
@@ -1205,25 +1747,40 @@ def _run_into(args: argparse.Namespace, out_dir: Path, reports: Path,
     df = df.sort_values("timestamp", kind="mergesort").reset_index(drop=True)
 
     # --- duplicates -------------------------------------------------------
-    value_cols = [c for c in ["symbol", *PRICE_COLUMNS, "volume", *OPTIONAL_NUMERIC]
-                  if c in df.columns]
-    conflicts = conflicting_timestamps(df, value_cols)
-    if len(conflicts):
-        df[df["timestamp"].isin(conflicts)].to_csv(
-            reports / "conflicting_duplicates.csv", index=False)
-        if args.duplicate_policy == "error":
-            raise DataValidationError(
-                f"{len(conflicts)} conflicting duplicate timestamps; see "
-                f"{reports / 'conflicting_duplicates.csv'}. Usually overlapping "
-                "vendor segments. Resolve at source or use --duplicate-policy last.")
-    duplicate_rows_removed = int(df.duplicated("timestamp", keep="last").sum())
-    df = df.drop_duplicates("timestamp", keep="last").copy()
+    df, duplicate_audit = resolve_duplicate_rows(
+        df, reports, args.duplicate_policy, args.strategy_vwap_source,
+        args.source_precedence, args.confirm_file_order_precedence, keep_source)
+    duplicate_rows_removed = duplicate_audit["duplicate_rows_removed"]
 
     # --- calendar ---------------------------------------------------------
     cal = xcals.get_calendar(args.calendar)
     tz = str(cal.tz)
     local_dates = df["timestamp"].dt.tz_convert(tz).dt.date
-    schedule = build_schedule(args.calendar, local_dates.min(), local_dates.max())
+    if (args.expected_start is None) != (args.expected_end is None):
+        raise DataValidationError(
+            "--expected-start and --expected-end must be supplied together.")
+    observed_local_start = pd.Timestamp(local_dates.min()).normalize()
+    observed_local_end = pd.Timestamp(local_dates.max()).normalize()
+    expected_start = expected_end = None
+    if args.expected_start is not None:
+        try:
+            expected_start = pd.Timestamp(args.expected_start).normalize()
+            expected_end = pd.Timestamp(args.expected_end).normalize()
+        except (TypeError, ValueError) as exc:
+            raise DataValidationError(
+                "--expected-start/--expected-end must be valid YYYY-MM-DD dates.") from exc
+        if expected_start > expected_end:
+            raise DataValidationError(
+                f"Expected range is inverted: {expected_start.date()} > "
+                f"{expected_end.date()}.")
+        if observed_local_start < expected_start or observed_local_end > expected_end:
+            raise DataValidationError(
+                f"Observed dates {observed_local_start.date()}.."
+                f"{observed_local_end.date()} extend outside expected range "
+                f"{expected_start.date()}..{expected_end.date()}.")
+    schedule_start = expected_start if expected_start is not None else observed_local_start
+    schedule_end = expected_end if expected_end is not None else observed_local_end
+    schedule = build_schedule(args.calendar, schedule_start, schedule_end)
     df = attach_sessions(df, schedule, args.bar_label)
 
     outside = df.loc[~df["is_rth"]]
@@ -1282,6 +1839,22 @@ def _run_into(args: argparse.Namespace, out_dir: Path, reports: Path,
     coverage = observed_sessions / max(len(schedule), 1)
     present = schedule["session_date"].isin(set(df["session_date"]))
     absent_n = int((~present).sum())
+    observed_start = df["session_date"].min()
+    observed_end = df["session_date"].max()
+    leading_boundary = schedule.loc[
+        ~present & schedule["session_date"].lt(observed_start), "session_date"]
+    trailing_boundary = schedule.loc[
+        ~present & schedule["session_date"].gt(observed_end), "session_date"]
+    boundary_dates = pd.concat([leading_boundary, trailing_boundary])
+    boundary_missing_n = int(len(boundary_dates))
+    if (expected_start is not None
+            and boundary_missing_n > args.max_boundary_sessions_missing):
+        raise DataValidationError(
+            f"{boundary_missing_n} expected boundary sessions are absent "
+            f"({len(leading_boundary)} leading, {len(trailing_boundary)} trailing), "
+            f"above --max-boundary-sessions-missing="
+            f"{args.max_boundary_sessions_missing}. Missing dates: "
+            f"{[str(x.date()) for x in boundary_dates.head(20)]}")
     gaps = (~present).astype(int)
     max_consec = int((gaps * (gaps.groupby((gaps != gaps.shift()).cumsum()).cumcount() + 1)).max()) \
         if absent_n else 0
@@ -1316,7 +1889,6 @@ def _run_into(args: argparse.Namespace, out_dir: Path, reports: Path,
 
     # --- regimes / profiling ---------------------------------------------
     df["regime"], regime_meta = assign_regime(df, args.source_split, keep_source)
-    regime_profile = profile_regimes(df, args.extreme_1min_return)
     seams = regime_seams(df)
 
     validity_session, validity_minute = build_feature_validity(
@@ -1337,7 +1909,9 @@ def _run_into(args: argparse.Namespace, out_dir: Path, reports: Path,
         df[col] = vm[col].reindex(key).fillna(False).to_numpy()
 
     df["timestamp_local"] = df["timestamp"].dt.tz_convert(tz)
-    anomalies = anomaly_details(df, args.extreme_1min_return, reports)
+    regime_profile = profile_regimes(df, args.extreme_1min_return)
+    anomalies = anomaly_details(
+        df, args.extreme_1min_return, reports, halt_min)
 
     # --- dividends --------------------------------------------------------
     dividends_df, dividend_manifest = None, None
@@ -1394,7 +1968,12 @@ def _run_into(args: argparse.Namespace, out_dir: Path, reports: Path,
         input_rows=int(input_rows), symbol_filtered_rows=symbol_filtered_rows,
         bad_timestamp_rows=bad_timestamp_rows,
         duplicate_rows_removed=duplicate_rows_removed,
-        conflicting_duplicate_timestamps=int(len(conflicts)),
+        conflicting_duplicate_timestamps=duplicate_audit[
+            "conflicting_duplicate_timestamps"],
+        conflicting_ohlcv_timestamps=duplicate_audit[
+            "conflicting_ohlcv_timestamps"],
+        conflicting_optional_metadata_timestamps=duplicate_audit[
+            "conflicting_optional_metadata_timestamps"],
         outside_rth_rows=outside_rth_rows, off_grid_rows=off_grid_rows,
         invalid_ohlc_rows_dropped=invalid_dropped, clean_rth_rows=int(len(df)))
     counts.check_conservation()
@@ -1404,8 +1983,8 @@ def _run_into(args: argparse.Namespace, out_dir: Path, reports: Path,
     report_hashes = {p.name: sha256_file(p) for p in sorted(reports.glob("*.csv"))}
 
     return {
-        "pipeline_version": 4,
-        "manifest_schema_version": 2,
+        "pipeline_version": 5,
+        "manifest_schema_version": 3,
         "feature_validity_schema_version": 1,
         "default_config": {
             "note": "signal_valid_default_config was computed with these values "
@@ -1429,6 +2008,19 @@ def _run_into(args: argparse.Namespace, out_dir: Path, reports: Path,
         "timestamp_format": args.timestamp_format, "epoch_unit": args.epoch_unit,
         "output_timezone": "UTC", "exchange_calendar": args.calendar,
         "exchange_tz": tz, "bar_label": args.bar_label,
+        "expected_start": (
+            str(expected_start.date()) if expected_start is not None else None),
+        "expected_end": (
+            str(expected_end.date()) if expected_end is not None else None),
+        "observed_start": str(observed_start.date()),
+        "observed_end": str(observed_end.date()),
+        "boundary_sessions_missing": {
+            "known": expected_start is not None,
+            "leading": int(len(leading_boundary)),
+            "trailing": int(len(trailing_boundary)),
+            "total": boundary_missing_n,
+            "dates": [str(x.date()) for x in boundary_dates],
+        },
         "price_adjustment": "none_raw_ohlc",
         "missing_bar_policy": "diagnose_do_not_impute",
         "first_timestamp": df["timestamp"].min().isoformat(),
@@ -1454,6 +2046,7 @@ def _run_into(args: argparse.Namespace, out_dir: Path, reports: Path,
                 int(diagnostics["unexpected_minutes"].gt(0).sum()),
             "total_halt_minutes": int(diagnostics["halt_minutes"].sum()),
         },
+        "duplicate_audit": duplicate_audit,
         "counts": asdict(counts),
         "regime_detection": regime_meta,
         "regimes": regime_profile,
@@ -1498,6 +2091,16 @@ def _run_into(args: argparse.Namespace, out_dir: Path, reports: Path,
         "outputs": outputs,
         "reports": {"dir": "reports", "sha256": report_hashes},
         "dividends": dividend_manifest,
+        "release_contract": release_contract,
+        "environment_lock": environment_lock,
+        "data_self_tests": {
+            "preflight_requested": bool(args.preflight_self_test),
+            "passed": bool(getattr(args, "_preflight_self_test_passed", False)),
+            "checks": (
+                DATA_SELF_TEST_COUNT
+                if getattr(args, "_preflight_self_test_passed", False) else 0),
+        },
+        "git": git,
         "python": sys.version.split()[0], "pandas": pd.__version__,
         "numpy": np.__version__,
         "exchange_calendars": getattr(xcals, "__version__", "unknown"),
@@ -1597,8 +2200,126 @@ def self_test(verbose: bool = True) -> int:
                 fails.append(f"manifest path for {k} does not resolve: {v['path']}")
         if Path(man["reports"]["dir"]).is_absolute():
             fails.append("manifest reports.dir is absolute")
+        if not (man["expected_start"] is None
+                and man["observed_start"] == str(d["caldt"].dt.date.min())
+                and man["boundary_sessions_missing"]["known"] is False):
+            fails.append("inferred-boundary manifest fields are wrong: "
+                         f"{man.get('expected_start')}/"
+                         f"{man.get('observed_start')}/"
+                         f"{man.get('boundary_sessions_missing')}")
+        if man["environment_lock"]["sha256"] != sha256_file(
+                SCRIPT_PATH.with_name("requirements.lock")):
+            fails.append("requirements lock hash missing or wrong in manifest")
 
-        # 5 band_warm boundary: session 14 (prior=13) False, session 15 (prior=14) True
+        # 5 explicit expected boundaries expose a wholly missing leading session
+        expected_end = str(d["caldt"].dt.date.max())
+        expect_raise(_base(
+            src, tmp / "boundary",
+            "--expected-start", "2023-10-13",
+            "--expected-end", expected_end), "missing expected boundary")
+
+        # 6 duplicate conflicts are classified by semantic field group
+        dupts = pd.to_datetime(
+            ["2023-10-16 13:30:00+00:00"] * 2, utc=True)
+        dup_base = pd.DataFrame({
+            "timestamp": dupts, "open": [100.0, 100.0],
+            "high": [101.0, 101.0], "low": [99.0, 99.0],
+            "close": [100.5, 100.5], "volume": [1000.0, 1000.0],
+            "vendor_bar_vwap": [100.1, 100.2],
+            "transactions": [10.0, 10.0],
+            "_raw_source": ["preferred", "secondary"],
+        })
+        n_checks += 1
+        dup_reports = tmp / "dup_reports"
+        dup_reports.mkdir()
+        optional_resolved, optional_audit = resolve_duplicate_rows(
+            dup_base, dup_reports, "error", "hlc3", None, False, "_raw_source")
+        if (len(optional_resolved) != 1
+                or not pd.isna(optional_resolved["vendor_bar_vwap"].iloc[0])
+                or optional_audit["conflicting_ohlcv_timestamps"] != 0
+                or optional_audit["vendor_bar_vwap_conflict_timestamps"] != 1
+                or not (dup_reports / "conflicting_optional_metadata.csv").exists()):
+            fails.append("optional-only duplicate conflict was not reported/"
+                         f"nulled independently: {optional_audit}")
+
+        # 7 vendor VWAP conflicts are fatal when that metadata drives strategy VWAP
+        n_checks += 1
+        try:
+            resolve_duplicate_rows(
+                dup_base, dup_reports, "error", "vendor_bar_vwap",
+                None, False, "_raw_source")
+            fails.append("vendor VWAP conflict passed while vendor_bar_vwap "
+                         "was selected")
+        except DataValidationError:
+            pass
+
+        # 8 OHLCV conflicts fail a headline-policy run
+        n_checks += 1
+        ohlcv_bad = dup_base.copy()
+        ohlcv_bad.loc[1, "close"] = 100.6
+        try:
+            resolve_duplicate_rows(
+                ohlcv_bad, dup_reports, "error", "hlc3",
+                None, False, "_raw_source")
+            fails.append("OHLCV-conflicting duplicate passed error policy")
+        except DataValidationError:
+            pass
+
+        # 9 transactions conflicts resolve only through explicit source precedence
+        n_checks += 1
+        tx_bad = dup_base.copy()
+        tx_bad["vendor_bar_vwap"] = 100.1
+        tx_bad["transactions"] = [10.0, 20.0]
+        tx_resolved, tx_audit = resolve_duplicate_rows(
+            tx_bad, dup_reports, "error", "hlc3",
+            "preferred,secondary", False, "_raw_source")
+        if (len(tx_resolved) != 1
+                or tx_resolved["transactions"].iloc[0] != 10.0
+                or tx_audit["resolution"] != "source_precedence"):
+            fails.append("transactions conflict ignored source precedence: "
+                         f"{tx_audit}")
+
+        # 10 return anomalies distinguish true 1-minute, gap and halt reopen
+        n_checks += 1
+        rday = pd.Timestamp("2023-10-16")
+        rminute = pd.Series([1, 2, 5, 6, 8], dtype="int64")
+        rclose = pd.Series([100.0, 102.0, 110.0, 111.0, 120.0])
+        rframe = pd.DataFrame({
+            "timestamp_local": pd.date_range(
+                "2023-10-16 09:30", periods=5, freq="1min",
+                tz="America/New_York"),
+            "session_date": rday,
+            "minute_of_session": rminute,
+            "regime": 0,
+            "open": rclose, "high": rclose, "low": rclose,
+            "close": rclose, "volume": 1000.0,
+            "is_executable_minute": True,
+        })
+        rhalt = pd.DataFrame({
+            "session_date": [rday],
+            "minute_of_session": [7],
+        })
+        ret_reports = tmp / "return_reports"
+        ret_reports.mkdir()
+        ret_audit = anomaly_details(rframe, 0.01, ret_reports, rhalt)
+        if (ret_audit["extreme_continuous_1min_return_rows"] != 1
+                or ret_audit["gap_return_rows"] != 1
+                or ret_audit["halt_reopen_return_rows"] != 1
+                or not (ret_reports / "gap_returns.csv").exists()
+                or not (ret_reports / "halt_reopen_returns.csv").exists()):
+            fails.append(f"intraday return classification failed: {ret_audit}")
+
+        # 11 a mismatched dependency lock fails before a publishable run
+        n_checks += 1
+        bad_lock = tmp / "requirements.bad.lock"
+        bad_lock.write_text("numpy==0.0.0\\n", encoding="utf-8")
+        try:
+            validate_environment_lock(bad_lock)
+            fails.append("mismatched requirements lock was accepted")
+        except DataValidationError:
+            pass
+
+        # band_warm boundary: session 14 (prior=13) False, session 15 (prior=14) True
         n_checks += 1
         cov = _cov(m)
         w = cov[cov["minute_of_session"] == 30].sort_values("session_date") \
@@ -1725,7 +2446,38 @@ def self_test(verbose: bool = True) -> int:
         if m6["halt_validation"]["sessions_with_bars_present_during_halt"] != 1:
             fails.append("present_during_halt not reported")
 
-        # 11 overlapping halt windows unioned, not summed
+        # 11 allow_present phantom halt bars are non-observations and must not
+        #    increase the next eligible session's same-minute sigma count
+        n_checks += 1
+        m6a = run(parse_args(_base(
+            src, tmp / "h_allow", "--halts", str(hp),
+            "--halt-bar-policy", "allow_present", "--trade-freq", "100")))
+        if m6a["session_quality_counts"].get("halt_adjusted", 0) != 1:
+            fails.append("allow_present halt session not graded halt_adjusted: "
+                         f"{m6a['session_quality_counts']}")
+        vm6a = pd.read_parquet(
+            Path(m6a["run_dir"]) / "feature_validity_minute.parquet")
+        phantom = vm6a[(vm6a["session_date"] == day2)
+                       & (vm6a["minute_of_session"] == 100)]
+        if len(phantom) != 1 or bool(phantom["move_open_obs_valid"].iloc[0]):
+            fails.append("REGRESSION: allow_present phantom halt bar counted as "
+                         "a usable move_open observation")
+        cov6a = _cov(m6a)
+        bucket = cov6a[cov6a["minute_of_session"] == 100] \
+            .sort_values("session_date").reset_index(drop=True)
+        halt_bucket = bucket[bucket["session_date"] == day2]
+        next_bucket = bucket[bucket["session_date"] > day2].head(1)
+        if len(halt_bucket) != 1 or len(next_bucket) != 1:
+            fails.append("allow_present sigma-count test could not find halt/"
+                         "next eligible session")
+        elif (bool(halt_bucket["usable_observation"].iloc[0])
+              or int(next_bucket[col].iloc[0]) != int(halt_bucket[col].iloc[0])):
+            fails.append("allow_present phantom halt bar increased next "
+                         "session's sigma observation count: "
+                         f"{halt_bucket[col].iloc[0]} -> "
+                         f"{next_bucket[col].iloc[0]}")
+
+        # 12 overlapping halt windows unioned, not summed
         n_checks += 1
         ovp = tmp / "ov.csv"
         pd.DataFrame({"session_date": [str(day2.date())] * 2,
@@ -1739,7 +2491,7 @@ def self_test(verbose: bool = True) -> int:
             fails.append("overlapping halts not unioned: "
                          f"{m7['halt_validation']['total_halt_minutes']} != 21")
 
-        # 12 numeric-string epoch
+        # 13 numeric-string epoch
         n_checks += 1
         epoch_ms = (d["caldt"].dt.tz_localize("America/New_York")
                     .dt.tz_convert("UTC").astype("int64") // 10**6)
@@ -1752,7 +2504,7 @@ def self_test(verbose: bool = True) -> int:
         if m8["counts"]["clean_rth_rows"] != len(d):
             fails.append(f"numeric-string epoch lost rows: {m8['counts']}")
 
-        # 13 YYYYMMDDHHMMSS must not be silently read as an epoch
+        # 14 YYYYMMDDHHMMSS must not be silently read as an epoch
         p7 = tmp / "calint.parquet"
         d.assign(caldt=d["caldt"].dt.strftime("%Y%m%d%H%M%S").astype("int64")) \
             .to_parquet(p7, index=False)
@@ -1768,7 +2520,7 @@ def self_test(verbose: bool = True) -> int:
         if m9["counts"]["clean_rth_rows"] != len(d):
             fails.append("--timestamp-format path lost rows")
 
-        # 14 dividends: symbol alias, conflict policy, sum gating
+        # 15 dividends: symbol alias, conflict policy, sum gating
         dvp = tmp / "div.csv"
         pd.DataFrame({"ticker": ["SPY", "SPY", "QQQ"],
                       "date": [str(day2.date())] * 3,
@@ -1784,7 +2536,47 @@ def self_test(verbose: bool = True) -> int:
         if dm["output_rows"] != 1 or dm.get("rows_other_symbols_dropped") != 1:
             fails.append(f"dividend symbol filter via `ticker` failed: {dm}")
 
-        # 15 failure AFTER reports are written leaves no run dir and no pointer
+        # 16 dividend sum type evidence is validated independently per ex-date
+        typed_bad = tmp / "div_typed_bad.csv"
+        day3 = pd.Timestamp(d["caldt"].dt.normalize().unique()[11])
+        pd.DataFrame({
+            "ticker": ["SPY"] * 4,
+            "date": [str(day2.date()), str(day2.date()),
+                     str(day3.date()), str(day3.date())],
+            "dividend": [1.50, 1.51, 1.60, 0.10],
+            "dividend_type": ["regular", "regular", "regular", "special"],
+        }).to_csv(typed_bad, index=False)
+        n_checks += 1
+        typed_bad_out = tmp / "div_typed_bad_out"
+        typed_bad_out.mkdir()
+        try:
+            clean_dividends(
+                typed_bad, typed_bad_out, "SPY",
+                pd.DatetimeIndex([day2, day3]), "sum")
+            fails.append("per-date dividend validation accepted regular+regular "
+                         "because another ex-date had regular+special")
+        except DataValidationError:
+            pass
+
+        # 17 a case/whitespace-normalised regular+special pair may be summed
+        typed_good = tmp / "div_typed_good.csv"
+        pd.DataFrame({
+            "ticker": ["SPY", "SPY"],
+            "date": [str(day2.date())] * 2,
+            "dividend": [1.50, 0.11],
+            "dividend_type": [" Regular ", "SPECIAL"],
+        }).to_csv(typed_good, index=False)
+        n_checks += 1
+        typed_good_out = tmp / "div_typed_good_out"
+        typed_good_out.mkdir()
+        typed_clean, _ = clean_dividends(
+            typed_good, typed_good_out, "SPY",
+            pd.DatetimeIndex([day2]), "sum")
+        if len(typed_clean) != 1 or not np.isclose(
+                typed_clean["cash_amount"].iloc[0], 1.61):
+            fails.append("valid regular+special dividend pair was not summed")
+
+        # 18 failure AFTER reports are written leaves no run dir and no pointer
         n_checks += 1
         bad = d.copy()
         bad.loc[bad.index[:3], "high"] = bad.loc[bad.index[:3], "low"] - 1.0
@@ -1800,7 +2592,15 @@ def self_test(verbose: bool = True) -> int:
             fails.append(f"failed run left a staging dir: {leftovers}")
         if "latest.json" in leftovers or (outp / "runs").exists():
             fails.append(f"failed run published a run: {leftovers}")
+        failed_reports = list((outp / "failed_audits").glob(
+            "*/invalid_ohlc_rows.csv"))
+        if len(failed_reports) != 1:
+            fails.append("failed validation did not preserve its audit CSV")
 
+    if n_checks != DATA_SELF_TEST_COUNT:
+        fails.append(
+            f"self-test count changed: {n_checks} != {DATA_SELF_TEST_COUNT}; "
+            "update the audited count deliberately")
     if fails:
         print("SELF-TEST FAILED:")
         for f in fails:
@@ -1814,6 +2614,11 @@ def main() -> int:
     args = parse_args()
     if args.self_test:
         return self_test()
+    if args.preflight_self_test:
+        if self_test() != 0:
+            raise DataValidationError(
+                "Preflight data self-test failed; refusing market-data run.")
+        args._preflight_self_test_passed = True
     if args.input is None:
         raise DataValidationError("--input is required (or use --self-test).")
     m = run(args)

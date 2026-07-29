@@ -6,7 +6,7 @@
 
 1. **论文**：策略经济逻辑和论文文字口径；
 2. **作者 sample code / Colab**：作者公开的简化实现；
-3. **当前项目**：数据层 v4 + `im_engine_v4.py` 的三profile研究框架。
+3. **当前项目**：数据层 v5 candidate + `im_engine_v4.py` 的三profile研究框架。
 
 不能把“论文”和“sample code”视为同一件事。当前项目专门保留三个profile，就是为了把差异可归因地拆开。
 
@@ -60,7 +60,7 @@
 | MDD | 应来自同一权益曲线 | EOD为主 | 每tier独立完整指标；不跨tier拼接 | 避免无定义的混合Calmar |
 | Alpha/Beta | 应使用对齐total return和稳健误差 | 简单OLS | 当前对齐benchmark；正式版仍建议HAC和独立daily benchmark | 提升统计可信度 |
 | 数据审计 | 论文非重点 | sample依赖输入 | hash、manifest、reports、`_SUCCESS`、latest pointer | 保证可复现和可追溯 |
-| 测试 | 无完整公开测试矩阵 | 教学代码 | 项目方最新报告57 engine + 18 data tests | 防止静默patch失败和配置未使用 |
+| 测试 | 无完整公开测试矩阵 | 教学代码 | 项目方最新报告57 engine + 28 data tests | 防止静默patch失败和配置未使用 |
 
 ---
 
