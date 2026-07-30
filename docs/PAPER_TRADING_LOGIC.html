@@ -1,0 +1,1653 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Paper Trading Logic and Implementation</title>
+  <style>
+    html {
+      line-height: 1.5;
+      font-family: Georgia, serif;
+      font-size: 20px;
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      word-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 1em;
+      }
+    }
+    @media print {
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, 'Lucida Console', Consolas, monospace;
+      font-size: 85%;
+      margin: 0;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Paper Trading Logic and Implementation</h1>
+</header>
+<h1 id="spy-日内动量策略论文交易逻辑与本项目实现详解">SPY 日内动量策略：论文交易逻辑与本项目实现详解</h1>
+<ul>
+<li><strong>面向读者：</strong> 第一次接触本项目、不了解论文或分钟级回测的人</li>
+<li><strong>论文：</strong> <em>Beat the Market: An Effective Intraday Momentum Strategy for S&amp;P500 ETF (SPY)</em></li>
+<li><strong>论文版本：</strong> 2025-09-22 修订版，项目内文件 <code>Intraday-momentum.pdf</code></li>
+<li><strong>项目实现：</strong> <code>prepare_spy_data.py</code> 数据层 + <code>im_engine_v4.py</code> 三 profile 引擎</li>
+<li><strong>数据发布：</strong> <code>data-v1.0</code>，明确覆盖 2008-01-22 至 2026-07-09</li>
+<li><strong>文档性质：</strong> 交易规则与实现说明，不是正式投资建议，也不是 post-publication 经济评价报告</li>
+</ul>
+<hr />
+<h2 id="一句话理解这套策略">1. 一句话理解这套策略</h2>
+<p>这套策略试图判断：</p>
+<blockquote>
+<p>SPY 当前相对当日开盘的涨跌，是否已经大到超出过去 14 个交易日同一时刻的正常噪声范围，并且是否得到当日累计 VWAP 的确认。</p>
+</blockquote>
+<p>如果价格同时突破“正常噪声上界”和 VWAP，就做多；如果同时跌破“正常噪声下界”和 VWAP，就做空；否则空仓。策略只在每半小时的固定时点重新决策，并在收盘前清空全部仓位，不持有隔夜风险。</p>
+<p>论文最后再加入波动率定仓：</p>
+<ul>
+<li>市场近期波动低时，可以提高名义仓位；</li>
+<li>市场近期波动高时，自动降低名义仓位；</li>
+<li>最大杠杆限制为 4 倍；</li>
+<li>目标日波动率为 2%。</li>
+</ul>
+<hr />
+<h2 id="为什么需要-band-和-vwap">2. 为什么需要 band 和 VWAP</h2>
+<p>SPY 在一分钟尺度上存在大量随机波动。价格稍微上涨，并不一定代表出现了持续的买方力量；稍微下跌，也不一定代表卖方占据优势。</p>
+<p>论文因此设置两层过滤：</p>
+<ol type="1">
+<li><strong>Noise Area / band：</strong> 当前涨跌必须超过过去同一时刻通常会出现的波动；</li>
+<li><strong>VWAP：</strong> 当前价格还必须位于当日成交量加权平均价格的同一方向。</li>
+</ol>
+<p>可以把它理解为：</p>
+<pre class="text"><code>band 判断：这次移动是否足够大？
+VWAP 判断：当日实际成交重心是否也支持这个方向？</code></pre>
+<p>只有两者同时确认，才持有方向性仓位。</p>
+<hr />
+<h2 id="数据中的一根一分钟-bar-是什么">3. 数据中的一根一分钟 bar 是什么</h2>
+<p>每根一分钟 bar 包含：</p>
+<table>
+<thead>
+<tr class="header">
+<th>字段</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>open</code></td>
+<td>这一分钟的第一笔或代表性开盘价</td>
+</tr>
+<tr class="even">
+<td><code>high</code></td>
+<td>这一分钟最高价</td>
+</tr>
+<tr class="odd">
+<td><code>low</code></td>
+<td>这一分钟最低价</td>
+</tr>
+<tr class="even">
+<td><code>close</code></td>
+<td>这一分钟最后价</td>
+</tr>
+<tr class="odd">
+<td><code>volume</code></td>
+<td>这一分钟成交量</td>
+</tr>
+</tbody>
+</table>
+<p>本项目的数据契约使用 <strong>start-labelled bar</strong>：</p>
+<pre class="text"><code>09:30 timestamp = 09:30:00 至 09:30:59 这一分钟
+09:59 timestamp = 09:59:00 至 09:59:59 这一分钟</code></pre>
+<p><code>minute_of_session</code> 从 1 开始：</p>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: right;"><code>minute_of_session</code></th>
+<th>bar 标签</th>
+<th>bar 结束时刻</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">1</td>
+<td>09:30</td>
+<td>09:31</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">30</td>
+<td>09:59</td>
+<td>10:00</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">60</td>
+<td>10:29</td>
+<td>10:30</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">360</td>
+<td>15:29</td>
+<td>15:30</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">390</td>
+<td>15:59</td>
+<td>16:00</td>
+</tr>
+</tbody>
+</table>
+<p>因此，引擎在 <code>minute_of_session % 30 == 0</code> 时决策，对应论文所说的 10:00、10:30、11:00……15:30。16:00 只处理收盘，不允许新开仓。</p>
+<p>明确 bar label 很重要。如果把 09:59 bar 错当成“从 09:58 到 09:59”，整个信号和成交时点会错一分钟。</p>
+<hr />
+<h2 id="第一步计算过去每一天相对开盘的移动">4. 第一步：计算过去每一天相对开盘的移动</h2>
+<p>对于历史交易日 <span class="math inline">\(t-i\)</span> 和某个固定时刻 <span class="math inline">\(m\)</span>，论文定义：</p>
+<p><span class="math display">\[
+\operatorname{move}_{t-i,m}
+=
+\left|
+\frac{C_{t-i,m}}{O_{t-i}}-1
+\right|
+\]</span></p>
+<p>其中：</p>
+<ul>
+<li><span class="math inline">\(C_{t-i,m}\)</span>：历史日 <span class="math inline">\(t-i\)</span> 在时刻 <span class="math inline">\(m\)</span> 的 close；</li>
+<li><span class="math inline">\(O_{t-i}\)</span>：历史日 <span class="math inline">\(t-i\)</span> 的真实开盘价；</li>
+<li>绝对值表示这里只关心移动幅度，不区分上涨或下跌。</li>
+</ul>
+<p>例如，某天开盘是 500，10:30 close 是 502：</p>
+<p><span class="math display">\[
+\left|\frac{502}{500}-1\right|=0.4\%
+\]</span></p>
+<p>如果另一天下跌到 498：</p>
+<p><span class="math display">\[
+\left|\frac{498}{500}-1\right|=0.4\%
+\]</span></p>
+<p>两天都贡献 0.4% 的历史噪声观察。</p>
+<p>当前代码在 <code>im_engine_v4.build_features()</code> 中按每日第一根 bar 建立 <code>open_day</code>，再计算：</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>move_open <span class="op">=</span> <span class="bu">abs</span>(close <span class="op">/</span> open_day <span class="op">-</span> <span class="dv">1</span>)</span></code></pre></div>
+<p>但只有 <code>move_open_obs_valid=True</code> 的观察才能进入历史。一个开盘数据缺失的交易日，即使下午还有价格，也不能把下午第一根可得 bar 冒充真实开盘。</p>
+<hr />
+<h2 id="第二步计算同一时刻过去-14-日的平均噪声">5. 第二步：计算同一时刻过去 14 日的平均噪声</h2>
+<p>论文在每个时刻 <span class="math inline">\(m\)</span> 单独计算：</p>
+<p><span class="math display">\[
+\sigma_{t,m}
+=
+\frac{1}{14}
+\sum_{i=1}^{14}
+\operatorname{move}_{t-i,m}
+\]</span></p>
+<p>这里的 <span class="math inline">\(\sigma_{t,m}\)</span> 不是传统意义上的标准差，而是：</p>
+<blockquote>
+<p>过去 14 个交易日，在同一时刻相对开盘的绝对移动平均值。</p>
+</blockquote>
+<p>每个时刻有自己的 <span class="math inline">\(\sigma\)</span>：</p>
+<ul>
+<li>10:00 使用过去 14 个交易日的 10:00 观察；</li>
+<li>12:30 使用过去 14 个交易日的 12:30 观察；</li>
+<li>15:30 使用过去 14 个交易日的 15:30 观察。</li>
+</ul>
+<p>通常越接近收盘，相对开盘的累计移动越大，因此 band 会随时间动态变化。</p>
+<h3 id="本项目的严格窗口">5.1 本项目的严格窗口</h3>
+<p><code>paper_spec</code> 和 <code>corrected_execution</code> 使用严格的 14-session 窗口：</p>
+<ul>
+<li>当前日不进入窗口；</li>
+<li>只使用之前的交易日；</li>
+<li>某日该 minute 缺失时，NaN 仍占据窗口槽位；</li>
+<li>不向前寻找第 15 个、更老的有效观察来补足；</li>
+<li>半日市未安排的下午 minute 不算“缺失”，该交易日本来就不是该 minute 的 eligible session；</li>
+<li>halt minute 不是正常观察，也不能进入后续 <code>sigma_open</code> 历史。</li>
+</ul>
+<p>这避免把“过去 14 个交易日”静默改成“最近 14 个碰巧存在的数据行”。</p>
+<h3 id="作者-sample-的差异">5.2 作者 sample 的差异</h3>
+<p>作者公开 Python sample 使用：</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>rolling(window<span class="op">=</span><span class="dv">14</span>, min_periods<span class="op">=</span><span class="dv">13</span>).mean().shift(<span class="dv">1</span>)</span></code></pre></div>
+<p>所以只要 13 个有效值就可能开始交易。项目把这个行为保留在：</p>
+<pre class="text"><code>official_sample_compatible</code></pre>
+<p>但 <code>paper_spec</code> 按论文文字要求完整 14 个历史观察。</p>
+<hr />
+<h2 id="第三步构造动态-noise-area-band">6. 第三步：构造动态 Noise Area / band</h2>
+<p>论文原始公式为：</p>
+<p><span class="math display">\[
+UB_{t,m}
+=
+\max(O_t,C_{t-1})
+\times
+(1+\sigma_{t,m})
+\]</span></p>
+<p><span class="math display">\[
+LB_{t,m}
+=
+\min(O_t,C_{t-1})
+\times
+(1-\sigma_{t,m})
+\]</span></p>
+<p>其中：</p>
+<ul>
+<li><span class="math inline">\(O_t\)</span>：当日开盘价；</li>
+<li><span class="math inline">\(C_{t-1}\)</span>：前一交易日收盘价；</li>
+<li><span class="math inline">\(UB\)</span>：upper band；</li>
+<li><span class="math inline">\(LB\)</span>：lower band。</li>
+</ul>
+<p>使用 <code>max()</code> 和 <code>min()</code> 的目的是把隔夜 gap 纳入噪声区间。</p>
+<h3 id="gap-up">6.1 Gap-up</h3>
+<p>如果：</p>
+<pre class="text"><code>昨日收盘 = 500
+今日开盘 = 505</code></pre>
+<p>则：</p>
+<pre class="text"><code>upper anchor = max(505, 500) = 505
+lower anchor = min(505, 500) = 500</code></pre>
+<p>下界仍以昨日收盘为锚，避免仅凭隔夜高开就过早认定当日日内出现新的下行或上行动量。</p>
+<h3 id="gap-down">6.2 Gap-down</h3>
+<p>如果：</p>
+<pre class="text"><code>昨日收盘 = 500
+今日开盘 = 495</code></pre>
+<p>则：</p>
+<pre class="text"><code>upper anchor = 500
+lower anchor = 495</code></pre>
+<p>上界保留昨日收盘锚点，把隔夜下跳包含在 Noise Area 中。</p>
+<h3 id="本项目的现金分红调整">6.3 本项目的现金分红调整</h3>
+<p>当前项目实际使用：</p>
+<p><span class="math display">\[
+C_{t-1}^{adj}=C_{t-1}-D_t
+\]</span></p>
+<p><span class="math display">\[
+UB_{t,m}
+=
+\max(O_t,C_{t-1}^{adj})
+\times
+(1+k\sigma_{t,m})
+\]</span></p>
+<p><span class="math display">\[
+LB_{t,m}
+=
+\min(O_t,C_{t-1}^{adj})
+\times
+(1-k\sigma_{t,m})
+\]</span></p>
+<p>其中：</p>
+<ul>
+<li><span class="math inline">\(D_t\)</span>：当日 ex-date 的每股现金分红；</li>
+<li><span class="math inline">\(k\)</span>：<code>band_mult</code>，论文和默认实现均为 1。</li>
+</ul>
+<p>这一步没有改写原始 OHLC，只调整策略使用的前收锚点。</p>
+<p>需要特别说明：</p>
+<ul>
+<li>论文 PDF 的 band 公式只写 <span class="math inline">\(C_{t-1}\)</span>，正文没有明确讨论 dividend；</li>
+<li>作者公开 Python sample 会从前收中减去当日分红；</li>
+<li>当前 <code>paper_spec</code> 跟随作者代码的除息处理；</li>
+<li>因此“分红调整”是作者代码意图与经济合理性支持的实现，不是论文正文逐字写出的规则。</li>
+</ul>
+<p>如果不调整分红，除息日机械价格下移可能被误认为真实卖压。</p>
+<hr />
+<h2 id="第四步计算当日累计-vwap">7. 第四步：计算当日累计 VWAP</h2>
+<p>VWAP 是 Volume Weighted Average Price，即成交量加权平均价格。</p>
+<p>论文明确 VWAP 只使用正常市场时段数据，但没有在正文中规定一分钟 bar 应使用 HLC3、OHLC4 还是成交级 VWAP。</p>
+<p>作者 Python sample 和本项目默认都使用 HLC3：</p>
+<p><span class="math display">\[
+P_u^{HLC3}
+=
+\frac{H_u+L_u+C_u}{3}
+\]</span></p>
+<p><span class="math display">\[
+VWAP_{t,m}
+=
+\frac{
+\sum_{u=1}^{m}V_{t,u}P_{t,u}^{HLC3}
+}{
+\sum_{u=1}^{m}V_{t,u}
+}
+\]</span></p>
+<p>这是一条从开盘开始、逐分钟累积的曲线，不是数据商提供的“单根 bar VWAP”。</p>
+<h3 id="为什么不能把-vendor-bar-vwap-直接当累计-vwap">7.1 为什么不能把 vendor bar VWAP 直接当累计 VWAP</h3>
+<p>单根 bar VWAP 只表示这一分钟内部的成交均价。论文策略使用的是：</p>
+<pre class="text"><code>从开盘到当前时刻的累计成交重心</code></pre>
+<p>因此即使选择 <code>vendor_bar_vwap</code> 作为每根 bar 的价格代理，仍要用每分钟 volume 再做当日累计。</p>
+<h3 id="缺失-minute">7.2 缺失 minute</h3>
+<p>如果 11:19 缺少一根正常应交易的 bar：</p>
+<ul>
+<li>11:18 之前的 VWAP 仍可信；</li>
+<li>11:19 开始累计路径不完整；</li>
+<li>11:19 之后 <code>vwap_valid=False</code>；</li>
+<li>不能用 forward fill 制造不存在的价格和成交量。</li>
+</ul>
+<h3 id="halt">7.3 Halt</h3>
+<p>官方 halt minute 本来就没有正常连续成交，因此：</p>
+<ul>
+<li>halt minute 不参与累计成交量和累计 PV；</li>
+<li>vendor 即使保留零量 phantom bar，也不能把它当有效观察；</li>
+<li>halt 本身不会像普通数据缺失那样永久破坏复牌后的 VWAP；</li>
+<li>halt 内不允许产生信号或成交。</li>
+</ul>
+<hr />
+<h2 id="第五步生成多头空头或空仓信号">8. 第五步：生成多头、空头或空仓信号</h2>
+<p>当前最终信号为：</p>
+<p><span class="math display">\[
+Signal_{t,m}
+=
+\begin{cases}
++1, &amp; C_{t,m}&gt;UB_{t,m}\ \text{且}\ C_{t,m}&gt;VWAP_{t,m}\\
+-1, &amp; C_{t,m}&lt;LB_{t,m}\ \text{且}\ C_{t,m}&lt;VWAP_{t,m}\\
+0, &amp; \text{其他情况}
+\end{cases}
+\]</span></p>
+<p>也可以写成：</p>
+<pre class="text"><code>close &gt; max(upper_band, VWAP)  → long
+close &lt; min(lower_band, VWAP)  → short
+其他                            → flat</code></pre>
+<h3 id="为什么-0-很重要">8.1 为什么 <code>0</code> 很重要</h3>
+<p><code>0</code> 不只是“没有新信号”，而是目标仓位为空仓。</p>
+<p>例如已经持有多仓，下一决策点出现：</p>
+<pre class="text"><code>close 仍高于 VWAP
+但已经跌回 upper band 下方</code></pre>
+<p>此时信号变为0，引擎平掉多仓。</p>
+<h3 id="反手">8.2 反手</h3>
+<p>如果多仓状态下，下一决策点直接满足空头条件：</p>
+<pre class="text"><code>+1 → -1</code></pre>
+<p>这不是一单位成交，而是：</p>
+<pre class="text"><code>卖出 N 股平多
+再卖出 N 股建立空仓
+合计交易 2N 股</code></pre>
+<p>因此 <code>0 → +1 → -1 → 0</code> 共计4个 traded units：</p>
+<ol type="1">
+<li>开多：1；</li>
+<li>多翻空：2；</li>
+<li>平空：1。</li>
+</ol>
+<hr />
+<h2 id="第六步每日波动率与仓位大小">9. 第六步：每日波动率与仓位大小</h2>
+<p>论文使用过去14个日收益的样本标准差：</p>
+<p><span class="math display">\[
+\mu_t
+=
+\frac{1}{14}
+\sum_{i=1}^{14}r_{t-i}
+\]</span></p>
+<p><span class="math display">\[
+\sigma^{daily}_t
+=
+\sqrt{
+\frac{1}{13}
+\sum_{i=1}^{14}
+(r_{t-i}-\mu_t)^2
+}
+\]</span></p>
+<p>分母是13，因此这是14个观察的样本标准差。</p>
+<p>目标杠杆：</p>
+<p><span class="math display">\[
+L_t
+=
+\min
+\left(
+4,
+\frac{0.02}{\sigma^{daily}_t}
+\right)
+\]</span></p>
+<p>每日股数：</p>
+<p><span class="math display">\[
+Shares_t
+=
+\left\lfloor
+\frac{
+AUM_{t-1}\times L_t
+}{
+O_t
+}
+\right\rfloor
+\]</span></p>
+<p>其中：</p>
+<ul>
+<li><span class="math inline">\(AUM_{t-1}\)</span>：前一交易日结束后的账户权益；</li>
+<li><span class="math inline">\(0.02\)</span>：2%日波动目标；</li>
+<li>4：最高4倍杠杆；</li>
+<li>floor 表示向下取整。</li>
+</ul>
+<h3 id="数值例子">9.1 数值例子</h3>
+<p>假设：</p>
+<pre class="text"><code>昨日 AUM = $100,000
+今日开盘 = $500
+过去14日样本波动率 = 1%</code></pre>
+<p>则：</p>
+<p><span class="math display">\[
+L_t=\min(4,2\%/1\%)=2
+\]</span></p>
+<p><span class="math display">\[
+Shares_t
+=
+\left\lfloor
+\frac{100000\times2}{500}
+\right\rfloor
+=400
+\]</span></p>
+<p>如果波动率升到4%：</p>
+<p><span class="math display">\[
+L_t=2\%/4\%=0.5
+\]</span></p>
+<p><span class="math display">\[
+Shares_t=100
+\]</span></p>
+<p>所以同样的账户，在高波动环境下自动降低持仓。</p>
+<h3 id="历史窗口不能使用当天收益">9.2 历史窗口不能使用当天收益</h3>
+<p>在交易日 <span class="math inline">\(t\)</span> 开盘时，当日收盘收益还不存在，因此只能使用：</p>
+<pre class="text"><code>t-1 至 t-14</code></pre>
+<p><code>dvol_lag=0</code> 会使用未来信息，当前引擎直接拒绝。</p>
+<p>作者 sample 实际使用了 <code>d-15..d-2</code>，漏掉最近完成的 <span class="math inline">\(t-1\)</span> 收益。本项目只在 <code>official_sample_compatible</code> 中保留这个偏差；<code>paper_spec</code> 和 <code>corrected_execution</code> 使用正确的 <span class="math inline">\(t-1..t-14\)</span> 窗口。</p>
+<h3 id="波动率缺失">9.3 波动率缺失</h3>
+<p>作者 sample 在波动率为 NaN 时使用最大4倍杠杆。这意味着“最不知道风险的时候承担最大风险”。</p>
+<p>当前处理：</p>
+<table>
+<thead>
+<tr class="header">
+<th>Profile</th>
+<th>波动率缺失时</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>official_sample_compatible</code></td>
+<td>保留作者行为，使用4×</td>
+</tr>
+<tr class="even">
+<td><code>paper_spec</code></td>
+<td>不交易</td>
+</tr>
+<tr class="odd">
+<td><code>corrected_execution</code></td>
+<td>不交易</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="完整的日内交易时间线">10. 完整的日内交易时间线</h2>
+<p>下面以正常完整交易日为例：</p>
+<pre class="mermaid"><code>flowchart TD
+    A[&quot;开盘前：读取昨日AUM、前收、当日分红、过去14日收益&quot;] --&gt; B[&quot;09:30：确定当日open、dvol、杠杆和固定shares&quot;]
+    B --&gt; C[&quot;逐分钟更新move_open、sigma_open、累计VWAP&quot;]
+    C --&gt; D{&quot;到达半小时决策点？&quot;}
+    D -- &quot;否&quot; --&gt; C
+    D -- &quot;是&quot; --&gt; E[&quot;用该bar close计算long / short / flat目标&quot;]
+    E --&gt; F{&quot;Profile的成交规则&quot;}
+    F -- &quot;paper_spec&quot; --&gt; G[&quot;按signal bar close成交&quot;]
+    F -- &quot;corrected_execution&quot; --&gt; H[&quot;生成pending order，下一可执行bar open成交&quot;]
+    G --&gt; I[&quot;持仓逐分钟mark-to-market&quot;]
+    H --&gt; I
+    I --&gt; J{&quot;达到下一决策点或收盘？&quot;}
+    J -- &quot;下一决策点&quot; --&gt; C
+    J -- &quot;收盘&quot; --&gt; K[&quot;最后可执行close平仓&quot;]
+    K --&gt; L[&quot;扣commission、slippage和可选financing，更新AUM&quot;]</code></pre>
+<h3 id="决策与成交不是同一件事">10.1 决策与成交不是同一件事</h3>
+<p>策略需要当前 bar 的 close、band 和累计 VWAP，所以信号最早只能在该 bar 结束后确认。</p>
+<p>本项目显式区分：</p>
+<pre class="text"><code>signal time
+→ order
+→ intended fill time
+→ actual fill
+→ filled position
+→ PnL</code></pre>
+<p>这比简单使用 <code>position.shift(1) * close.diff()</code> 更容易审计。</p>
+<hr />
+<h2 id="三个-profile-分别回答什么问题">11. 三个 profile 分别回答什么问题</h2>
+<h3 id="official_sample_compatible">11.1 <code>official_sample_compatible</code></h3>
+<p>目标：</p>
+<blockquote>
+<p>解释作者公开 Python notebook 的结果是如何产生的。</p>
+</blockquote>
+<p>保留的作者 sample 约定包括：</p>
+<ul>
+<li><code>sigma_open</code> 有13个值即可 warm-up；</li>
+<li>日波动率使用 <code>d-15..d-2</code>；</li>
+<li>NaN volatility 使用4倍杠杆；</li>
+<li>股数使用 <code>round()</code>；</li>
+<li>不扣论文的 <code>$0.001/share</code> slippage；</li>
+<li>在实际存在的数据行上 rolling；</li>
+<li>exposure 按数据行 shift 后计算 close-to-close PnL。</li>
+</ul>
+<p>它不是逐行 bit parity：</p>
+<ul>
+<li>当前项目仍使用自己的交易日历；</li>
+<li>数据源不同；</li>
+<li>tier 和缺失数据处理不同；</li>
+<li>AUM 时间轴更严格。</li>
+</ul>
+<p>因此它只能称为 <strong>convention parity</strong>。</p>
+<h3 id="paper_spec">11.2 <code>paper_spec</code></h3>
+<p>目标：</p>
+<blockquote>
+<p>尽量按论文文字和作者明确意图复现策略信号与成本。</p>
+</blockquote>
+<p>主要规则：</p>
+<ul>
+<li>严格14个历史 eligible sessions；</li>
+<li><code>band_mult=1</code>；</li>
+<li>2%日波动目标；</li>
+<li>最大4倍杠杆；</li>
+<li>floor 股数；</li>
+<li><code>$0.0035/share</code> commission；</li>
+<li><code>$0.001/share</code> slippage；</li>
+<li>分红调整前收；</li>
+<li>signal-bar-close 成交约定。</li>
+</ul>
+<p>需要谨慎理解：</p>
+<ul>
+<li>分红调整来自作者 sample，论文正文未写明；</li>
+<li>HLC3 VWAP 来自作者 sample，论文正文只规定 market-hours VWAP；</li>
+<li><code>$0.35/order</code> 最低佣金来自作者 sample/券商约定，论文正文只写每股费率；</li>
+<li>signal-bar-close 是对论文模糊成交描述的一种解释，不是原文唯一可能解释。</li>
+</ul>
+<p>所以 <code>paper_spec</code> 是“可归因的论文复现 profile”，不是声称论文把所有工程细节都写全了。</p>
+<h3 id="corrected_execution">11.3 <code>corrected_execution</code></h3>
+<p>目标：</p>
+<blockquote>
+<p>保留论文信号，但更诚实地模拟现实中能够成交的路径。</p>
+</blockquote>
+<p>相对 <code>paper_spec</code> 的主要变化：</p>
+<ul>
+<li>信号在 bar close 确认；</li>
+<li>下一可执行 bar open 才成交；</li>
+<li>默认执行滑点提高到 <code>$0.005/share</code>；</li>
+<li>真实 pending-order 状态；</li>
+<li>信号后的预定成交 minute 不可用时，默认取消订单；</li>
+<li>可选择 queue 到复牌成交；</li>
+<li>未成交订单不能获得复牌 gap；</li>
+<li>已有持仓必须承担完整复牌 gap。</li>
+</ul>
+<p>它是当前最接近经济结果的 profile，但仍不是完整实盘模型，因为：</p>
+<ul>
+<li>market impact 尚未完整建模；</li>
+<li>融资和借券 time-integral 尚未完成；</li>
+<li>没有排队位置模型；</li>
+<li>固定每股滑点无法表达大订单参与率；</li>
+<li>独立 daily benchmark 尚未接入。</li>
+</ul>
+<hr />
+<h2 id="成交状态机如何工作">12. 成交状态机如何工作</h2>
+<h3 id="paper_spec-1">12.1 <code>paper_spec</code></h3>
+<p>如果决策点目标仓位变化：</p>
+<pre class="text"><code>当前bar close确认信号
+→ 同一close价格执行目标仓位</code></pre>
+<p>这是论文复现约定，较为乐观。</p>
+<h3 id="corrected_execution-1">12.2 <code>corrected_execution</code></h3>
+<p>如果在 minute <span class="math inline">\(m\)</span> 的 bar close 产生信号：</p>
+<pre class="text"><code>pending target = signal
+pending due = m + exec_lag_minutes</code></pre>
+<p>默认 <code>exec_lag_minutes=1</code>。</p>
+<p>到下一个 minute：</p>
+<ul>
+<li>如果该 minute 可执行：按 open 成交；</li>
+<li>如果预定 minute 不可执行，且 policy 是 cancel：取消；</li>
+<li>如果 policy 是 queue：等到第一个可执行 minute，按其 open 成交。</li>
+</ul>
+<h3 id="pnl归属">12.3 PnL归属</h3>
+<p>成交前的价格变化属于旧仓位。</p>
+<p>例如：</p>
+<pre class="text"><code>旧仓位 = 多头
+下一bar open发生向下gap
+随后在该open平仓</code></pre>
+<p>这个 gap 必须计入旧多仓，因为持仓者承担了风险。</p>
+<p>相反，如果上一 bar 只产生了多头信号、尚未成交：</p>
+<pre class="text"><code>复牌前没有仓位
+→ 复牌gap不属于该订单
+→ 在复牌open成交后才开始计算PnL</code></pre>
+<hr />
+<h2 id="halt-熔断的处理">13. Halt / 熔断的处理</h2>
+<p>论文没有给出完整的 halt 状态机。本项目采用以下明确规则：</p>
+<table>
+<thead>
+<tr class="header">
+<th>情况</th>
+<th>是否承担复牌 gap</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>halt前已经持仓</td>
+<td>是</td>
+</tr>
+<tr class="even">
+<td>halt前产生信号，但订单到期时不可成交并被取消</td>
+<td>否</td>
+</tr>
+<tr class="odd">
+<td>订单选择queue到复牌</td>
+<td>成交前否；复牌价成交后开始</td>
+</tr>
+<tr class="even">
+<td>halt内出现计算上的方向条件</td>
+<td>不允许决策</td>
+</tr>
+</tbody>
+</table>
+<p>关键原则：</p>
+<blockquote>
+<p>“没有成交”不等于“已经持仓”；“halt期间没有bar”也不等于持仓没有风险。</p>
+</blockquote>
+<p>当前数据层还会验证官方 halt minute 集合，防止：</p>
+<ul>
+<li>vendor 在 halt 内保留 phantom bar；</li>
+<li>halt 外缺失同样数量的正常 bar；</li>
+<li>两者数量抵消后被错误判断为完整交易日。</li>
+</ul>
+<hr />
+<h2 id="日终退出与未知退出">14. 日终退出与未知退出</h2>
+<h3 id="正常收盘">14.1 正常收盘</h3>
+<p>论文要求所有持仓在 market close 平掉，不留隔夜仓位。</p>
+<p>正常完整交易日中：</p>
+<ul>
+<li>15:59 start-labelled bar 在16:00结束；</li>
+<li>现有仓位按最后可执行 close 平仓；</li>
+<li>EOD flatten 计入成交量和成本；</li>
+<li>最后一根 bar 不允许新开仓或反手。</li>
+</ul>
+<p>否则可能出现：</p>
+<pre class="text"><code>16:00刚开仓
+→ 同价立即平仓
+→ PnL为0
+→ 却扣两次成本</code></pre>
+<h3 id="尾盘缺失">14.2 尾盘缺失</h3>
+<p>如果数据只到14:30，而策略仍持仓：</p>
+<ul>
+<li>最后一根可得价格不等于真实收盘；</li>
+<li>不能虚构16:00退出价；</li>
+<li>该日标记为 <code>unknown_exit</code>。</li>
+</ul>
+<p>默认 policy 是 <code>terminate</code>：</p>
+<ul>
+<li>当日不进入 headline return；</li>
+<li>猜测的退出PnL不进入AUM；</li>
+<li>后续权益曲线停止，避免错误AUM继续影响未来股数。</li>
+</ul>
+<p>其他 policy 只用于明确标记的敏感性分析。</p>
+<hr />
+<h2 id="成本与账户核算">15. 成本与账户核算</h2>
+<h3 id="gross-pnl">15.1 Gross PnL</h3>
+<p>每一段持仓的毛损益为：</p>
+<p><span class="math display">\[
+GrossPnL
+=
+Position
+\times
+(P_{new}-P_{old})
+\times
+Shares
+\]</span></p>
+<p>其中：</p>
+<ul>
+<li>多仓 <code>Position=+1</code>；</li>
+<li>空仓 <code>Position=-1</code>；</li>
+<li>只有已经成交的仓位才产生 PnL。</li>
+</ul>
+<h3 id="commission">15.2 Commission</h3>
+<p>每张订单：</p>
+<p><span class="math display">\[
+Commission
+=
+\max(
+MinimumCommission,
+CommissionPerShare\times Quantity
+)
+\]</span></p>
+<p>默认：</p>
+<pre class="text"><code>commission/share = $0.0035
+minimum/order = $0.35</code></pre>
+<p>最低佣金是否在反手时收一次或两次，由 <code>reversal_order_model</code> 控制。</p>
+<h3 id="slippage">15.3 Slippage</h3>
+<p><span class="math display">\[
+Slippage
+=
+SlipPerShare\times Quantity
+\]</span></p>
+<p>slippage 与 commission 分开累计，最低佣金不能吞掉 slippage。</p>
+<p>默认值：</p>
+<table>
+<thead>
+<tr class="header">
+<th>Profile</th>
+<th style="text-align: right;">Slippage/share</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>official_sample_compatible</code></td>
+<td style="text-align: right;">$0</td>
+</tr>
+<tr class="even">
+<td><code>paper_spec</code></td>
+<td style="text-align: right;">$0.001</td>
+</tr>
+<tr class="odd">
+<td><code>corrected_execution</code></td>
+<td style="text-align: right;">$0.005</td>
+</tr>
+</tbody>
+</table>
+<h3 id="每日会计恒等式">15.4 每日会计恒等式</h3>
+<p><span class="math display">\[
+NetPnL
+=
+GrossPnL
+-Commission
+-Slippage
++CashInterest
+-FundingCost
+-BorrowCost
+\]</span></p>
+<p><span class="math display">\[
+AUM_t=AUM_{t-1}+NetPnL_t
+\]</span></p>
+<p>当前正式 mechanics baseline 中现金、融资和借券 rate 默认均为0。</p>
+<p>现有融资接口仍是近似版本。正式经济评价前，需要分别累计：</p>
+<pre class="text"><code>positive_cash_time_integral
+borrowed_cash_time_integral
+long_notional_time_integral
+short_notional_time_integral</code></pre>
+<p>不能用 <code>avg_signed_notional</code> 让同一天先多后空的风险相互抵消。</p>
+<hr />
+<h2 id="为什么数据有效性是交易逻辑的一部分">16. 为什么数据有效性是交易逻辑的一部分</h2>
+<p>一分钟策略中，数据缺失会改变信号定义，而不只是减少样本数量。</p>
+<h3 id="不能先删除坏日再计算特征">16.1 不能先删除坏日再计算特征</h3>
+<p>错误流程：</p>
+<pre class="text"><code>只保留paper_ready交易日
+→ 再计算previous close和14日rolling</code></pre>
+<p>这会造成：</p>
+<ul>
+<li>次日 previous close 跨过被删除的交易日；</li>
+<li>14日窗口变成“14个保留日”；</li>
+<li>自然时间跨度被改变；</li>
+<li>坏日的有效收盘无法用于次日前收；</li>
+<li>缺失观察不再占窗口槽位。</li>
+</ul>
+<p>正确流程：</p>
+<pre class="text"><code>完整XNYS交易日历
+→ 清洗后的全部有效bar
+→ 组件级validity
+→ 全日历历史特征
+→ 配置相关signal mask
+→ 最后应用session tier</code></pre>
+<h3 id="核心-validity-字段">16.2 核心 validity 字段</h3>
+<table>
+<thead>
+<tr class="header">
+<th>字段</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>bar_present</code></td>
+<td>计划中的该 minute 是否真的存在bar</td>
+</tr>
+<tr class="even">
+<td><code>open_valid</code></td>
+<td>当日真实开盘锚点是否存在且可信</td>
+</tr>
+<tr class="odd">
+<td><code>close_valid</code></td>
+<td>最后计划 minute 是否存在且可信</td>
+</tr>
+<tr class="even">
+<td><code>prev_close_valid</code></td>
+<td>当日使用的前一交易日close是否可信</td>
+</tr>
+<tr class="odd">
+<td><code>daily_ret_valid</code></td>
+<td>close-to-close日收益两端是否都有效</td>
+</tr>
+<tr class="even">
+<td><code>move_open_obs_valid</code></td>
+<td>当日open和当前非halt bar是否都有效</td>
+</tr>
+<tr class="odd">
+<td><code>vwap_valid</code></td>
+<td>从开盘到当前minute的累计VWAP路径是否完整</td>
+</tr>
+<tr class="even">
+<td><code>is_halt_minute</code></td>
+<td>是否属于官方halt</td>
+</tr>
+<tr class="odd">
+<td><code>is_executable_minute</code></td>
+<td>当前minute是否真实可成交</td>
+</tr>
+<tr class="even">
+<td><code>sigma_history_valid</code></td>
+<td>同minute历史窗口是否满足当前配置</td>
+</tr>
+</tbody>
+</table>
+<h3 id="一个-interior-gap-的不同影响">16.3 一个 interior gap 的不同影响</h3>
+<p>假设11:19缺失：</p>
+<pre class="text"><code>12:00 close存在
+真实09:30 open存在</code></pre>
+<p>则：</p>
+<ul>
+<li>12:00 <code>move_open</code> 仍能计算；</li>
+<li>但11:19之后累计VWAP缺少成交量和价格路径；</li>
+<li>因此12:00 <code>move_open_obs_valid=True</code>；</li>
+<li>12:00 <code>vwap_valid=False</code>。</li>
+</ul>
+<p>这说明不能用一个简单的“当天有效/无效”flag概括所有特征。</p>
+<hr />
+<h2 id="三个-session-tier">17. 三个 session tier</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Tier</th>
+<th>定位</th>
+<th>应如何使用</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>paper_ready</code></td>
+<td>所有计划分钟完整</td>
+<td>论文完整数据基准和 sample convention 对照</td>
+</tr>
+<tr class="even">
+<td><code>halt_aware</code></td>
+<td>完整日 + 只有官方halt分钟缺失的交易日</td>
+<td>当前主要经济口径</td>
+</tr>
+<tr class="odd">
+<td><code>exploratory</code></td>
+<td>允许有限数据缺口</td>
+<td>仅敏感性分析</td>
+</tr>
+</tbody>
+</table>
+<p>每个 tier 都是一条不同的权益曲线。必须分别报告完整的：</p>
+<ul>
+<li>Total Return；</li>
+<li>CAGR；</li>
+<li>Volatility；</li>
+<li>Sharpe；</li>
+<li>MDD；</li>
+<li>Worst Day；</li>
+<li>Skew；</li>
+<li>Turnover；</li>
+<li>成本。</li>
+</ul>
+<p>不能使用：</p>
+<pre class="text"><code>paper_ready的CAGR / halt_aware的MDD</code></pre>
+<p>因为这个 Calmar 比率不属于任何真实权益曲线。</p>
+<hr />
+<h2 id="一个完整但简化的信号例子">18. 一个完整但简化的信号例子</h2>
+<p>以下数字只是教学例子，不是真实市场记录。</p>
+<p>假设某日：</p>
+<pre class="text"><code>当日open                         = 500.00
+昨日close                       = 502.00
+当日现金分红                    =   1.00
+调整后previous close            = 501.00
+过去14日该时刻平均move_open     =   0.30%
+当前累计VWAP                    = 501.20
+当前close                       = 502.70</code></pre>
+<p>Band：</p>
+<p><span class="math display">\[
+UB
+=
+\max(500,501)\times(1+0.003)
+=502.503
+\]</span></p>
+<p><span class="math display">\[
+LB
+=
+\min(500,501)\times(1-0.003)
+=498.50
+\]</span></p>
+<p>当前 close：</p>
+<pre class="text"><code>502.70 &gt; upper band 502.503
+502.70 &gt; VWAP 501.20</code></pre>
+<p>所以：</p>
+<pre class="text"><code>signal = +1</code></pre>
+<p>如果昨日AUM为 <code>$100,000</code>、过去14日样本波动率为1%，则：</p>
+<pre class="text"><code>leverage = 2
+shares = floor(100,000 × 2 / 500) = 400</code></pre>
+<p>在 <code>paper_spec</code> 中，目标是按信号 bar close 建立400股多仓。</p>
+<p>在 <code>corrected_execution</code> 中：</p>
+<pre class="text"><code>当前bar close产生long信号
+→ 下一可执行bar open买入400股
+→ 从实际成交价以后开始计算多仓PnL</code></pre>
+<hr />
+<h2 id="回测主循环的伪代码">19. 回测主循环的伪代码</h2>
+<div class="sourceCode" id="cb35"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> day <span class="kw">in</span> complete_exchange_calendar:</span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>    read previous_aum</span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a>    read day_open</span>
+<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a>    read adjusted_previous_close</span>
+<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-6"><a href="#cb35-6" aria-hidden="true" tabindex="-1"></a>    dvol <span class="op">=</span> sample_std(previous_14_valid_daily_returns)</span>
+<span id="cb35-7"><a href="#cb35-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> dvol <span class="kw">is</span> invalid:</span>
+<span id="cb35-8"><a href="#cb35-8" aria-hidden="true" tabindex="-1"></a>        <span class="bu">apply</span> profile<span class="op">-</span>specific nan<span class="op">-</span>vol policy</span>
+<span id="cb35-9"><a href="#cb35-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">else</span>:</span>
+<span id="cb35-10"><a href="#cb35-10" aria-hidden="true" tabindex="-1"></a>        leverage <span class="op">=</span> <span class="bu">min</span>(<span class="dv">4</span>, <span class="fl">0.02</span> <span class="op">/</span> dvol)</span>
+<span id="cb35-11"><a href="#cb35-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-12"><a href="#cb35-12" aria-hidden="true" tabindex="-1"></a>    shares <span class="op">=</span> floor(previous_aum <span class="op">*</span> leverage <span class="op">/</span> day_open)</span>
+<span id="cb35-13"><a href="#cb35-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-14"><a href="#cb35-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> minute <span class="kw">in</span> scheduled_minutes:</span>
+<span id="cb35-15"><a href="#cb35-15" aria-hidden="true" tabindex="-1"></a>        compute move_open</span>
+<span id="cb35-16"><a href="#cb35-16" aria-hidden="true" tabindex="-1"></a>        compute same<span class="op">-</span>minute sigma_open <span class="im">from</span> prior eligible sessions</span>
+<span id="cb35-17"><a href="#cb35-17" aria-hidden="true" tabindex="-1"></a>        update cumulative VWAP</span>
+<span id="cb35-18"><a href="#cb35-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-19"><a href="#cb35-19" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> minute <span class="kw">is</span> a valid <span class="dv">30</span><span class="op">-</span>minute decision:</span>
+<span id="cb35-20"><a href="#cb35-20" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> close <span class="op">&gt;</span> upper_band <span class="kw">and</span> close <span class="op">&gt;</span> vwap:</span>
+<span id="cb35-21"><a href="#cb35-21" aria-hidden="true" tabindex="-1"></a>                target <span class="op">=</span> <span class="op">+</span><span class="dv">1</span></span>
+<span id="cb35-22"><a href="#cb35-22" aria-hidden="true" tabindex="-1"></a>            <span class="cf">elif</span> close <span class="op">&lt;</span> lower_band <span class="kw">and</span> close <span class="op">&lt;</span> vwap:</span>
+<span id="cb35-23"><a href="#cb35-23" aria-hidden="true" tabindex="-1"></a>                target <span class="op">=</span> <span class="op">-</span><span class="dv">1</span></span>
+<span id="cb35-24"><a href="#cb35-24" aria-hidden="true" tabindex="-1"></a>            <span class="cf">else</span>:</span>
+<span id="cb35-25"><a href="#cb35-25" aria-hidden="true" tabindex="-1"></a>                target <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb35-26"><a href="#cb35-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-27"><a href="#cb35-27" aria-hidden="true" tabindex="-1"></a>            route target through profile<span class="op">-</span>specific execution</span>
+<span id="cb35-28"><a href="#cb35-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-29"><a href="#cb35-29" aria-hidden="true" tabindex="-1"></a>        mark the already<span class="op">-</span>filled position to the <span class="bu">next</span> actual price</span>
+<span id="cb35-30"><a href="#cb35-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-31"><a href="#cb35-31" aria-hidden="true" tabindex="-1"></a>    flatten <span class="bu">any</span> known position at the scheduled close</span>
+<span id="cb35-32"><a href="#cb35-32" aria-hidden="true" tabindex="-1"></a>    compute gross, commission, slippage <span class="kw">and</span> financing</span>
+<span id="cb35-33"><a href="#cb35-33" aria-hidden="true" tabindex="-1"></a>    update AUM only <span class="cf">with</span> known net PnL</span></code></pre></div>
+<hr />
+<h2 id="论文作者-sample-与当前实现35项逐项对照">20. 论文、作者 sample 与当前实现：35项逐项对照</h2>
+<p>这一节完整覆盖 <code>PAPER_SAMPLE_CURRENT_COMPARISON_ZH.md</code> 中“逐项差异矩阵”的35个项目。项目名称和顺序与该矩阵一致，便于逐行审计。</p>
+<p>需要先区分三种证据：</p>
+<ol type="1">
+<li><strong>论文明确规则</strong>：论文正文、公式或参数表直接写明；</li>
+<li><strong>作者sample convention</strong>：公开Python sample实际执行的代码语义；</li>
+<li><strong>当前项目规则</strong>：<code>im_engine_v4.py</code>、<code>prepare_spy_data.py</code>与发布数据中的显式契约。</li>
+</ol>
+<p>论文没有讨论的异常数据规则，不能写成“论文规定如此”。这类项目会明确标为“论文未系统说明”，当前处理属于防泄漏、可执行性或研究工程选择。</p>
+<pre class="mermaid"><code>flowchart LR
+    P[&quot;论文正文&lt;br/&gt;经济逻辑与公式&quot;] --&gt; PS[&quot;paper_spec&lt;br/&gt;论文复现口径&quot;]
+    S[&quot;作者 sample&lt;br/&gt;教学代码 conventions&quot;] --&gt; OS[&quot;official_sample_compatible&lt;br/&gt;sample 归因口径&quot;]
+    PS --&gt; CE[&quot;corrected_execution&lt;br/&gt;成交与数据现实化&quot;]
+    D[&quot;完整交易日历&lt;br/&gt;component validity&lt;br/&gt;dividend provenance&quot;] --&gt; PS
+    D --&gt; CE</code></pre>
+<h3 id="特征窗口与价格锚点">20.1 特征、窗口与价格锚点</h3>
+<h4 id="对照项1同分钟噪声窗口">对照项1：同分钟噪声窗口</h4>
+<ul>
+<li><strong>论文：</strong> 对每个日内时刻，使用前14个交易日同一时刻的绝对开盘移动，计算 <code>sigma_open</code>。</li>
+<li><strong>作者sample：</strong> 使用按现有数据行进行的rolling，并允许 <code>min_periods=13</code>；第13个可得观测后就可能产生band。</li>
+<li><strong>当前实现：</strong> <code>paper_spec</code>和<code>corrected_execution</code>要求完整的14个eligible calendar slots；<code>official_sample_compatible</code>保留13个值即可和row-based rolling的sample convention。</li>
+<li><strong>为什么重要：</strong> 13个值会提前一个session结束warm-up；按现有行rolling还会在某日该minute缺失时向前多取更老数据，改变论文“前14个交易日”的时间含义。</li>
+</ul>
+<p>详细公式和缺失slot示例见第5节。</p>
+<h4 id="对照项2日波动率窗口">对照项2：日波动率窗口</h4>
+<ul>
+<li><strong>论文：</strong> 当天定仓只能使用最近已经完成的14个交易日收益，即 <span class="math inline">\(t-1\)</span> 至 <span class="math inline">\(t-14\)</span>。</li>
+<li><strong>作者sample：</strong> 实际切片对应 <code>d-15..d-2</code>，漏掉最近完成的 <span class="math inline">\(t-1\)</span>，并多取一个更老session。</li>
+<li><strong>当前实现：</strong> <code>paper_spec</code>和<code>corrected_execution</code>使用 <code>dvol_lag=1</code>；sample profile保留 <code>dvol_lag=2</code>。</li>
+<li><strong>为什么重要：</strong> <code>dvol</code>直接进入 <code>target_vol / dvol</code>。窗口错一天不仅改变一个统计量，还会改变当天全部成交的股数和杠杆。</li>
+</ul>
+<p>详细公式见第9节。</p>
+<h4 id="对照项3波动率缺失">对照项3：波动率缺失</h4>
+<ul>
+<li><strong>论文：</strong> 没有给出“14日波动率无法计算时如何交易”的明确fallback；从风险定仓逻辑看，此时不存在可靠的仓位依据。</li>
+<li><strong>作者sample：</strong> NaN volatility落入最大杠杆fallback，等价于在风险信息最不足时使用4倍杠杆。</li>
+<li><strong>当前实现：</strong> <code>paper_spec</code>和<code>corrected_execution</code>的 <code>nanvol_action="skip"</code>，不交易；sample profile保留 <code>max_lev</code> 以复现作者convention。</li>
+<li><strong>为什么重要：</strong> 这是风险方向相反的选择。缺失风险估计不应被解释成“风险很低”。</li>
+</ul>
+<h4 id="对照项4previous-close">对照项4：Previous close</h4>
+<ul>
+<li><strong>论文：</strong> band公式使用前一交易日收盘价作为锚点；论文正文没有完整定义坏日、缺失收盘和除息日的工程处理。</li>
+<li><strong>作者sample：</strong> 从现有数据构造前收，并对现金分红作简化扣减。</li>
+<li><strong>当前实现：</strong> previous close来自完整exchange calendar上的上一session；只有上一session的 <code>close_valid=True</code> 才可作为锚点，再形成 <code>prev_close_adj = prev_close - dividend_t</code>。</li>
+<li><strong>为什么重要：</strong> 如果先删除坏日再shift，所谓“前收”可能实际是两天前或更早的收盘，upper/lower band都会被错误移动。</li>
+</ul>
+<h4 id="对照项5分红">对照项5：分红</h4>
+<ul>
+<li><strong>论文：</strong> 正文公式没有明确写出现金分红调整步骤。因此不能声称论文文字逐字规定“减当日分红”；但除息会机械性改变未复权前收与当日开盘的可比性。</li>
+<li><strong>作者sample：</strong> 策略band锚点会扣除当日分红，但benchmark通常没有同样完整的total-return处理。</li>
+<li><strong>当前实现：</strong> 默认要求有可追溯的clean dividend文件；band使用除息调整前收，benchmark同时报告price return和total return。也允许显式 <code>ignore_dividends</code>，但必须记录，不能静默忽略。</li>
+<li><strong>为什么重要：</strong> 不调整会把除息造成的机械价格跳空误认为交易信号；benchmark漏分红则会高估策略相对SPY的超额收益。</li>
+</ul>
+<p>State Street分红来源和band调整公式见第6.3节。</p>
+<h3 id="交易日历与component-validity">20.2 交易日历与component validity</h3>
+<h4 id="对照项6半日市">对照项6：半日市</h4>
+<ul>
+<li><strong>论文：</strong> 只要求在市场实际开放时交易，没有给出半日市数据工程细节。</li>
+<li><strong>作者sample：</strong> 主要依赖输入中实际存在的rows；若把正常提前收盘后的分钟补成“缺失”，容易误判数据质量。</li>
+<li><strong>当前实现：</strong> 使用XNYS scheduled grid。半日市的 <code>calendar_bars</code> 本来就更短，正常收盘后的下午不属于计划交易分钟，也不会被算作gap或truncation。</li>
+<li><strong>为什么重要：</strong> “计划中不存在”与“应该存在但缺失”是两种完全不同的状态，后者才应使组件失效。</li>
+</ul>
+<h4 id="对照项7整日缺失">对照项7：整日缺失</h4>
+<ul>
+<li><strong>论文：</strong> 没有系统说明整日无bar时rolling如何处理。</li>
+<li><strong>作者sample：</strong> 整日缺失通常意味着DataFrame中完全没有该session；rolling会直接跨过它。</li>
+<li><strong>当前实现：</strong> daily母表由完整 <code>vsess</code> 交易日历驱动。无bar的session仍保留一行NaN，并占据14-session窗口的一个slot。</li>
+<li><strong>为什么重要：</strong> 若整日缺失直接消失，窗口会向前抓取更老session，产生看不见的样本替换和潜在时间轴压缩。</li>
+</ul>
+<h4 id="对照项8interior-gap">对照项8：Interior gap</h4>
+<ul>
+<li><strong>论文：</strong> 未系统定义盘中缺少一分钟或连续多分钟时各特征是否仍有效。</li>
+<li><strong>作者sample：</strong> 通常在剩余rows上继续累计VWAP和rolling，不暴露依赖已经断裂。</li>
+<li><strong>当前实现：</strong> component validity分别管理依赖。gap之后的累计 <code>vwap_valid=False</code>；但某一后续minute的 <code>move_open_obs_valid</code> 可在open锚点和该bar本身都有效时独立成立。</li>
+<li><strong>为什么重要：</strong> VWAP依赖从开盘到当前的完整累计路径，而 <code>move_open</code> 只依赖当日open和当前close。用一个总flag会错误地让两者一起有效或一起失效。</li>
+</ul>
+<p>见第16.3节的依赖拆分示例。</p>
+<h4 id="对照项9truncated-open">对照项9：Truncated open</h4>
+<ul>
+<li><strong>论文：</strong> 默认当日开盘锚点真实存在，没有说明开盘部分缺失如何补救。</li>
+<li><strong>作者sample：</strong> 第一根可得bar可能被当作当日open，即使它实际来自09:37或更晚。</li>
+<li><strong>当前实现：</strong> 一旦计划开盘bar缺失，<code>open_valid=False</code>，当日全部 <code>move_open_obs_valid=False</code>；真实收盘若存在，<code>close_valid</code>仍可独立为True。</li>
+<li><strong>为什么重要：</strong> 把09:37价格冒充09:30开盘会污染当日所有开盘移动，并进一步污染未来14日同minute的band历史。</li>
+</ul>
+<h4 id="对照项10trailing-truncation">对照项10：Trailing truncation</h4>
+<ul>
+<li><strong>论文：</strong> 策略在日终清仓，并默认能观察到真实退出价和真实收盘。</li>
+<li><strong>作者sample：</strong> 容易把当天最后一根可得bar当作收盘，即使数据在15:42已经中断。</li>
+<li><strong>当前实现：</strong> 尾盘截断使 <code>close_valid=False</code>。若策略在数据中断时仍有仓位，则标记 <code>unknown_exit</code>；无效close也不会进入benchmark。</li>
+<li><strong>为什么重要：</strong> 最后一根可得bar不等于真实收盘价。用它平仓会制造不可验证PnL，并污染下一日previous close、benchmark及后续AUM。</li>
+</ul>
+<h4 id="对照项11halt-minute">对照项11：Halt minute</h4>
+<ul>
+<li><strong>论文：</strong> 没有给出逐分钟order/fill状态机；经济上halt期间不可成交，已有仓位仍承担复牌跳空。</li>
+<li><strong>作者sample：</strong> shifted-row exposure没有区分“已经持仓”和“信号出现但订单尚未成交”，可能把复牌gap错误给未成交订单。</li>
+<li><strong>当前实现：</strong> halt minute不允许决策和成交，也不进入VWAP或mark path；halt前已有仓位获得完整复牌gap，未成交订单在默认cancel policy下什么也不赚。</li>
+<li><strong>为什么重要：</strong> “没有可执行bar”不代表持仓风险停止，也不代表新订单已经成交。</li>
+</ul>
+<p>完整状态转换见第13节。</p>
+<h3 id="信号时点订单与成交">20.3 信号时点、订单与成交</h3>
+<h4 id="对照项12决策频率">对照项12：决策频率</h4>
+<ul>
+<li><strong>论文：</strong> 每30分钟在HH:00和HH:30重新判断方向，收盘只负责清仓。</li>
+<li><strong>作者sample：</strong> 依赖 <code>min_from_open</code> 或现有分钟编号，每30格处理一次。</li>
+<li><strong>当前实现：</strong> <code>config_validity()</code>按当前 <code>Cfg.trade_freq</code> 在scheduled、start-labelled minute grid上重建15/30/60分钟等决策网格。</li>
+<li><strong>为什么重要：</strong> 如果直接消费数据层按默认30分钟预先生成的mask，参数改成15分钟后仍可能只在30分钟决策，形成“配置写了但没有生效”的静默错误。</li>
+</ul>
+<p>minute label到时钟时间的映射见第3节和第10节。</p>
+<h4 id="对照项13signal-validity">对照项13：Signal validity</h4>
+<ul>
+<li><strong>论文：</strong> 信号要求当时所需输入可得，但没有软件层validity字段。</li>
+<li><strong>作者sample：</strong> 有效性主要隐含在DataFrame操作和NaN传播中。</li>
+<li><strong>当前实现：</strong> 数据层只发布parameter-free primitives；引擎用当前配置组合 <code>trade_freq</code>、<code>sigma_window</code>、VWAP开关、dvol需求、前收有效性和可执行分钟，生成config-specific decision mask。</li>
+<li><strong>为什么重要：</strong> validity必须随配置变化。固定的 <code>signal_valid_default_config</code> 只能诊断默认参数，不能用于参数扫描或其他profile。</li>
+</ul>
+<h4 id="对照项14signal时点">对照项14：Signal时点</h4>
+<ul>
+<li><strong>论文：</strong> 用一个bar结束时已经观察到的close、band和VWAP确认信号。</li>
+<li><strong>作者sample：</strong> 在signal bar生成方向，再用shifted exposure近似下一行持仓；“信号”和“成交”没有独立对象。</li>
+<li><strong>当前实现：</strong> 三profile都先在signal bar close后生成target；<code>paper_spec</code>立即按该close记成交，<code>corrected_execution</code>只创建pending order，等待下一可执行open。</li>
+<li><strong>为什么重要：</strong> 信号确认时间与成交时间必须分开。否则容易让仓位获得用于生成信号的同一bar内部收益。</li>
+</ul>
+<h4 id="对照项15成交价格">对照项15：成交价格</h4>
+<ul>
+<li><strong>论文：</strong> 文字允许把信号bar close当成交价，但这是乐观且存在解释空间的复现口径。</li>
+<li><strong>作者sample：</strong> shifted close exposure近似signal-bar-close之后持仓，不是实际open成交模型。</li>
+<li><strong>当前实现：</strong> <code>paper_spec.fill_price="signal_bar_close"</code>保留论文乐观口径；<code>corrected_execution.fill_price="next_executable_open"</code>在下一可执行bar的open成交。</li>
+<li><strong>为什么重要：</strong> 从signal close到next open的价格变化只有在signal close真实成交后才属于新仓位。现实化profile不把这段变化免费送给策略。</li>
+</ul>
+<h4 id="对照项16pending-order">对照项16：Pending order</h4>
+<ul>
+<li><strong>论文：</strong> 没有规定信号后下一minute不可交易时订单取消还是排队。</li>
+<li><strong>作者sample：</strong> 没有真正pending状态；按下一可得data row shift，可能隐式排队到复牌并获得不应属于订单的gap。</li>
+<li><strong>当前实现：</strong> 状态机显式记录 <code>pending</code> 和 <code>pending_due</code>。默认 <code>cancel_if_next_unavailable</code>；敏感性分析可选择 <code>queue_until_executable</code>，但必须披露。</li>
+<li><strong>为什么重要：</strong> cancel和queue是不同交易规则，会改变成交数量、复牌风险和成本，不能由DataFrame缺行行为偶然决定。</li>
+</ul>
+<h4 id="对照项17最后一根bar">对照项17：最后一根bar</h4>
+<ul>
+<li><strong>论文：</strong> 日终必须平仓，因此最后计划bar不应再新开随后立即平掉的仓位。</li>
+<li><strong>作者sample：</strong> row shift因为没有下一行，副作用上避开了部分尾盘新仓，但没有显式规则。</li>
+<li><strong>当前实现：</strong> 当 <code>minute_of_session == calendar_bars</code> 时禁止新开或反手；只执行已有仓位的EOD flatten。</li>
+<li><strong>为什么重要：</strong> 否则会产生同价开仓、同价平仓的零gross PnL round trip，却收两边成本和turnover。</li>
+</ul>
+<h4 id="对照项18exec_lag1">对照项18：<code>exec_lag&gt;1</code></h4>
+<ul>
+<li><strong>论文：</strong> 主要讨论紧邻信号的成交，没有重点定义多分钟延迟。</li>
+<li><strong>作者sample：</strong> 单行shift不支持通用lag。</li>
+<li><strong>当前实现：</strong> <code>pending_due = signal_minute + exec_lag_minutes</code>；状态机显式区分当前minute小于、等于或已经越过due minute。越过后按policy取消或排队成交。</li>
+<li><strong>为什么重要：</strong> 只判断“当前minute是否不小于due”会在缺分钟或halt时提前/错误成交；必须知道due slot是否实际可执行。</li>
+</ul>
+<h4 id="对照项19股数舍入">对照项19：股数舍入</h4>
+<ul>
+<li><strong>论文：</strong> 仓位公式对应向下取整 <code>floor</code>，避免超过目标名义敞口。</li>
+<li><strong>作者sample：</strong> 使用 <code>round</code>，可能向上增加一股。</li>
+<li><strong>当前实现：</strong> <code>paper_spec</code>和<code>corrected_execution</code>使用 <code>floor</code>；sample profile使用 <code>round</code>，并由配置字段使用审计确认该参数真的进入下单股数。</li>
+<li><strong>为什么重要：</strong> 单次一股差异通常很小，但会影响逐日parity、commission阈值和长期AUM路径；不能为了最终收益接近而混用。</li>
+</ul>
+<h4 id="对照项20反手">对照项20：反手</h4>
+<ul>
+<li><strong>论文：</strong> 从多头变为空头或从空头变为多头，经济上必须先平旧仓再建立等量反向仓位。</li>
+<li><strong>作者sample：</strong> 用position change概念近似，但教学实现没有完整订单事件账本。</li>
+<li><strong>当前实现：</strong> target从 <span class="math inline">\(+1\)</span> 到 <span class="math inline">\(-1\)</span> 时 <code>delta=2</code>，成交股数为 <span class="math inline">\(2N\)</span>。序列 <span class="math inline">\(0\to+1\to-1\to0\)</span> 是3次fill event、4个trade units。</li>
+<li><strong>为什么重要：</strong> 若把反手计成1单位，会同时少算一半反手turnover、commission和slippage。</li>
+</ul>
+<p>见第8.2节和第15节。</p>
+<h3 id="成本会计与持仓归属">20.4 成本、会计与持仓归属</h3>
+<h4 id="对照项21commission">对照项21：Commission</h4>
+<ul>
+<li><strong>论文：</strong> 经核对的正文明确给出约 <code>$0.0035/share</code>；正文是否同时明确规定 <code>$0.35/order</code> 最低佣金并不充分，因此报告不能把最低值写成无歧义论文原文。</li>
+<li><strong>作者sample：</strong> 使用每股佣金并施加 <code>$0.35/order</code> 最低值。</li>
+<li><strong>当前实现：</strong> <code>Cfg.comm_per_share=0.0035</code>、<code>min_comm=0.35</code>；按实际成交quantity收费。反手可配置为单张 <span class="math inline">\(2N\)</span> 订单或两张 <span class="math inline">\(N\)</span> 订单，最低佣金相应应用一次或两次。</li>
+<li><strong>为什么重要：</strong> 小订单主要由minimum commission决定；反手订单拆分方式也会改变成本。论文每股费率、sample最低值和当前订单模型必须分开归因。</li>
+</ul>
+<h4 id="对照项22slippage">对照项22：Slippage</h4>
+<ul>
+<li><strong>论文：</strong> 明确使用约 <code>$0.001/share</code> 的滑点假设。</li>
+<li><strong>作者sample：</strong> 公开教学代码通常没有从PnL中扣除该滑点。</li>
+<li><strong>当前实现：</strong> sample profile为0；<code>paper_spec</code>为0.001美元/股；<code>corrected_execution</code>默认0.005美元/股。slippage与commission分列，不受minimum commission影响。</li>
+<li><strong>为什么重要：</strong> 这直接解释sample、paper和corrected结果的部分阶梯式下降，也便于以后单独替换成交成本模型。</li>
+</ul>
+<h4 id="对照项23market-impact">对照项23：Market impact</h4>
+<ul>
+<li><strong>论文：</strong> 没有完整建模订单规模对成交价格的非线性影响。</li>
+<li><strong>作者sample：</strong> 没有impact或容量约束。</li>
+<li><strong>当前实现：</strong> 尚未实现；当前固定per-share slippage不会随AUM、股数、ADV、波动率或参与率上升。</li>
+<li><strong>为什么重要：</strong> 当AUM或杠杆增大时，固定滑点通常过于乐观。因此当前 <code>corrected_execution</code>仍是完整实盘成本前的上限估计，不是容量结论。</li>
+</ul>
+<h4 id="对照项24现金融资借券">对照项24：现金/融资/借券</h4>
+<ul>
+<li><strong>论文：</strong> 经济上杠杆多头需要融资，空头需要borrow，闲置正现金可能获得利息，但论文回测没有完整的分钟time-integral账户。</li>
+<li><strong>作者sample：</strong> 基本忽略这些现金流。</li>
+<li><strong>当前实现：</strong> 已有 <code>cash_rate_annual</code>、<code>funding_rate_annual</code>、<code>borrow_rate_annual</code> 接口和基础现金账户；但当前 <code>avg_signed_notional</code> 会让同日多空notional相互抵消，尚未分别累计正现金、借入现金、多头和空头敞口。</li>
+<li><strong>为什么重要：</strong> 4倍多头约有3倍AUM的借入现金，空头还涉及borrow fee。用净signed notional可能低估两边都发生时的真实成本。</li>
+</ul>
+<h4 id="对照项25pnl-marking">对照项25：PnL marking</h4>
+<ul>
+<li><strong>论文：</strong> 以持仓期间价格变化形成PnL，但没有给出halt和pending order下的逐事件归属算法。</li>
+<li><strong>作者sample：</strong> 使用shifted exposure乘close difference，价格变化按数据行而不是可执行事件归属。</li>
+<li><strong>当前实现：</strong> 每次fill前先把旧仓从last mark标记到fill price；成交后新仓才从该fill price开始承担后续变化。halt前已有仓位获得复牌gap，尚未成交的target不获得。</li>
+<li><strong>为什么重要：</strong> PnL必须属于价格变化发生时已经存在的仓位，而不是事后看到信号的目标仓位。</li>
+</ul>
+<h4 id="对照项26unknown-exit">对照项26：Unknown exit</h4>
+<ul>
+<li><strong>论文：</strong> 假定日终可以清仓，没有系统定义真实尾盘价格未知时怎么办。</li>
+<li><strong>作者sample：</strong> 使用最后可得bar，容易把猜测当真实退出。</li>
+<li><strong>当前实现：</strong> 支持 <code>terminate</code>、<code>exclude_session_and_freeze_aum</code>、<code>impute_last_observed</code> 三种policy，默认 <code>terminate</code>。headline不纳入unknown-exit session，猜测PnL不会进入后续AUM复利。</li>
+<li><strong>为什么重要：</strong> 一次虚假退出不只影响当天收益，还会改变之后每天的position size；默认终止是最保守且最可审计的处理。</li>
+</ul>
+<h4 id="对照项27session-filtering">对照项27：Session filtering</h4>
+<ul>
+<li><strong>论文：</strong> 通常在可用数据样本上展示结果，没有讨论多个数据质量tier。</li>
+<li><strong>作者sample：</strong> 在当前DataFrame现有sessions上直接计算并交易。</li>
+<li><strong>当前实现：</strong> 先在完整exchange calendar上计算previous close、<code>sigma_open</code>、<code>dvol</code>等特征，最后才用 <code>paper_ready</code>、<code>halt_aware</code>或<code>exploratory</code>作为交易mask。</li>
+<li><strong>为什么重要：</strong> 若先删除某tier不交易的坏日，再计算特征，后续“好日”的previous close和rolling历史也会改变，形成隐蔽的样本重定义。</li>
+</ul>
+<p>见第16.1节和第17节。</p>
+<h3 id="vwapbenchmark与统计">20.5 VWAP、benchmark与统计</h3>
+<h4 id="对照项28vwap">对照项28：VWAP</h4>
+<ul>
+<li><strong>论文：</strong> 要求使用当日从开盘累计到当前时刻的market-hours VWAP，但没有明确指定每分钟价格代理。</li>
+<li><strong>作者sample：</strong> 使用HLC3，即 <code>(high + low + close) / 3</code>，再按volume累计。</li>
+<li><strong>当前实现：</strong> 默认 <code>vwap_source="hlc3"</code>；也可显式选择 <code>ohlc4</code> 或 <code>vendor_bar_vwap</code>。无论代理如何，都会重新计算日内累计值；halt minute不进入累计，interior gap后validity失效。</li>
+<li><strong>为什么重要：</strong> 数据商每bar VWAP不是论文所说的“从开盘累计VWAP”；不同价格代理也属于必须披露的实现选择。</li>
+</ul>
+<p>完整公式见第7节。</p>
+<h4 id="对照项29benchmark">对照项29：Benchmark</h4>
+<ul>
+<li><strong>论文：</strong> 报告SPY Buy &amp; Hold；论文表格更接近raw-price benchmark，未必包含完整现金分红total return。</li>
+<li><strong>作者sample：</strong> 通常直接对价格做收益，可能遗漏分红、无效close和evaluation首日anchor。</li>
+<li><strong>当前实现：</strong> 同时计算SPY price return与total return；无效close保留NaN；evaluation开始前引入一个有效close anchor；策略与benchmark使用相同session时间轴。</li>
+<li><strong>为什么重要：</strong> 漏分红会高估策略excess；首日无anchor会让策略首日交易但benchmark首日收益静默为0；用截断bar冒充close会污染alpha和beta。</li>
+</ul>
+<p>见第21节。</p>
+<h4 id="对照项30sharpe">对照项30：Sharpe</h4>
+<ul>
+<li><strong>论文：</strong> 应在一致的收益时间轴上年化。</li>
+<li><strong>作者sample：</strong> 若只保留active或有收益的sessions，再乘 <span class="math inline">\(\sqrt{252}\)</span>，可能人为抬高Sharpe。</li>
+<li><strong>当前实现：</strong> headline使用calendarised return，包括评价窗口内的flat day；active sessions只报告未年化conditional mean/std，不另造一个active annualised Sharpe。</li>
+<li><strong>为什么重要：</strong> 删除不交易日后仍按252年化，相当于既压缩时间轴又保留全年频率，会制造不可比较的高Sharpe。</li>
+</ul>
+<h4 id="对照项31cagr">对照项31：CAGR</h4>
+<ul>
+<li><strong>论文：</strong> CAGR应反映真实日历时间。</li>
+<li><strong>作者sample：</strong> 若按保留下来的收益行数量除以252，删除坏日会把时间压缩。</li>
+<li><strong>当前实现：</strong> 总复利使用评价session收益，但年数按首末日期差除以365.2425计算。</li>
+<li><strong>为什么重要：</strong> 同样的累计收益不能因为删掉若干无效session就假装在更短时间内完成。</li>
+</ul>
+<h4 id="对照项32mdd">对照项32：MDD</h4>
+<ul>
+<li><strong>论文：</strong> 最大回撤来自一条定义一致的权益曲线。</li>
+<li><strong>作者sample：</strong> 主要使用EOD equity，但未系统区分数据tier。</li>
+<li><strong>当前实现：</strong> 每个profile与tier独立生成完整指标，MDD只来自该组合自己的calendarised equity curve；禁止从不同tier拼接CAGR、MDD或Calmar。</li>
+<li><strong>为什么重要：</strong> 一个tier的收益与另一个tier的回撤没有共同权益路径，混合后的风险收益比没有数学定义。</li>
+</ul>
+<h4 id="对照项33alphabeta">对照项33：Alpha/Beta</h4>
+<ul>
+<li><strong>论文：</strong> 需要策略和SPY对齐收益；严谨推断还应考虑时间序列相关与稳健标准误。</li>
+<li><strong>作者sample：</strong> 通常是简单OLS或等价点估计，输入benchmark也常是price return。</li>
+<li><strong>当前实现：</strong> 在对齐的SPY total-return sessions上计算beta和年化alpha点估计；尚未实现HAC标准误、置信区间和独立daily benchmark。</li>
+<li><strong>为什么重要：</strong> 点估计可以描述样本关系，但没有稳健误差就不能判断alpha是否统计显著；分钟文件自身的close缺陷也可能同时影响回归两边。</li>
+</ul>
+<h3 id="可复现性与验证">20.6 可复现性与验证</h3>
+<h4 id="对照项34数据审计">对照项34：数据审计</h4>
+<ul>
+<li><strong>论文：</strong> 数据工程不是论文重点，读者通常只能接受作者所用IQFeed样本。</li>
+<li><strong>作者sample：</strong> 依赖输入文件，没有完整发布manifest、hash和异常证据链。</li>
+<li><strong>当前实现：</strong> 数据发布记录source hash、依赖锁、expected/observed边界、异常reports、manifest、<code>_SUCCESS</code>和Git commit；atomic publish避免半成品被当作成功run，latest pointer只指向完整发布。</li>
+<li><strong>为什么重要：</strong> 同名文件不代表同一数据。没有边界、hash和成功标记，就无法证明两次回测使用了同一个输入，也无法区分零异常与审计文件缺失。</li>
+</ul>
+<h4 id="对照项35测试">对照项35：测试</h4>
+<ul>
+<li><strong>论文：</strong> 没有公开覆盖这些工程语义的完整自动测试矩阵。</li>
+<li><strong>作者sample：</strong> 主要是教学与结果展示代码，不以生产级回归检查为目标。</li>
+<li><strong>当前实现：</strong> 截至本报告版本有62项engine checks与28项data self-tests，覆盖窗口、halt、订单、反手、成本、参数生效、unknown exit、benchmark anchor和不可变发布读取等。</li>
+<li><strong>为什么重要：</strong> 测试的目标不是证明策略赚钱，而是防止代码修改静默改变策略定义、配置字段只声明未使用，或正式发布与普通run读取结果漂移。</li>
+</ul>
+<p>当前验证边界和Q24独立复现实验见第23节。</p>
+<hr />
+<h2 id="benchmark-与策略收益不是同一件事">21. Benchmark 与策略收益不是同一件事</h2>
+<p>策略收益回答：</p>
+<blockquote>
+<p>交易规则本身赚了多少？</p>
+</blockquote>
+<p>Benchmark 回答：</p>
+<blockquote>
+<p>与长期持有SPY相比，是否有超额收益？</p>
+</blockquote>
+<p>当前引擎计算：</p>
+<ul>
+<li>SPY price return；</li>
+<li>SPY total return；</li>
+<li>excess CAGR；</li>
+<li>beta；</li>
+<li>annualised alpha；</li>
+<li>information ratio。</li>
+</ul>
+<p>处理原则：</p>
+<ul>
+<li>invalid close 是 NaN，不能用最后可得bar冒充收盘；</li>
+<li>evaluation首日前增加一个有效close anchor；</li>
+<li><code>pct_change(fill_method=None)</code>，不自动填补；</li>
+<li>strategy和benchmark使用相同session时间轴；</li>
+<li>benchmark total return使用同一分红文件。</li>
+</ul>
+<p>论文表中的 SPY Buy&amp;Hold 更接近 raw-price benchmark。当前经济比较以 total return 为主要基准，因此 benchmark、alpha和excess不应直接宣称与论文表格逐项相同。</p>
+<p>正式报告仍建议接入独立 daily SPY raw-close 数据，因为分钟文件若缺少真实尾盘，无法恢复当天真正的收盘价。</p>
+<hr />
+<h2 id="统计指标如何解释">22. 统计指标如何解释</h2>
+<h3 id="total-return">Total Return</h3>
+<p><span class="math display">\[
+TotalReturn
+=
+\prod_t(1+r_t)-1
+\]</span></p>
+<h3 id="cagr">CAGR</h3>
+<p>按首末实际日期的年数计算，而不是用保留下来的收益行数假设经过了多少年。</p>
+<h3 id="volatility">Volatility</h3>
+<p>完整evaluation session日收益的样本标准差乘 <span class="math inline">\(\sqrt{252}\)</span>。</p>
+<h3 id="sharpe">Sharpe</h3>
+<p><span class="math display">\[
+Sharpe
+=
+\frac{
+\overline r-r_f/252
+}{
+s_r
+}
+\sqrt{252}
+\]</span></p>
+<p>主指标是 <code>Sharpe_calendar</code>。没有仓位或没有信号的交易日仍留在日历时间轴上。</p>
+<p>不能只选择有交易的日收益再直接乘 <span class="math inline">\(\sqrt{252}\)</span>，否则会机械抬高 Sharpe。</p>
+<h3 id="maximum-drawdown">Maximum Drawdown</h3>
+<p>从同一条复利权益曲线计算峰值到后续谷值的最大跌幅。</p>
+<h3 id="hit-ratio">Hit Ratio</h3>
+<p>当前 headline <code>Hit%</code> 是非零日收益中正收益日的比例。论文另有 trade-level hit ratio，两者不能混用。</p>
+<hr />
+<h2 id="当前验证证据">23. 当前验证证据</h2>
+<p>截至本文编写时，项目记录的验证包括：</p>
+<ul>
+<li><code>python test_engine.py</code>：62项引擎检查；</li>
+<li><code>python prepare_spy_data.py --self-test</code>：28项数据层检查；</li>
+<li>不可变 <code>data-v1.0</code> 与普通pipeline run的等价加载检查；</li>
+<li>halt持仓与未成交订单的复牌gap测试；</li>
+<li>反手quantity、commission和slippage测试；</li>
+<li>14-session warm-up和缺失slot测试；</li>
+<li>dividend band adjustment测试；</li>
+<li><code>trade_freq</code>、<code>sigma_window</code>、<code>use_vwap</code>、<code>sizing</code>参数真实生效测试；</li>
+<li>final-bar round-trip防护；</li>
+<li>unknown exit不污染AUM；</li>
+<li>benchmark首日anchor和invalid close处理；</li>
+<li>Cfg字段使用审计，防止参数只声明但未被代码读取。</li>
+</ul>
+<p>论文Q24独立复现实验运行：</p>
+<pre class="text"><code>3 profiles
+× 3 tiers
+× 2 dividend modes
+= 18 cells</code></pre>
+<p>其中：</p>
+<pre class="text"><code>paper_spec × halt_aware × with_dividends</code></pre>
+<p>在严格可比的206个月中，月收益平均绝对误差为0.3059个百分点；忽略分红时为0.3539个百分点。这个结果支持当前 band 分红调整和 halt-aware 口径，但不能证明逐行 bit parity：</p>
+<ul>
+<li>当前数据源不是论文的IQFeed；</li>
+<li>当前数据从2008-01-22开始，论文从2007年5月开始；</li>
+<li>primary组合是在初步观察后登记的诊断组合，不是盲预注册；</li>
+<li>部分月份仍存在明显差异。</li>
+</ul>
+<p>该实验只用于论文复现诊断，不是正式 post-publication 经济评价。</p>
+<hr />
+<h2 id="当前实现仍然缺少什么">24. 当前实现仍然缺少什么</h2>
+<p>即使 <code>corrected_execution</code> 比论文回测更现实，也仍然不是完整实盘模拟。</p>
+<p>尚未完成：</p>
+<ol type="1">
+<li>完整signals / orders / fills / round-trip ledger；</li>
+<li>正现金、借入现金、多头notional、空头notional的独立time-integral；</li>
+<li>完整融资和short borrow成本；</li>
+<li>依订单规模、ADV、波动率和参与率变化的market impact；</li>
+<li>排队位置和部分成交模型；</li>
+<li>独立daily SPY raw-close benchmark；</li>
+<li>唯一的可执行evaluation runner；</li>
+<li>bootstrap/HAC等统计不确定性；</li>
+<li>冻结后的唯一post-publication正式报告。</li>
+</ol>
+<p>因此：</p>
+<blockquote>
+<p><code>corrected_execution</code> 是比论文复现更诚实的历史模拟，但仍应视为完整实盘成本前的上限估计。</p>
+</blockquote>
+<hr />
+<h2 id="阅读项目结果时应使用哪个组合">25. 阅读项目结果时应使用哪个组合</h2>
+<h3 id="作者-sample-归因">作者 sample 归因</h3>
+<pre class="text"><code>official_sample_compatible × paper_ready</code></pre>
+<p>用于理解作者 notebook 的主要约定，不用于实盘结论。</p>
+<h3 id="论文完整数据复现基准">论文完整数据复现基准</h3>
+<pre class="text"><code>paper_spec × paper_ready</code></pre>
+<p>用于回答严格完整分钟数据下的论文规则表现。</p>
+<h3 id="q24-月收益诊断">Q24 月收益诊断</h3>
+<pre class="text"><code>paper_spec × halt_aware × with_dividends</code></pre>
+<p>当前与论文2025-09-22修订版Q24月表最接近，但属于已披露的观察后诊断选择。</p>
+<h3 id="当前主要经济口径">当前主要经济口径</h3>
+<pre class="text"><code>corrected_execution × halt_aware × with_dividends</code></pre>
+<p>仍需加入完整融资、借券、market impact和独立benchmark后，才能形成最终经济结论。</p>
+<hr />
+<h2 id="最容易产生误解的十句话">26. 最容易产生误解的十句话</h2>
+<h3 id="误解1突破upper-band就做多">误解1：“突破upper band就做多”</h3>
+<p>不完整。最终策略还要求价格高于VWAP。</p>
+<h3 id="误解2vwap是vendor提供的每分钟vwap列">误解2：“VWAP是vendor提供的每分钟VWAP列”</h3>
+<p>不正确。策略使用从开盘到当前minute的累计VWAP。</p>
+<h3 id="误解3过去14日就是最近14个有效值">误解3：“过去14日就是最近14个有效值”</h3>
+<p>不正确。缺失观察占槽位，不能向前找更老数据补足。</p>
+<h3 id="误解4没有bar的halt期间没有pnl">误解4：“没有bar的halt期间没有PnL”</h3>
+<p>不正确。已有持仓承担复牌gap，只是不虚构halt内逐分钟价格。</p>
+<h3 id="误解5信号出现就已经持仓">误解5：“信号出现就已经持仓”</h3>
+<p>不正确。<code>corrected_execution</code> 必须等下一可执行open真实成交。</p>
+<h3 id="误解6反手是一笔一单位交易">误解6：“反手是一笔一单位交易”</h3>
+<p>不正确。多翻空或空翻多需要2N股成交量。</p>
+<h3 id="误解7最后一根可得bar就是收盘价">误解7：“最后一根可得bar就是收盘价”</h3>
+<p>不正确。尾盘截断时真实收盘未知。</p>
+<h3 id="误解8只删除坏日不会改变好日结果">误解8：“只删除坏日，不会改变好日结果”</h3>
+<p>不正确。previous close、14日band和dvol都会被重新定义。</p>
+<h3 id="误解9论文结果等于可实盘结果">误解9：“论文结果等于可实盘结果”</h3>
+<p>不正确。论文的成交、融资、借券和impact假设仍偏简化。</p>
+<h3 id="误解10全样本cagr高就说明策略现在有效">误解10：“全样本CAGR高就说明策略现在有效”</h3>
+<p>不正确。真正的研究问题是2024-05-01以后：</p>
+<pre class="text"><code>gross edge per traded share
+是否仍高于
+execution + financing + borrow + impact cost per traded share</code></pre>
+<hr />
+<h2 id="代码与资料导航">27. 代码与资料导航</h2>
+<table>
+<thead>
+<tr class="header">
+<th>文件</th>
+<th>什么时候读</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>../Intraday-momentum.pdf</code></td>
+<td>查看论文原文、公式、图表和Q24</td>
+</tr>
+<tr class="even">
+<td><code>PAPER_SAMPLE_CURRENT_COMPARISON_ZH.md</code></td>
+<td>逐项查看论文、作者sample和当前实现差异</td>
+</tr>
+<tr class="odd">
+<td><code>README_DATA.md</code></td>
+<td>理解数据发布、validity、tier和halt语义</td>
+</tr>
+<tr class="even">
+<td><code>README_ENGINE.md</code></td>
+<td>理解三profile、状态机、成本和统计</td>
+</tr>
+<tr class="odd">
+<td><code>../prepare_spy_data.py</code></td>
+<td>数据检查、交易日历、component validity</td>
+</tr>
+<tr class="even">
+<td><code>../im_engine_v4.py</code></td>
+<td>特征、信号、定仓、订单、PnL和报告</td>
+</tr>
+<tr class="odd">
+<td><code>../test_engine.py</code></td>
+<td>引擎行为的合成回归检查</td>
+</tr>
+<tr class="even">
+<td><code>../config/evaluation_spec_v1.yml</code></td>
+<td>冻结的post-publication评估规则</td>
+</tr>
+<tr class="odd">
+<td><code>../config/data_release_v1.yml</code></td>
+<td>data-v1.0边界和环境契约</td>
+</tr>
+<tr class="even">
+<td><code>../experiments/paper_replication_v1/README.md</code></td>
+<td>Q24月收益独立复现实验</td>
+</tr>
+</tbody>
+</table>
+<p>关键代码入口：</p>
+<pre class="text"><code>im_engine_v4.Cfg
+im_engine_v4.profile_cfg
+im_engine_v4.load_run
+im_engine_v4.build_features
+im_engine_v4.config_validity
+im_engine_v4._session_pnl
+im_engine_v4.backtest
+im_engine_v4.stats
+im_engine_v4.benchmark
+im_engine_v4.report</code></pre>
+<hr />
+<h2 id="最终总结">28. 最终总结</h2>
+<p>论文策略的核心并不复杂：</p>
+<pre class="text"><code>过去14日同minute平均绝对波动
+→ 构造动态upper/lower band
+→ 用累计VWAP确认方向
+→ 每30分钟决定long / short / flat
+→ 用过去14日日波动率确定股数
+→ 最大4倍杠杆
+→ 收盘全部平仓</code></pre>
+<p>真正困难的是把每一个词变成不会产生歧义的代码：</p>
+<pre class="text"><code>“过去14日”如何处理缺失？
+“10:30交易”使用哪个bar？
+“VWAP”是单bar还是累计？
+信号出现但下一minute halt，算不算已经持仓？
+尾盘缺失时用什么价格平仓？
+反手收多少成交量和成本？
+除息日previous close如何定义？</code></pre>
+<p>本项目的三profile设计正是为了把这些影响拆开：</p>
+<ul>
+<li><code>official_sample_compatible</code> 解释作者代码；</li>
+<li><code>paper_spec</code> 复现论文规则和作者明确意图；</li>
+<li><code>corrected_execution</code> 评估更诚实的可执行结果。</li>
+</ul>
+<p>任何结果都必须同时说明：</p>
+<pre class="text"><code>profile
+tier
+dividend mode
+slippage
+data release
+code hash
+date range</code></pre>
+<p>否则一个孤立的 CAGR 或 Sharpe 无法说明它代表的是论文复现、作者sample兼容，还是现实化经济结果。</p>
+</body>
+</html>
