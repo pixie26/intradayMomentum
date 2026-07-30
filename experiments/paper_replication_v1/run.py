@@ -207,6 +207,19 @@ def performance_and_curve(
         "profile": profile,
         "tier": tier,
         "dividend_mode": dividend_mode,
+        "parameter_trade_freq_minutes": cfg.trade_freq,
+        "parameter_sigma_window_sessions": cfg.sigma_window,
+        "parameter_sigma_min_periods": (
+            cfg.sigma_window if cfg.sigma_min_periods is None
+            else cfg.sigma_min_periods),
+        "parameter_band_multiplier": cfg.band_mult,
+        "parameter_fill_price": cfg.fill_price,
+        "parameter_execution_lag_minutes": cfg.exec_lag_minutes,
+        "parameter_commission_per_share": cfg.comm_per_share,
+        "parameter_slippage_per_share": cfg.slip_per_share,
+        "parameter_share_rounding": cfg.share_rounding,
+        "parameter_strict_eligible_rolling": cfg.strict_eligible_rolling,
+        "parameter_unknown_exit_policy": cfg.unknown_exit_policy,
         **{f"strategy_{key}": value
            for key, value in strategy_metrics.items()},
         **benchmark_metrics,
@@ -542,6 +555,10 @@ code { background:#edf2f5; padding:2px 5px; border-radius:4px; }
   <div class="card"><div class="label">策略 Sharpe</div><div class="value" id="cSharpe"></div></div>
   <div class="card"><div class="label">SPY CAGR</div><div class="value" id="cSpy"></div></div>
 </div>
+<div class="panel" style="padding:12px 18px">
+  <strong>当前组合实际参数：</strong>
+  <span class="muted" id="parameterLine"></span>
+</div>
 
 <section class="panel">
   <h2>1. 每个月：论文 Q24 vs 本地复现</h2>
@@ -591,7 +608,7 @@ code { background:#edf2f5; padding:2px 5px; border-radius:4px; }
       </div>
     </div>
     <div class="table-wrap" style="max-height:none">
-      <table><thead><tr><th>指标</th><th>论文策略</th>
+      <table><thead><tr><th>指标</th><th>论文策略</th><th>论文 SPY</th>
         <th>本地策略</th><th>本地 SPY</th></tr></thead>
         <tbody id="performanceBody"></tbody></table>
     </div>
@@ -747,24 +764,34 @@ function renderPerformance(p) {
   const paper=CONFIG.paper.performance_reference;
   const bench=paper.benchmark;
   const rows=[
-    ["样本区间",paper.period,p.strategy_First+" to "+p.strategy_Last,
+    ["样本区间",paper.period,paper.period,
+      p.strategy_First+" to "+p.strategy_Last,
       p.strategy_First+" to "+p.strategy_Last],
-    ["Total Return %",paper.total_return_pct,p["strategy_TotRet%"],p["spy_total_TotRet%"]],
-    ["CAGR / IRR %",paper.annual_return_pct,p["strategy_CAGR%"],p["spy_total_CAGR%"]],
-    ["Annual Volatility %",paper.volatility_pct,p["strategy_Vol%"],p["spy_total_Vol%"]],
-    ["Sharpe",paper.sharpe,p.strategy_Sharpe_calendar,p.spy_total_Sharpe],
-    ["Hit Ratio %",paper.hit_ratio_pct,p["strategy_Hit%"],p["spy_total_Hit%"]],
-    ["Maximum Drawdown %",-paper.mdd_pct,p["strategy_MDD%"],p["spy_total_MDD%"]],
-    ["Alpha annualised %",paper.alpha_annualised_pct,p["alpha_annualised%"],null],
-    ["Beta vs SPY",paper.beta,p.beta_vs_spy_total,1],
-    ["Information Ratio",null,p.InfoRatio,null],
-    ["Evaluation sessions",null,p.strategy_EvalSessions,p.benchmark_valid_sessions],
-    ["Trade units",null,p.strategy_TradeUnits,null]
+    ["Total Return %",paper.total_return_pct,bench.total_return_pct,
+      p["strategy_TotRet%"],p["spy_total_TotRet%"]],
+    ["CAGR / IRR %",paper.annual_return_pct,bench.annual_return_pct,
+      p["strategy_CAGR%"],p["spy_total_CAGR%"]],
+    ["Annual Volatility %",paper.volatility_pct,bench.volatility_pct,
+      p["strategy_Vol%"],p["spy_total_Vol%"]],
+    ["Sharpe",paper.sharpe,bench.sharpe,
+      p.strategy_Sharpe_calendar,p.spy_total_Sharpe],
+    ["Hit Ratio %",paper.hit_ratio_pct,bench.hit_ratio_pct,
+      p["strategy_Hit%"],p["spy_total_Hit%"]],
+    ["Maximum Drawdown %",-paper.mdd_pct,-bench.mdd_pct,
+      p["strategy_MDD%"],p["spy_total_MDD%"]],
+    ["Alpha annualised %",paper.alpha_annualised_pct,null,
+      p["alpha_annualised%"],null],
+    ["Beta vs SPY",paper.beta,1,p.beta_vs_spy_total,1],
+    ["Information Ratio",null,null,p.InfoRatio,null],
+    ["Evaluation sessions",null,null,p.strategy_EvalSessions,
+      p.benchmark_valid_sessions],
+    ["Trade units",null,null,p.strategy_TradeUnits,null]
   ];
   byId("performanceBody").innerHTML=rows.map(r=>'<tr><td>'+r[0]+'</td>'+
     '<td>'+(typeof r[1]==="number"?fmt(r[1],2):(r[1]??"—"))+'</td>'+
     '<td>'+(typeof r[2]==="number"?fmt(r[2],2):(r[2]??"—"))+'</td>'+
-    '<td>'+(typeof r[3]==="number"?fmt(r[3],2):(r[3]??"—"))+'</td></tr>').join('');
+    '<td>'+(typeof r[3]==="number"?fmt(r[3],2):(r[3]??"—"))+'</td>'+
+    '<td>'+(typeof r[4]==="number"?fmt(r[4],2):(r[4]??"—"))+'</td></tr>').join('');
   byId("periodNote").textContent="当前选择："+p.profile+" × "+p.tier+" × "+
     p.dividend_mode+"；本地样本 "+p.strategy_First+" 至 "+p.strategy_Last+
     "。论文 Table 3 样本为 "+paper.period+"，只作结构化参照。";
@@ -778,6 +805,19 @@ function renderAll() {
   byId("cCagr").textContent=fmt(p["strategy_CAGR%"],2)+"%";
   byId("cSharpe").textContent=fmt(p.strategy_Sharpe_calendar,2);
   byId("cSpy").textContent=fmt(p["spy_total_CAGR%"],2)+"%";
+  byId("parameterLine").textContent=[
+    "signal every "+p.parameter_trade_freq_minutes+"m",
+    "sigma "+p.parameter_sigma_window_sessions+" sessions / min "+
+      p.parameter_sigma_min_periods,
+    "band ×"+p.parameter_band_multiplier,
+    "fill="+p.parameter_fill_price,
+    "lag="+p.parameter_execution_lag_minutes+"m",
+    "commission=$"+p.parameter_commission_per_share+"/share",
+    "slippage=$"+p.parameter_slippage_per_share+"/share",
+    "rounding="+p.parameter_share_rounding,
+    "strict rolling="+p.parameter_strict_eligible_rolling,
+    "unknown exit="+p.parameter_unknown_exit_policy
+  ].join(" · ");
   renderMonthly(); renderYearly(); renderPerformance(p);
   drawEquity(CURVES.filter(selectedKey).sort((a,b)=>a.date.localeCompare(b.date)));
 }

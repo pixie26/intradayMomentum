@@ -47,11 +47,11 @@ atomically. Outputs:
 
 ## Current verified run
 
-`results/data-v1.0_q24_detailed_report_20260730/` was generated from the
+`results/data-v1.0_q24_detailed_report_20260730_v2/` was generated from the
 immutable `data-v1.0` bundle. The primary
 `paper_spec × halt_aware × with_dividends` comparison reports both all
 available paper months and the stricter fully comparable subset. See
-`results/data-v1.0_q24_detailed_report_20260730/report.html`.
+`results/data-v1.0_q24_detailed_report_20260730_v2/report.html`.
 
 Across the 18 cells, that primary combination has the lowest strict
 comparable-month MAE: 0.3059 percentage points over 206 months, versus

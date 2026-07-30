@@ -62,4 +62,4 @@ self-test、真实raw边界失败验证和不可变data-v1.0发布。独立论�
 `Intraday-momentum.pdf` 2025-09-22修订版Q24（月度/年度收益表）。
 该实验不消费或修改 `config/evaluation_spec_v1.yml`，只在运行前后核对
 其hash；输出明确标记为replication only。当前结果见
-`experiments/paper_replication_v1/results/data-v1.0_q24_detailed_report_20260730/report.html`。
+`experiments/paper_replication_v1/results/data-v1.0_q24_detailed_report_20260730_v2/report.html`。
