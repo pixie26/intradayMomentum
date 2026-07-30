@@ -1,11 +1,11 @@
 # SPY 日内动量策略：论文交易逻辑与本项目实现详解
 
-**面向读者：** 第一次接触本项目、不了解论文或分钟级回测的人  
-**论文：** *Beat the Market: An Effective Intraday Momentum Strategy for S&P500 ETF (SPY)*  
-**论文版本：** 2025-09-22 修订版，项目内文件 `Intraday-momentum.pdf`  
-**项目实现：** `prepare_spy_data.py` 数据层 + `im_engine_v4.py` 三 profile 引擎  
-**数据发布：** `data-v1.0`，明确覆盖 2008-01-22 至 2026-07-09  
-**文档性质：** 交易规则与实现说明，不是正式投资建议，也不是 post-publication 经济评价报告
+- **面向读者：** 第一次接触本项目、不了解论文或分钟级回测的人
+- **论文：** *Beat the Market: An Effective Intraday Momentum Strategy for S&P500 ETF (SPY)*
+- **论文版本：** 2025-09-22 修订版，项目内文件 `Intraday-momentum.pdf`
+- **项目实现：** `prepare_spy_data.py` 数据层 + `im_engine_v4.py` 三 profile 引擎
+- **数据发布：** `data-v1.0`，明确覆盖 2008-01-22 至 2026-07-09
+- **文档性质：** 交易规则与实现说明，不是正式投资建议，也不是 post-publication 经济评价报告
 
 ---
 
