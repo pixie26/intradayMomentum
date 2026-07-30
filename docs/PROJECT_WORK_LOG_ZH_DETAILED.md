@@ -1170,7 +1170,7 @@ SPY total return = SPY price return
 
 当前已完成：
 
-- 57项engine tests；
+- 62项engine tests（含不可变data release、普通run等价加载及无分红run兼容）；
 - 28项data tests。
 
 测试覆盖包括：

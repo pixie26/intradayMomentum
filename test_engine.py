@@ -7,6 +7,8 @@ calendar time axis.
 
 from __future__ import annotations
 
+import json
+import shutil
 import sys
 import tempfile
 from dataclasses import replace
@@ -172,7 +174,7 @@ def test_share_rounding() -> None:
     """The bug this test exists for: `share_rounding` was declared on Cfg and
     set by the notebook profile, but backtest() hard-coded np.floor."""
     import im_engine_v4 as M
-    src = Path(M.__file__).read_text()
+    src = Path(M.__file__).read_text(encoding="utf-8")
     # strip the dataclass body so declarations do not count as usage
     head = src.index("class Cfg:")
     tail = src.index("_ENUMS = {")
@@ -220,6 +222,77 @@ def build_run(tmp: Path) -> Path:
                   "cash_amount": [1.50]}).to_csv(div, index=False)
     m = P.run(P.parse_args(P._base(src, tmp / "out", "--dividends", str(div))))
     return Path(m["run_dir"])
+
+
+def build_release_bundle(run_dir: Path, release_dir: Path) -> Path:
+    """Create the immutable-release layout from a synthetic pipeline run."""
+    source_manifest_path = run_dir / "reports" / "data_manifest.json"
+    source_manifest = json.loads(source_manifest_path.read_text(encoding="utf-8"))
+    source_map = {
+        "clean.parquet": run_dir / source_manifest["outputs"]["clean"]["path"],
+        "feature_validity_minute.parquet":
+            run_dir / "feature_validity_minute.parquet",
+        "feature_validity_session.parquet":
+            run_dir / "feature_validity_session.parquet",
+        "spy_dividends_clean.csv":
+            run_dir / source_manifest["dividends"]["output"],
+        "source_run_manifest.json": source_manifest_path,
+    }
+    release_dir.mkdir()
+    files = {}
+    for name, source in source_map.items():
+        destination = release_dir / name
+        shutil.copy2(source, destination)
+        files[name] = {"sha256": E._sha(destination)}
+    release_manifest = {
+        "release_manifest_schema_version": 1,
+        "release_id": "synthetic-data-v1.0",
+        "source_run_id": source_manifest["run_id"],
+        "verified_against_run_id": source_manifest["run_id"],
+        "git_commit": source_manifest["git"]["commit"],
+        "files": files,
+    }
+    release_manifest_path = release_dir / "data_manifest.json"
+    release_manifest_path.write_text(
+        json.dumps(release_manifest, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8")
+    (release_dir / "_SUCCESS").write_text(
+        json.dumps({
+            "release_id": release_manifest["release_id"],
+            "data_manifest_sha256": E._sha(release_manifest_path),
+            "git_commit": release_manifest["git_commit"],
+        }, sort_keys=True) + "\n",
+        encoding="utf-8")
+    return release_dir
+
+
+def test_release_bundle_loading(run_dir: Path, tmp: Path) -> None:
+    cfg = profile_cfg("paper_spec")
+    release_dir = build_release_bundle(run_dir, tmp / "immutable_release")
+    source = E.load_run(run_dir, cfg)
+    release = E.load_run(release_dir, cfg)
+
+    check(release["data_bundle"]["type"] == "immutable_release",
+          f"release bundle type was not detected ({release['data_bundle']})")
+    check(release["manifest"]["run_id"] == source["manifest"]["run_id"],
+          "release did not expose the source run manifest")
+    check(E._sha(release_dir / "clean.parquet")
+          == source["manifest"]["outputs"]["clean"]["sha256"],
+          "release clean parquet differs from the source run")
+    source_ret = E.backtest(source, cfg)["ret"]
+    release_ret = E.backtest(release, cfg)["ret"]
+    check(source_ret.equals(release_ret),
+          "pipeline run and immutable release produced different returns")
+
+    no_dividend_dir = tmp / "run_without_dividends"
+    (no_dividend_dir / "reports").mkdir(parents=True)
+    no_dividend_manifest = dict(source["manifest"])
+    no_dividend_manifest["dividends"] = None
+    (no_dividend_dir / "reports" / "data_manifest.json").write_text(
+        json.dumps(no_dividend_manifest), encoding="utf-8")
+    _, _, no_dividend_paths = E._load_bundle_manifest(no_dividend_dir)
+    check(no_dividend_paths["dividends"] is None,
+          "a run without dividends should resolve without fabricating a path")
 
 
 def test_parameter_plumbing(run_dir: Path) -> None:
@@ -446,6 +519,7 @@ def main() -> int:
         test_share_rounding()
         test_config_validation()
         run_dir = build_run(tmp)
+        test_release_bundle_loading(run_dir, tmp)
         test_parameter_plumbing(run_dir)
         test_costs_and_calendar(run_dir)
         test_share_rounding_effect(run_dir)

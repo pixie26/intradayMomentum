@@ -60,7 +60,7 @@
 | MDD | 应来自同一权益曲线 | EOD为主 | 每tier独立完整指标；不跨tier拼接 | 避免无定义的混合Calmar |
 | Alpha/Beta | 应使用对齐total return和稳健误差 | 简单OLS | 当前对齐benchmark；正式版仍建议HAC和独立daily benchmark | 提升统计可信度 |
 | 数据审计 | 论文非重点 | sample依赖输入 | hash、manifest、reports、`_SUCCESS`、latest pointer | 保证可复现和可追溯 |
-| 测试 | 无完整公开测试矩阵 | 教学代码 | 项目方最新报告57 engine + 28 data tests | 防止静默patch失败和配置未使用 |
+| 测试 | 无完整公开测试矩阵 | 教学代码 | 当前62 engine + 28 data tests | 防止静默patch失败、配置未使用和正式release读取漂移 |
 
 ---
 
@@ -170,6 +170,15 @@ post-publication gross edge per traded share
 
 - `official_sample_compatible × paper_ready`
 - `paper_spec × paper_ready`
+
+对于2025-09-22修订版论文Q24的月度收益表，独立复现实验的
+`3 profile × 3 tier × 2 dividend mode`完整对照发现：
+`paper_spec × halt_aware × with_dividends`的严格可比月度MAE最低，
+为0.306个百分点；同组合忽略分红时为0.354个百分点。尤其2020年：
+论文26.8%，with-dividends组合为26.5%，而`paper_ready`为29.3%。
+这说明Q24更新表保留了官方熔断日，并更符合除息调整后的band锚点；
+`paper_ready`仍作为完整分钟的数据完整性基准。详见
+`experiments/paper_replication_v1/`。
 
 ### Economic结果
 

@@ -131,12 +131,13 @@ file's SHA and event count, and the full engine config.
 
 ## Tests
 
-`python test_engine.py` — 57 checks covering halt fill semantics, reversal unit
+`python test_engine.py` — 62 checks covering halt fill semantics, reversal unit
 accounting and minimum-commission conventions, the final-bar round-trip guard,
 `exec_lag_minutes` fill timing, strict eligible-session rolling, validity
 filtering of the volatility window, `ignore_dividends`, unknown-exit exclusion,
 parameter plumbing (`trade_freq`, `sigma_window`, `use_vwap`, `sizing`),
-dividend band adjustment, cost decomposition and the calendar time axis.
+dividend band adjustment, cost decomposition, the calendar time axis, and
+equivalent loading from a pipeline run or immutable `data_release_v1` bundle.
 `python prepare_spy_data.py --self-test` — 28 data-layer checks.
 
 ## Not yet implemented

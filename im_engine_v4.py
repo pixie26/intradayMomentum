@@ -211,11 +211,76 @@ def _git() -> dict:
         return {"commit": None, "dirty": None}
 
 
+def _load_bundle_manifest(
+        bundle_dir: Path) -> tuple[dict, dict, dict[str, Path | None]]:
+    """Resolve either a pipeline run or the immutable data-release layout."""
+    run_manifest_path = bundle_dir / "reports" / "data_manifest.json"
+    if run_manifest_path.exists():
+        manifest = json.loads(run_manifest_path.read_text(encoding="utf-8"))
+        dividend_manifest = manifest.get("dividends")
+        paths: dict[str, Path | None] = {
+            "clean": bundle_dir / manifest["outputs"]["clean"]["path"],
+            "vmin": bundle_dir / "feature_validity_minute.parquet",
+            "vsess": bundle_dir / "feature_validity_session.parquet",
+            "dividends": (bundle_dir / dividend_manifest["output"]
+                          if dividend_manifest is not None else None),
+        }
+        bundle_meta = {
+            "type": "pipeline_run",
+            "run_id": manifest.get("run_id"),
+            "manifest_path": str(run_manifest_path),
+            "manifest_sha256": _sha(run_manifest_path),
+        }
+        return manifest, bundle_meta, paths
+
+    release_manifest_path = bundle_dir / "data_manifest.json"
+    source_manifest_path = bundle_dir / "source_run_manifest.json"
+    if not release_manifest_path.exists() or not source_manifest_path.exists():
+        raise FileNotFoundError(
+            f"{bundle_dir} is neither a pipeline run nor an immutable data release.")
+
+    release = json.loads(release_manifest_path.read_text(encoding="utf-8"))
+    success_path = bundle_dir / "_SUCCESS"
+    success = json.loads(success_path.read_text(encoding="utf-8"))
+    release_manifest_sha = _sha(release_manifest_path)
+    if success.get("data_manifest_sha256") != release_manifest_sha:
+        raise RuntimeError(
+            f"{bundle_dir} release manifest does not match its _SUCCESS marker.")
+    if success.get("release_id") != release.get("release_id"):
+        raise RuntimeError(
+            f"{bundle_dir} release ID does not match its _SUCCESS marker.")
+
+    source_file = (release.get("files") or {}).get("source_run_manifest.json", {})
+    expected_source_sha = source_file.get("sha256")
+    if expected_source_sha and _sha(source_manifest_path) != expected_source_sha:
+        raise RuntimeError(
+            f"{bundle_dir} source run manifest does not match the release manifest.")
+
+    manifest = json.loads(source_manifest_path.read_text(encoding="utf-8"))
+    paths = {
+        "clean": bundle_dir / "clean.parquet",
+        "vmin": bundle_dir / "feature_validity_minute.parquet",
+        "vsess": bundle_dir / "feature_validity_session.parquet",
+        "dividends": (bundle_dir / "spy_dividends_clean.csv"
+                      if manifest.get("dividends") is not None else None),
+    }
+    bundle_meta = {
+        "type": "immutable_release",
+        "release_id": release.get("release_id"),
+        "release_manifest_path": str(release_manifest_path),
+        "release_manifest_sha256": release_manifest_sha,
+        "source_run_id": release.get("source_run_id"),
+        "verified_against_run_id": release.get("verified_against_run_id"),
+        "git_commit": release.get("git_commit"),
+    }
+    return manifest, bundle_meta, paths
+
+
 def load_run(run_dir: str | Path, cfg: Cfg) -> dict:
     run_dir = Path(run_dir)
     if not (run_dir / "_SUCCESS").exists():
         raise RuntimeError(f"{run_dir} has no _SUCCESS marker.")
-    man = json.loads((run_dir / "reports" / "data_manifest.json").read_text())
+    man, bundle_meta, paths = _load_bundle_manifest(run_dir)
 
     if cfg.require_config_match:
         dc = man.get("default_config", {})
@@ -231,7 +296,9 @@ def load_run(run_dir: str | Path, cfg: Cfg) -> dict:
         div_meta = {"loaded": False, "ignored_by_config": True,
                     "file_present_in_run": dman is not None}
     elif dman is not None:
-        dpath = run_dir / dman["output"]
+        dpath = paths["dividends"]
+        if dpath is None:
+            raise RuntimeError("Dividend manifest exists but its file path is absent.")
         raw = pd.read_csv(dpath, parse_dates=["ex_date"])
         div = raw.set_index(pd.DatetimeIndex(raw["ex_date"]).normalize())["cash_amount"]
         div_meta = {"loaded": True, "path": str(dpath), "sha256": _sha(dpath),
@@ -245,9 +312,10 @@ def load_run(run_dir: str | Path, cfg: Cfg) -> dict:
             "--dividends, or set Cfg(ignore_dividends=True) and disclose it.")
 
     return {"manifest": man, "run_dir": str(run_dir),
-            "bars": pd.read_parquet(run_dir / man["outputs"]["clean"]["path"]),
-            "vmin": pd.read_parquet(run_dir / "feature_validity_minute.parquet"),
-            "vsess": pd.read_parquet(run_dir / "feature_validity_session.parquet"),
+            "data_bundle": bundle_meta,
+            "bars": pd.read_parquet(paths["clean"]),
+            "vmin": pd.read_parquet(paths["vmin"]),
+            "vsess": pd.read_parquet(paths["vsess"]),
             "dividends": div, "dividend_meta": div_meta}
 
 
@@ -801,6 +869,7 @@ def report(run_dir: str | Path, cfg: Cfg,
         "data_script_sha256": man["script_sha256"][:16],
         "source_sha256": man["source_sha256"][:16],
         "dividends": data["dividend_meta"],
+        "data_bundle": data["data_bundle"],
         "engine_config": asdict(cfg),
     }
     return out

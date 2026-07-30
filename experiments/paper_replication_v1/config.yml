@@ -1,0 +1,68 @@
+experiment_id: paper-replication-v1
+classification: replication_only_not_economic_evaluation
+registered_utc: "2026-07-30"
+registered_after_preliminary_comparison: true
+
+paper:
+  path: Intraday-momentum.pdf
+  sha256: 865010dfd938d513c1cd22a7be5932bc232afe498c3cf493d6d8bd4b0de86ebb
+  title: Beat the Market - An Effective Intraday Momentum Strategy for S&P500 ETF (SPY)
+  first_version: "2024-05-10"
+  revision: "2025-09-22"
+  faq: Q24
+  description_page: 41
+  table_page: 42
+  reference_table: experiments/paper_replication_v1/paper_q24_returns.csv
+  performance_reference:
+    page: 15
+    strategy: Momentum Curr.Band + VWAP Dyn.
+    period: 2007 to early 2024
+    total_return_pct: 1985.0
+    annual_return_pct: 19.6
+    volatility_pct: 14.3
+    sharpe: 1.33
+    hit_ratio_pct: 43.0
+    mdd_pct: 25.0
+    alpha_annualised_pct: 19.6
+    beta: -0.07
+    benchmark:
+      strategy: SPY Buy&Hold
+      total_return_pct: 227.0
+      annual_return_pct: 7.2
+      volatility_pct: 20.2
+      sharpe: 0.45
+      hit_ratio_pct: 54.0
+      mdd_pct: 56.0
+
+data:
+  bundle: data_release_v1
+  required_release_id: data-v1.0
+
+matrix:
+  profiles:
+    - official_sample_compatible
+    - paper_spec
+    - corrected_execution
+  tiers:
+    - paper_ready
+    - halt_aware
+    - exploratory
+  dividend_modes:
+    - with_dividends
+    - ignore_dividends
+  primary_profile: paper_spec
+  primary_tier: halt_aware
+  primary_dividend_mode: with_dividends
+
+comparison:
+  monthly_aggregation: compound_daily_net_returns
+  yearly_aggregation: compound_daily_net_returns_over_reported_months
+  absolute_difference_thresholds_pp: [0.5, 1.0]
+  exclude_incomplete_engine_months_from_summary: true
+  no_parameter_fitting: true
+
+isolation:
+  protected_files:
+    - config/evaluation_spec_v1.yml
+  result_label: replication_only
+  prohibition: Results must not be presented as the formal economic evaluation.

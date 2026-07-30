@@ -352,7 +352,7 @@ slippage   = Σ slippage/share × quantity
 - 只将 `Sharpe_calendar` 作为主Sharpe；
 - benchmark屏蔽invalid close并加入首日anchor；
 - 枚举和参数在读取数据前校验；
-- 57项 engine test + 18项 data test（项目方最新报告）。
+- 62项 engine test + 28项 data self-test（2026-07-30本工作区实跑）。
 
 在本次交付环境中，三个最新 Python 文件均通过 `py_compile`。完整测试结果沿用项目方提供的最新运行记录。
 

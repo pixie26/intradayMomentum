@@ -9,9 +9,11 @@
 3. `docs/README_DATA.md`：数据层接口和运行方式；
 4. `docs/README_ENGINE.md`：三profile和引擎语义；
 5. `config/evaluation_spec_v1.yml`：冻结的post-publication评估spec；
-6. `config/data_release_v1.yml`：data-v1.0候选边界与环境契约；
+6. `config/data_release_v1.yml`：data-v1.0冻结边界与环境契约；
 7. 项目根目录的 `prepare_spy_data.py`、`im_engine_v4.py`；
-8. `test_engine.py`。
+8. `test_engine.py`；
+9. `experiments/paper_replication_v1/README.md`：独立论文Q24复现实验，
+   不属于正式经济评价。
 
 ## 文件说明
 
@@ -37,7 +39,8 @@ daily SPY benchmark 正式发布文件。
   28项data-layer checks通过；
 - 真实raw边界审计确认观察范围为2008-01-22至2026-07-09；data-v1.0
   已用独立决策记录把预期起点固定为2008-01-22；
-- 57项engine tests为既有项目记录，本次data-layer修正未重跑；
+- 2026-07-30 本工作区运行 `python test_engine.py`，62项engine checks通过；
+  其中新增不可变 `data_release_v1` 与普通pipeline run等价性检查；
 - 本包保留原始上传文件，其SHA与 `manifest/` 记录可核对。
 
 
@@ -50,4 +53,13 @@ python test_engine.py
 ```
 
 本次工作区已按 `requirements.lock` 安装依赖并完成28项data-layer
-self-test及真实raw边界失败验证；未发布真实全样本pipeline run，也未回测。
+self-test、真实raw边界失败验证和不可变data-v1.0发布。独立论文复现实验
+已经运行；正式post-publication经济评价仍未运行。
+
+## 独立论文复现
+
+`experiments/paper_replication_v1/` 固定复现
+`Intraday-momentum.pdf` 2025-09-22修订版Q24（月度/年度收益表）。
+该实验不消费或修改 `config/evaluation_spec_v1.yml`，只在运行前后核对
+其hash；输出明确标记为replication only。当前结果见
+`experiments/paper_replication_v1/results/data-v1.0_q24_detailed_report_20260730/report.html`。

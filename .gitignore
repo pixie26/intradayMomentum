@@ -8,4 +8,11 @@ data_release_v1/
 
 # Local validation scratch space.
 .codex_spreadsheet_tmp/
+tmp/
 __pycache__/
+
+# Superseded local paper-replication drafts; the dividend comparison is tracked.
+experiments/paper_replication_v1/results/data-v1.0_q24_20260730/
+experiments/paper_replication_v1/results/data-v1.0_q24_20260730_v2/
+experiments/paper_replication_v1/results/data-v1.0_q24_20260730_v3/
+experiments/paper_replication_v1/results/data-v1.0_q24_dividend_comparison_20260730/
