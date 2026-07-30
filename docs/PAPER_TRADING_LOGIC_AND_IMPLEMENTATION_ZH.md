@@ -1053,23 +1053,305 @@ for day in complete_exchange_calendar:
 
 ---
 
-## 20. 论文、作者 sample 与当前实现的关键差异
+## 20. 论文、作者 sample 与当前实现：35项逐项对照
 
-| 项目 | 论文正文 | 作者 Python sample | `paper_spec` / 当前严格实现 |
-|---|---|---|---|
-| 同minute窗口 | 14日 | 13个值即可 | 严格14个eligible sessions |
-| 日波动窗口 | 最近完成14日 | 漏掉最近一天 | 使用 \(t-1..t-14\) |
-| NaN volatility | 未明确 | 4× | 不交易 |
-| 前收分红调整 | 正文未明确 | 减当日分红 | 减当日分红并记录来源 |
-| VWAP价格代理 | 未明确 | HLC3 | 默认HLC3，可显式配置 |
-| 交易频率 | HH:00/HH:30 | 每30个 `min_from_open` | start-labelled grid每30分钟 |
-| 成交口径 | 描述存在解释空间 | shifted close exposure | paper按signal close；corrected按next open |
-| 股数 | floor | round | paper floor；sample round |
-| Commission | `$0.0035/share` | 加`$0.35/order`最低值 | 两者都计 |
-| Slippage | `$0.001/share` | 代码通常未扣 | paper明确扣0.001 |
-| 缺失数据 | 未系统说明 | 现有行rolling | 完整calendar、缺失占槽位 |
-| Halt | 未系统说明 | 无状态机 | 显式order/fill和复牌gap |
-| Benchmark | SPY Buy&Hold | 通常price return | 同时报price/total，经济比较以total为主 |
+这一节完整覆盖 `PAPER_SAMPLE_CURRENT_COMPARISON_ZH.md` 中“逐项差异矩阵”的35个项目。项目名称和顺序与该矩阵一致，便于逐行审计。
+
+需要先区分三种证据：
+
+1. **论文明确规则**：论文正文、公式或参数表直接写明；
+2. **作者sample convention**：公开Python sample实际执行的代码语义；
+3. **当前项目规则**：`im_engine_v4.py`、`prepare_spy_data.py`与发布数据中的显式契约。
+
+论文没有讨论的异常数据规则，不能写成“论文规定如此”。这类项目会明确标为“论文未系统说明”，当前处理属于防泄漏、可执行性或研究工程选择。
+
+```mermaid
+flowchart LR
+    P["论文正文<br/>经济逻辑与公式"] --> PS["paper_spec<br/>论文复现口径"]
+    S["作者 sample<br/>教学代码 conventions"] --> OS["official_sample_compatible<br/>sample 归因口径"]
+    PS --> CE["corrected_execution<br/>成交与数据现实化"]
+    D["完整交易日历<br/>component validity<br/>dividend provenance"] --> PS
+    D --> CE
+```
+
+### 20.1 特征、窗口与价格锚点
+
+#### 对照项1：同分钟噪声窗口
+
+- **论文：** 对每个日内时刻，使用前14个交易日同一时刻的绝对开盘移动，计算 `sigma_open`。
+- **作者sample：** 使用按现有数据行进行的rolling，并允许 `min_periods=13`；第13个可得观测后就可能产生band。
+- **当前实现：** `paper_spec`和`corrected_execution`要求完整的14个eligible calendar slots；`official_sample_compatible`保留13个值即可和row-based rolling的sample convention。
+- **为什么重要：** 13个值会提前一个session结束warm-up；按现有行rolling还会在某日该minute缺失时向前多取更老数据，改变论文“前14个交易日”的时间含义。
+
+详细公式和缺失slot示例见第5节。
+
+#### 对照项2：日波动率窗口
+
+- **论文：** 当天定仓只能使用最近已经完成的14个交易日收益，即 \(t-1\) 至 \(t-14\)。
+- **作者sample：** 实际切片对应 `d-15..d-2`，漏掉最近完成的 \(t-1\)，并多取一个更老session。
+- **当前实现：** `paper_spec`和`corrected_execution`使用 `dvol_lag=1`；sample profile保留 `dvol_lag=2`。
+- **为什么重要：** `dvol`直接进入 `target_vol / dvol`。窗口错一天不仅改变一个统计量，还会改变当天全部成交的股数和杠杆。
+
+详细公式见第9节。
+
+#### 对照项3：波动率缺失
+
+- **论文：** 没有给出“14日波动率无法计算时如何交易”的明确fallback；从风险定仓逻辑看，此时不存在可靠的仓位依据。
+- **作者sample：** NaN volatility落入最大杠杆fallback，等价于在风险信息最不足时使用4倍杠杆。
+- **当前实现：** `paper_spec`和`corrected_execution`的 `nanvol_action="skip"`，不交易；sample profile保留 `max_lev` 以复现作者convention。
+- **为什么重要：** 这是风险方向相反的选择。缺失风险估计不应被解释成“风险很低”。
+
+#### 对照项4：Previous close
+
+- **论文：** band公式使用前一交易日收盘价作为锚点；论文正文没有完整定义坏日、缺失收盘和除息日的工程处理。
+- **作者sample：** 从现有数据构造前收，并对现金分红作简化扣减。
+- **当前实现：** previous close来自完整exchange calendar上的上一session；只有上一session的 `close_valid=True` 才可作为锚点，再形成 `prev_close_adj = prev_close - dividend_t`。
+- **为什么重要：** 如果先删除坏日再shift，所谓“前收”可能实际是两天前或更早的收盘，upper/lower band都会被错误移动。
+
+#### 对照项5：分红
+
+- **论文：** 正文公式没有明确写出现金分红调整步骤。因此不能声称论文文字逐字规定“减当日分红”；但除息会机械性改变未复权前收与当日开盘的可比性。
+- **作者sample：** 策略band锚点会扣除当日分红，但benchmark通常没有同样完整的total-return处理。
+- **当前实现：** 默认要求有可追溯的clean dividend文件；band使用除息调整前收，benchmark同时报告price return和total return。也允许显式 `ignore_dividends`，但必须记录，不能静默忽略。
+- **为什么重要：** 不调整会把除息造成的机械价格跳空误认为交易信号；benchmark漏分红则会高估策略相对SPY的超额收益。
+
+State Street分红来源和band调整公式见第6.3节。
+
+### 20.2 交易日历与component validity
+
+#### 对照项6：半日市
+
+- **论文：** 只要求在市场实际开放时交易，没有给出半日市数据工程细节。
+- **作者sample：** 主要依赖输入中实际存在的rows；若把正常提前收盘后的分钟补成“缺失”，容易误判数据质量。
+- **当前实现：** 使用XNYS scheduled grid。半日市的 `calendar_bars` 本来就更短，正常收盘后的下午不属于计划交易分钟，也不会被算作gap或truncation。
+- **为什么重要：** “计划中不存在”与“应该存在但缺失”是两种完全不同的状态，后者才应使组件失效。
+
+#### 对照项7：整日缺失
+
+- **论文：** 没有系统说明整日无bar时rolling如何处理。
+- **作者sample：** 整日缺失通常意味着DataFrame中完全没有该session；rolling会直接跨过它。
+- **当前实现：** daily母表由完整 `vsess` 交易日历驱动。无bar的session仍保留一行NaN，并占据14-session窗口的一个slot。
+- **为什么重要：** 若整日缺失直接消失，窗口会向前抓取更老session，产生看不见的样本替换和潜在时间轴压缩。
+
+#### 对照项8：Interior gap
+
+- **论文：** 未系统定义盘中缺少一分钟或连续多分钟时各特征是否仍有效。
+- **作者sample：** 通常在剩余rows上继续累计VWAP和rolling，不暴露依赖已经断裂。
+- **当前实现：** component validity分别管理依赖。gap之后的累计 `vwap_valid=False`；但某一后续minute的 `move_open_obs_valid` 可在open锚点和该bar本身都有效时独立成立。
+- **为什么重要：** VWAP依赖从开盘到当前的完整累计路径，而 `move_open` 只依赖当日open和当前close。用一个总flag会错误地让两者一起有效或一起失效。
+
+见第16.3节的依赖拆分示例。
+
+#### 对照项9：Truncated open
+
+- **论文：** 默认当日开盘锚点真实存在，没有说明开盘部分缺失如何补救。
+- **作者sample：** 第一根可得bar可能被当作当日open，即使它实际来自09:37或更晚。
+- **当前实现：** 一旦计划开盘bar缺失，`open_valid=False`，当日全部 `move_open_obs_valid=False`；真实收盘若存在，`close_valid`仍可独立为True。
+- **为什么重要：** 把09:37价格冒充09:30开盘会污染当日所有开盘移动，并进一步污染未来14日同minute的band历史。
+
+#### 对照项10：Trailing truncation
+
+- **论文：** 策略在日终清仓，并默认能观察到真实退出价和真实收盘。
+- **作者sample：** 容易把当天最后一根可得bar当作收盘，即使数据在15:42已经中断。
+- **当前实现：** 尾盘截断使 `close_valid=False`。若策略在数据中断时仍有仓位，则标记 `unknown_exit`；无效close也不会进入benchmark。
+- **为什么重要：** 最后一根可得bar不等于真实收盘价。用它平仓会制造不可验证PnL，并污染下一日previous close、benchmark及后续AUM。
+
+#### 对照项11：Halt minute
+
+- **论文：** 没有给出逐分钟order/fill状态机；经济上halt期间不可成交，已有仓位仍承担复牌跳空。
+- **作者sample：** shifted-row exposure没有区分“已经持仓”和“信号出现但订单尚未成交”，可能把复牌gap错误给未成交订单。
+- **当前实现：** halt minute不允许决策和成交，也不进入VWAP或mark path；halt前已有仓位获得完整复牌gap，未成交订单在默认cancel policy下什么也不赚。
+- **为什么重要：** “没有可执行bar”不代表持仓风险停止，也不代表新订单已经成交。
+
+完整状态转换见第13节。
+
+### 20.3 信号时点、订单与成交
+
+#### 对照项12：决策频率
+
+- **论文：** 每30分钟在HH:00和HH:30重新判断方向，收盘只负责清仓。
+- **作者sample：** 依赖 `min_from_open` 或现有分钟编号，每30格处理一次。
+- **当前实现：** `config_validity()`按当前 `Cfg.trade_freq` 在scheduled、start-labelled minute grid上重建15/30/60分钟等决策网格。
+- **为什么重要：** 如果直接消费数据层按默认30分钟预先生成的mask，参数改成15分钟后仍可能只在30分钟决策，形成“配置写了但没有生效”的静默错误。
+
+minute label到时钟时间的映射见第3节和第10节。
+
+#### 对照项13：Signal validity
+
+- **论文：** 信号要求当时所需输入可得，但没有软件层validity字段。
+- **作者sample：** 有效性主要隐含在DataFrame操作和NaN传播中。
+- **当前实现：** 数据层只发布parameter-free primitives；引擎用当前配置组合 `trade_freq`、`sigma_window`、VWAP开关、dvol需求、前收有效性和可执行分钟，生成config-specific decision mask。
+- **为什么重要：** validity必须随配置变化。固定的 `signal_valid_default_config` 只能诊断默认参数，不能用于参数扫描或其他profile。
+
+#### 对照项14：Signal时点
+
+- **论文：** 用一个bar结束时已经观察到的close、band和VWAP确认信号。
+- **作者sample：** 在signal bar生成方向，再用shifted exposure近似下一行持仓；“信号”和“成交”没有独立对象。
+- **当前实现：** 三profile都先在signal bar close后生成target；`paper_spec`立即按该close记成交，`corrected_execution`只创建pending order，等待下一可执行open。
+- **为什么重要：** 信号确认时间与成交时间必须分开。否则容易让仓位获得用于生成信号的同一bar内部收益。
+
+#### 对照项15：成交价格
+
+- **论文：** 文字允许把信号bar close当成交价，但这是乐观且存在解释空间的复现口径。
+- **作者sample：** shifted close exposure近似signal-bar-close之后持仓，不是实际open成交模型。
+- **当前实现：** `paper_spec.fill_price="signal_bar_close"`保留论文乐观口径；`corrected_execution.fill_price="next_executable_open"`在下一可执行bar的open成交。
+- **为什么重要：** 从signal close到next open的价格变化只有在signal close真实成交后才属于新仓位。现实化profile不把这段变化免费送给策略。
+
+#### 对照项16：Pending order
+
+- **论文：** 没有规定信号后下一minute不可交易时订单取消还是排队。
+- **作者sample：** 没有真正pending状态；按下一可得data row shift，可能隐式排队到复牌并获得不应属于订单的gap。
+- **当前实现：** 状态机显式记录 `pending` 和 `pending_due`。默认 `cancel_if_next_unavailable`；敏感性分析可选择 `queue_until_executable`，但必须披露。
+- **为什么重要：** cancel和queue是不同交易规则，会改变成交数量、复牌风险和成本，不能由DataFrame缺行行为偶然决定。
+
+#### 对照项17：最后一根bar
+
+- **论文：** 日终必须平仓，因此最后计划bar不应再新开随后立即平掉的仓位。
+- **作者sample：** row shift因为没有下一行，副作用上避开了部分尾盘新仓，但没有显式规则。
+- **当前实现：** 当 `minute_of_session == calendar_bars` 时禁止新开或反手；只执行已有仓位的EOD flatten。
+- **为什么重要：** 否则会产生同价开仓、同价平仓的零gross PnL round trip，却收两边成本和turnover。
+
+#### 对照项18：`exec_lag>1`
+
+- **论文：** 主要讨论紧邻信号的成交，没有重点定义多分钟延迟。
+- **作者sample：** 单行shift不支持通用lag。
+- **当前实现：** `pending_due = signal_minute + exec_lag_minutes`；状态机显式区分当前minute小于、等于或已经越过due minute。越过后按policy取消或排队成交。
+- **为什么重要：** 只判断“当前minute是否不小于due”会在缺分钟或halt时提前/错误成交；必须知道due slot是否实际可执行。
+
+#### 对照项19：股数舍入
+
+- **论文：** 仓位公式对应向下取整 `floor`，避免超过目标名义敞口。
+- **作者sample：** 使用 `round`，可能向上增加一股。
+- **当前实现：** `paper_spec`和`corrected_execution`使用 `floor`；sample profile使用 `round`，并由配置字段使用审计确认该参数真的进入下单股数。
+- **为什么重要：** 单次一股差异通常很小，但会影响逐日parity、commission阈值和长期AUM路径；不能为了最终收益接近而混用。
+
+#### 对照项20：反手
+
+- **论文：** 从多头变为空头或从空头变为多头，经济上必须先平旧仓再建立等量反向仓位。
+- **作者sample：** 用position change概念近似，但教学实现没有完整订单事件账本。
+- **当前实现：** target从 \(+1\) 到 \(-1\) 时 `delta=2`，成交股数为 \(2N\)。序列 \(0\to+1\to-1\to0\) 是3次fill event、4个trade units。
+- **为什么重要：** 若把反手计成1单位，会同时少算一半反手turnover、commission和slippage。
+
+见第8.2节和第15节。
+
+### 20.4 成本、会计与持仓归属
+
+#### 对照项21：Commission
+
+- **论文：** 经核对的正文明确给出约 `$0.0035/share`；正文是否同时明确规定 `$0.35/order` 最低佣金并不充分，因此报告不能把最低值写成无歧义论文原文。
+- **作者sample：** 使用每股佣金并施加 `$0.35/order` 最低值。
+- **当前实现：** `Cfg.comm_per_share=0.0035`、`min_comm=0.35`；按实际成交quantity收费。反手可配置为单张 \(2N\) 订单或两张 \(N\) 订单，最低佣金相应应用一次或两次。
+- **为什么重要：** 小订单主要由minimum commission决定；反手订单拆分方式也会改变成本。论文每股费率、sample最低值和当前订单模型必须分开归因。
+
+#### 对照项22：Slippage
+
+- **论文：** 明确使用约 `$0.001/share` 的滑点假设。
+- **作者sample：** 公开教学代码通常没有从PnL中扣除该滑点。
+- **当前实现：** sample profile为0；`paper_spec`为0.001美元/股；`corrected_execution`默认0.005美元/股。slippage与commission分列，不受minimum commission影响。
+- **为什么重要：** 这直接解释sample、paper和corrected结果的部分阶梯式下降，也便于以后单独替换成交成本模型。
+
+#### 对照项23：Market impact
+
+- **论文：** 没有完整建模订单规模对成交价格的非线性影响。
+- **作者sample：** 没有impact或容量约束。
+- **当前实现：** 尚未实现；当前固定per-share slippage不会随AUM、股数、ADV、波动率或参与率上升。
+- **为什么重要：** 当AUM或杠杆增大时，固定滑点通常过于乐观。因此当前 `corrected_execution`仍是完整实盘成本前的上限估计，不是容量结论。
+
+#### 对照项24：现金/融资/借券
+
+- **论文：** 经济上杠杆多头需要融资，空头需要borrow，闲置正现金可能获得利息，但论文回测没有完整的分钟time-integral账户。
+- **作者sample：** 基本忽略这些现金流。
+- **当前实现：** 已有 `cash_rate_annual`、`funding_rate_annual`、`borrow_rate_annual` 接口和基础现金账户；但当前 `avg_signed_notional` 会让同日多空notional相互抵消，尚未分别累计正现金、借入现金、多头和空头敞口。
+- **为什么重要：** 4倍多头约有3倍AUM的借入现金，空头还涉及borrow fee。用净signed notional可能低估两边都发生时的真实成本。
+
+#### 对照项25：PnL marking
+
+- **论文：** 以持仓期间价格变化形成PnL，但没有给出halt和pending order下的逐事件归属算法。
+- **作者sample：** 使用shifted exposure乘close difference，价格变化按数据行而不是可执行事件归属。
+- **当前实现：** 每次fill前先把旧仓从last mark标记到fill price；成交后新仓才从该fill price开始承担后续变化。halt前已有仓位获得复牌gap，尚未成交的target不获得。
+- **为什么重要：** PnL必须属于价格变化发生时已经存在的仓位，而不是事后看到信号的目标仓位。
+
+#### 对照项26：Unknown exit
+
+- **论文：** 假定日终可以清仓，没有系统定义真实尾盘价格未知时怎么办。
+- **作者sample：** 使用最后可得bar，容易把猜测当真实退出。
+- **当前实现：** 支持 `terminate`、`exclude_session_and_freeze_aum`、`impute_last_observed` 三种policy，默认 `terminate`。headline不纳入unknown-exit session，猜测PnL不会进入后续AUM复利。
+- **为什么重要：** 一次虚假退出不只影响当天收益，还会改变之后每天的position size；默认终止是最保守且最可审计的处理。
+
+#### 对照项27：Session filtering
+
+- **论文：** 通常在可用数据样本上展示结果，没有讨论多个数据质量tier。
+- **作者sample：** 在当前DataFrame现有sessions上直接计算并交易。
+- **当前实现：** 先在完整exchange calendar上计算previous close、`sigma_open`、`dvol`等特征，最后才用 `paper_ready`、`halt_aware`或`exploratory`作为交易mask。
+- **为什么重要：** 若先删除某tier不交易的坏日，再计算特征，后续“好日”的previous close和rolling历史也会改变，形成隐蔽的样本重定义。
+
+见第16.1节和第17节。
+
+### 20.5 VWAP、benchmark与统计
+
+#### 对照项28：VWAP
+
+- **论文：** 要求使用当日从开盘累计到当前时刻的market-hours VWAP，但没有明确指定每分钟价格代理。
+- **作者sample：** 使用HLC3，即 `(high + low + close) / 3`，再按volume累计。
+- **当前实现：** 默认 `vwap_source="hlc3"`；也可显式选择 `ohlc4` 或 `vendor_bar_vwap`。无论代理如何，都会重新计算日内累计值；halt minute不进入累计，interior gap后validity失效。
+- **为什么重要：** 数据商每bar VWAP不是论文所说的“从开盘累计VWAP”；不同价格代理也属于必须披露的实现选择。
+
+完整公式见第7节。
+
+#### 对照项29：Benchmark
+
+- **论文：** 报告SPY Buy & Hold；论文表格更接近raw-price benchmark，未必包含完整现金分红total return。
+- **作者sample：** 通常直接对价格做收益，可能遗漏分红、无效close和evaluation首日anchor。
+- **当前实现：** 同时计算SPY price return与total return；无效close保留NaN；evaluation开始前引入一个有效close anchor；策略与benchmark使用相同session时间轴。
+- **为什么重要：** 漏分红会高估策略excess；首日无anchor会让策略首日交易但benchmark首日收益静默为0；用截断bar冒充close会污染alpha和beta。
+
+见第21节。
+
+#### 对照项30：Sharpe
+
+- **论文：** 应在一致的收益时间轴上年化。
+- **作者sample：** 若只保留active或有收益的sessions，再乘 \(\sqrt{252}\)，可能人为抬高Sharpe。
+- **当前实现：** headline使用calendarised return，包括评价窗口内的flat day；active sessions只报告未年化conditional mean/std，不另造一个active annualised Sharpe。
+- **为什么重要：** 删除不交易日后仍按252年化，相当于既压缩时间轴又保留全年频率，会制造不可比较的高Sharpe。
+
+#### 对照项31：CAGR
+
+- **论文：** CAGR应反映真实日历时间。
+- **作者sample：** 若按保留下来的收益行数量除以252，删除坏日会把时间压缩。
+- **当前实现：** 总复利使用评价session收益，但年数按首末日期差除以365.2425计算。
+- **为什么重要：** 同样的累计收益不能因为删掉若干无效session就假装在更短时间内完成。
+
+#### 对照项32：MDD
+
+- **论文：** 最大回撤来自一条定义一致的权益曲线。
+- **作者sample：** 主要使用EOD equity，但未系统区分数据tier。
+- **当前实现：** 每个profile与tier独立生成完整指标，MDD只来自该组合自己的calendarised equity curve；禁止从不同tier拼接CAGR、MDD或Calmar。
+- **为什么重要：** 一个tier的收益与另一个tier的回撤没有共同权益路径，混合后的风险收益比没有数学定义。
+
+#### 对照项33：Alpha/Beta
+
+- **论文：** 需要策略和SPY对齐收益；严谨推断还应考虑时间序列相关与稳健标准误。
+- **作者sample：** 通常是简单OLS或等价点估计，输入benchmark也常是price return。
+- **当前实现：** 在对齐的SPY total-return sessions上计算beta和年化alpha点估计；尚未实现HAC标准误、置信区间和独立daily benchmark。
+- **为什么重要：** 点估计可以描述样本关系，但没有稳健误差就不能判断alpha是否统计显著；分钟文件自身的close缺陷也可能同时影响回归两边。
+
+### 20.6 可复现性与验证
+
+#### 对照项34：数据审计
+
+- **论文：** 数据工程不是论文重点，读者通常只能接受作者所用IQFeed样本。
+- **作者sample：** 依赖输入文件，没有完整发布manifest、hash和异常证据链。
+- **当前实现：** 数据发布记录source hash、依赖锁、expected/observed边界、异常reports、manifest、`_SUCCESS`和Git commit；atomic publish避免半成品被当作成功run，latest pointer只指向完整发布。
+- **为什么重要：** 同名文件不代表同一数据。没有边界、hash和成功标记，就无法证明两次回测使用了同一个输入，也无法区分零异常与审计文件缺失。
+
+#### 对照项35：测试
+
+- **论文：** 没有公开覆盖这些工程语义的完整自动测试矩阵。
+- **作者sample：** 主要是教学与结果展示代码，不以生产级回归检查为目标。
+- **当前实现：** 截至本报告版本有62项engine checks与28项data self-tests，覆盖窗口、halt、订单、反手、成本、参数生效、unknown exit、benchmark anchor和不可变发布读取等。
+- **为什么重要：** 测试的目标不是证明策略赚钱，而是防止代码修改静默改变策略定义、配置字段只声明未使用，或正式发布与普通run读取结果漂移。
+
+当前验证边界和Q24独立复现实验见第23节。
 
 ---
 
