@@ -31,6 +31,13 @@ observed and complete XNYS session. This boundary is a documented data-
 availability decision, not a result-selected parameter; see
 `DATA_V1_START_DATE_DECISION_ZH.md`.
 
+`--source-split 2016-01-04` also marks a verified volume-unit change:
+pre-2016 volume is recorded in round lots of 100 shares (verified against
+the independent Yahoo daily feed, yahoo/mine ratio ≈ 110–145; a ×1000 unit
+is excluded), post-2016 in shares. Even after ×100, pre-2016 understates
+consolidated volume by ~10–30% with an upward drift. See
+`DATA_V1_FREEZE_AUDIT_20260730_ZH.md` for evidence and usage limits.
+
 ## Release boundaries and environment
 
 An inferred calendar cannot detect a missing prefix or suffix. Formal releases
