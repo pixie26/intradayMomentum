@@ -446,7 +446,7 @@ def config_validity(d: pd.DataFrame, daily: pd.DataFrame, vsess: pd.DataFrame,
 # --------------------------------------------------------------------------- #
 
 def _session_pnl(g: pd.DataFrame, signal: np.ndarray, admissible: np.ndarray,
-                 shares: int, cfg: Cfg) -> dict:
+                 shares: int, cfg: Cfg, equity: float | None = None) -> dict:
     """One session, as an order/fill state machine.
 
     Marking: P&L accrues to the position held *before* a fill, marked from the
@@ -468,34 +468,124 @@ def _session_pnl(g: pd.DataFrame, signal: np.ndarray, admissible: np.ndarray,
     fill_events = 0
     trade_units = 0.0
     shares_traded = 0.0
+    traded_notional = 0.0
     commission = 0.0
     slippage = 0.0
     pending: float | None = None
     pending_due: int | None = None
+    pending_order: dict | None = None
+    last_mark_clock = np.nan
     holding_minutes = 0.0
-    signed_notional_minutes = 0.0
+    long_notional_minute_dollars = 0.0
+    short_notional_minute_dollars = 0.0
+    borrowed_cash_minute_dollars = 0.0
+    scheduled_minutes = float(last_scheduled)
+    positive_cash_minute_dollars = (
+        float(equity) * scheduled_minutes if equity is not None else 0.0)
+    signals: list[dict] = []
+    orders: list[dict] = []
+    fills: list[dict] = []
+    round_trips: list[dict] = []
+    active_trip: dict | None = None
 
-    def mark_to(price: float) -> None:
-        nonlocal gross, last_mark
+    def mark_to(price: float, clock: float) -> None:
+        nonlocal gross, last_mark, last_mark_clock, holding_minutes
+        nonlocal long_notional_minute_dollars, short_notional_minute_dollars
+        nonlocal positive_cash_minute_dollars, borrowed_cash_minute_dollars
+        nonlocal active_trip
         if pos != 0.0 and np.isfinite(last_mark):
-            gross += pos * (price - last_mark) * shares
+            pnl = pos * (price - last_mark) * shares
+            gross += pnl
+            elapsed = max(float(clock - last_mark_clock), 0.0)
+            signed_notional = pos * last_mark * shares
+            holding_minutes += elapsed
+            if signed_notional > 0:
+                long_notional_minute_dollars += signed_notional * elapsed
+            else:
+                short_notional_minute_dollars += -signed_notional * elapsed
+            if equity is not None:
+                # The default flat-state cash integral was seeded above.
+                positive_cash_minute_dollars -= float(equity) * elapsed
+                cash = float(equity) - signed_notional
+                positive_cash_minute_dollars += max(cash, 0.0) * elapsed
+                borrowed_cash_minute_dollars += max(-cash, 0.0) * elapsed
+            if active_trip is not None:
+                active_trip["gross"] += pnl
+                active_trip["holding_minutes"] += elapsed
         last_mark = price
+        last_mark_clock = clock
 
-    def execute(target: float, price: float) -> None:
-        nonlocal pos, fill_events, trade_units, shares_traded, commission, slippage
+    def execute(target: float, price: float, minute_value: int, clock: float,
+                order: dict, reason: str) -> None:
+        nonlocal pos, fill_events, trade_units, shares_traded, traded_notional
+        nonlocal commission, slippage
+        nonlocal active_trip
         delta = abs(target - pos)
         if delta == 0.0:
+            order["status"] = "no_change"
             return
-        mark_to(price)
+        mark_to(price, clock)
+        previous_pos = pos
         qty = delta * shares
         n_orders = 2 if (delta > 1.0 and cfg.reversal_order_model == "two_orders") else 1
-        commission += n_orders * max(cfg.min_comm,
-                                     cfg.comm_per_share * qty / n_orders)
-        slippage += cfg.slip_per_share * qty
+        fill_commission = n_orders * max(
+            cfg.min_comm, cfg.comm_per_share * qty / n_orders)
+        fill_slippage = cfg.slip_per_share * qty
+        commission += fill_commission
+        slippage += fill_slippage
+        if active_trip is not None and previous_pos != target:
+            active_trip.update({
+                "exit_minute": int(minute_value),
+                "exit_price": float(price),
+                "exit_reason": reason,
+            })
+            round_trips.append(active_trip)
+            active_trip = None
         pos = target
         fill_events += 1
         trade_units += delta
         shares_traded += qty
+        traded_notional += qty * price
+        order.update({
+            "status": "filled",
+            "fill_minute": int(minute_value),
+            "fill_price": float(price),
+        })
+        fills.append({
+            "order_id": order["order_id"],
+            "minute": int(minute_value),
+            "price": float(price),
+            "from_position": float(previous_pos),
+            "to_position": float(target),
+            "trade_units": float(delta),
+            "shares": float(qty),
+            "order_count": int(n_orders),
+            "commission": float(fill_commission),
+            "slippage": float(fill_slippage),
+            "reason": reason,
+        })
+        if target != 0.0:
+            active_trip = {
+                "direction": "long" if target > 0 else "short",
+                "entry_minute": int(minute_value),
+                "entry_price": float(price),
+                "shares": int(shares),
+                "gross": 0.0,
+                "holding_minutes": 0.0,
+            }
+
+    def new_order(target: float, submit_minute: int, due_minute: int,
+                  reason: str) -> dict:
+        order = {
+            "order_id": len(orders) + 1,
+            "submit_minute": int(submit_minute),
+            "due_minute": int(due_minute),
+            "target_position": float(target),
+            "reason": reason,
+            "status": "pending",
+        }
+        orders.append(order)
+        return order
 
     for j in range(len(g)):
         if not execable[j]:
@@ -505,46 +595,88 @@ def _session_pnl(g: pd.DataFrame, signal: np.ndarray, admissible: np.ndarray,
             if minute[j] < pending_due:
                 pass                                   # not due yet
             elif minute[j] == pending_due:
-                execute(pending, open_[j])
-                pending, pending_due = None, None
+                execute(pending, open_[j], int(minute[j]),
+                        float(minute[j] - 1), pending_order, "scheduled_fill")
+                pending, pending_due, pending_order = None, None, None
             elif cfg.pending_order_policy == "cancel_if_next_unavailable":
-                pending, pending_due = None, None      # missed its slot
+                pending_order.update({
+                    "status": "cancelled",
+                    "cancel_minute": int(minute[j]),
+                    "cancel_reason": "intended_minute_unavailable",
+                })
+                pending, pending_due, pending_order = None, None, None
             else:
-                execute(pending, open_[j])             # queued to the reopen
-                pending, pending_due = None, None
+                execute(pending, open_[j], int(minute[j]),
+                        float(minute[j] - 1), pending_order,
+                        "queued_until_executable")
+                pending, pending_due, pending_order = None, None, None
 
-        mark_to(close[j])
-        if pos != 0.0:
-            holding_minutes += 1.0
-            signed_notional_minutes += pos * close[j] * shares
+        mark_to(close[j], float(minute[j]))
 
         # No new entry on the final scheduled bar: it would be liquidated at the
         # same price a moment later, producing zero P&L and two charges. The
         # notebook avoids this only as a side effect of its row shift.
-        if admissible[j] and minute[j] < last_scheduled and signal[j] != pos:
-            if cfg.fill_price == "signal_bar_close":
-                execute(signal[j], close[j])
-            else:
-                pending = signal[j]
-                pending_due = minute[j] + cfg.exec_lag_minutes
+        if admissible[j]:
+            signals.append({
+                "minute": int(minute[j]),
+                "signal": float(signal[j]),
+                "position_before_order": float(pos),
+                "is_final_scheduled_bar": bool(minute[j] >= last_scheduled),
+            })
+            if minute[j] < last_scheduled and signal[j] != pos:
+                if cfg.fill_price == "signal_bar_close":
+                    order = new_order(signal[j], int(minute[j]), int(minute[j]),
+                                      "signal")
+                    execute(signal[j], close[j], int(minute[j]),
+                            float(minute[j]), order, "signal_bar_close")
+                else:
+                    pending = signal[j]
+                    pending_due = int(minute[j] + cfg.exec_lag_minutes)
+                    pending_order = new_order(
+                        pending, int(minute[j]), pending_due, "signal")
 
     exec_idx = np.where(execable)[0]
     tail_ok = bool(len(exec_idx)) and int(minute[exec_idx[-1]]) == last_scheduled
     exposed_to_unknown_tail = (not tail_ok) and pos != 0.0
+    if pending_order is not None:
+        pending_order.update({
+            "status": "cancelled",
+            "cancel_minute": (int(minute[exec_idx[-1]]) if len(exec_idx) else None),
+            "cancel_reason": "end_of_session",
+        })
     if pos != 0.0 and len(exec_idx):
-        execute(0.0, close[exec_idx[-1]])
+        exit_minute = int(minute[exec_idx[-1]])
+        order = new_order(0.0, exit_minute, exit_minute, "end_of_session")
+        execute(0.0, close[exec_idx[-1]], exit_minute, float(exit_minute),
+                order, "end_of_session")
     return {"gross": gross, "commission": commission, "slippage": slippage,
             "fill_events": float(fill_events), "trade_units": trade_units,
             "shares_traded": shares_traded,
+            "traded_notional": float(traded_notional),
+            "long_gross": float(sum(
+                trip["gross"] for trip in round_trips
+                if trip["direction"] == "long")),
+            "short_gross": float(sum(
+                trip["gross"] for trip in round_trips
+                if trip["direction"] == "short")),
             "holding_minutes": float(holding_minutes),
-            "avg_signed_notional": (float(signed_notional_minutes / holding_minutes)
-                                    if holding_minutes else 0.0),
+            "positive_cash_minute_dollars": float(positive_cash_minute_dollars),
+            "borrowed_cash_minute_dollars": float(borrowed_cash_minute_dollars),
+            "long_notional_minute_dollars":
+                float(long_notional_minute_dollars),
+            "short_notional_minute_dollars":
+                float(short_notional_minute_dollars),
+            "scheduled_minutes": scheduled_minutes,
             "exit_at_scheduled_close": tail_ok,
-            "exposed_to_unknown_tail": bool(exposed_to_unknown_tail)}
+            "exposed_to_unknown_tail": bool(exposed_to_unknown_tail),
+            "signals": signals, "orders": orders, "fills": fills,
+            "round_trips": round_trips}
 
 
 def _session_pnl_notebook(g: pd.DataFrame, signal: np.ndarray,
-                          admissible: np.ndarray, shares: int) -> dict:
+                          admissible: np.ndarray, shares: int,
+                          cfg: Cfg | None = None,
+                          equity: float | None = None) -> dict:
     """Bit-compatible with the published notebook: exposure shifted one *data
     row*, PnL = exposure * close.diff(). Retained only for parity; it is the
     formula that hands a reopening gap to an unfilled order."""
@@ -558,21 +690,147 @@ def _session_pnl_notebook(g: pd.DataFrame, signal: np.ndarray,
     exposure = np.concatenate([[0.0], pos[:-1]])
     units = float(np.abs(np.diff(np.append(exposure, 0.0))).sum())
     gross = float(np.nansum(exposure * np.diff(close, prepend=np.nan))) * shares
+    pnl_path = exposure * np.diff(close, prepend=np.nan) * shares
     held = exposure != 0.0
+    signed_notional = exposure * close * shares
+    eq = float(equity) if equity is not None else 0.0
+    cash = eq - signed_notional
+    cfg = cfg or profile_cfg("official_sample_compatible")
+    minute = g["minute_of_session"].to_numpy()
+    last_scheduled = int(g["calendar_bars"].iloc[0])
+    signals = [{
+        "minute": int(minute[j]),
+        "signal": float(signal[j]),
+        "position_before_order": float(pos[j - 1] if j else 0.0),
+        "is_final_scheduled_bar": bool(minute[j] >= last_scheduled),
+    } for j in range(len(g)) if admissible[j]]
+    orders: list[dict] = []
+    fills: list[dict] = []
+    round_trips: list[dict] = []
+    ledger_pos = 0.0
+    active_trip: dict | None = None
+    for j in range(len(g)):
+        if active_trip is not None:
+            active_trip["gross"] += float(np.nan_to_num(pnl_path[j]))
+            active_trip["holding_minutes"] += float(held[j])
+        if not admissible[j] or minute[j] >= last_scheduled:
+            continue
+        target = float(signal[j])
+        if target == ledger_pos:
+            continue
+        delta = abs(target - ledger_pos)
+        qty = delta * shares
+        n_orders = (
+            2 if delta > 1.0 and cfg.reversal_order_model == "two_orders" else 1)
+        fill_commission = n_orders * max(
+            cfg.min_comm, cfg.comm_per_share * qty / n_orders)
+        fill_slippage = cfg.slip_per_share * qty
+        order_id = len(orders) + 1
+        orders.append({
+            "order_id": order_id,
+            "submit_minute": int(minute[j]),
+            "due_minute": int(minute[j]),
+            "target_position": target,
+            "reason": "notebook_shifted_close",
+            "status": "filled",
+            "fill_minute": int(minute[j]),
+            "fill_price": float(close[j]),
+        })
+        fills.append({
+            "order_id": order_id,
+            "minute": int(minute[j]),
+            "price": float(close[j]),
+            "from_position": float(ledger_pos),
+            "to_position": target,
+            "trade_units": float(delta),
+            "shares": float(qty),
+            "order_count": int(n_orders),
+            "commission": float(fill_commission),
+            "slippage": float(fill_slippage),
+            "reason": "notebook_shifted_close",
+        })
+        if active_trip is not None:
+            active_trip.update({
+                "exit_minute": int(minute[j]),
+                "exit_price": float(close[j]),
+                "exit_reason": "notebook_shifted_close",
+            })
+            round_trips.append(active_trip)
+            active_trip = None
+        ledger_pos = target
+        if target != 0.0:
+            active_trip = {
+                "direction": "long" if target > 0 else "short",
+                "entry_minute": int(minute[j]),
+                "entry_price": float(close[j]),
+                "shares": int(shares),
+                "gross": 0.0,
+                "holding_minutes": 0.0,
+            }
+    if ledger_pos != 0.0:
+        delta = abs(ledger_pos)
+        qty = delta * shares
+        order_id = len(orders) + 1
+        orders.append({
+            "order_id": order_id,
+            "submit_minute": int(minute[-1]),
+            "due_minute": int(minute[-1]),
+            "target_position": 0.0,
+            "reason": "end_of_session",
+            "status": "filled",
+            "fill_minute": int(minute[-1]),
+            "fill_price": float(close[-1]),
+        })
+        fills.append({
+            "order_id": order_id,
+            "minute": int(minute[-1]),
+            "price": float(close[-1]),
+            "from_position": float(ledger_pos),
+            "to_position": 0.0,
+            "trade_units": float(delta),
+            "shares": float(qty),
+            "order_count": 1,
+            "commission": float(max(
+                cfg.min_comm, cfg.comm_per_share * qty)),
+            "slippage": float(cfg.slip_per_share * qty),
+            "reason": "end_of_session",
+        })
+        if active_trip is not None:
+            active_trip.update({
+                "exit_minute": int(minute[-1]),
+                "exit_price": float(close[-1]),
+                "exit_reason": "end_of_session",
+            })
+            round_trips.append(active_trip)
+    ledger_units = float(sum(fill["trade_units"] for fill in fills))
+    if abs(ledger_units - units) > 1e-9:
+        raise RuntimeError(
+            f"notebook ledger units {ledger_units} != accounting units {units}")
     return {"gross": gross, "commission": None, "slippage": None,
             "fill_events": units, "trade_units": units,
             "shares_traded": units * shares,
+            "traded_notional": float(sum(
+                fill["shares"] * fill["price"] for fill in fills)),
+            "long_gross": float(np.nansum(pnl_path[exposure > 0])),
+            "short_gross": float(np.nansum(pnl_path[exposure < 0])),
             "holding_minutes": float(held.sum()),
-            "avg_signed_notional": (float((exposure * close * shares)[held].mean())
-                                    if held.any() else 0.0),
-            "exit_at_scheduled_close": True, "exposed_to_unknown_tail": False}
+            "positive_cash_minute_dollars": float(np.maximum(cash, 0.0).sum()),
+            "borrowed_cash_minute_dollars": float(np.maximum(-cash, 0.0).sum()),
+            "long_notional_minute_dollars":
+                float(np.maximum(signed_notional, 0.0).sum()),
+            "short_notional_minute_dollars":
+                float(np.maximum(-signed_notional, 0.0).sum()),
+            "scheduled_minutes": float(g["calendar_bars"].iloc[0]),
+            "exit_at_scheduled_close": True, "exposed_to_unknown_tail": False,
+            "signals": signals, "orders": orders, "fills": fills,
+            "round_trips": round_trips}
 
 
 # --------------------------------------------------------------------------- #
 # backtest
 # --------------------------------------------------------------------------- #
 
-def backtest(data: dict, cfg: Cfg) -> pd.DataFrame:
+def backtest(data: dict, cfg: Cfg, collect_ledger: bool = False) -> pd.DataFrame:
     validate(cfg)
     bars, vmin, vsess = data["bars"], data["vmin"], data["vsess"]
     d, daily = build_features(bars, vmin, vsess, cfg, data["dividends"])
@@ -587,15 +845,20 @@ def backtest(data: dict, cfg: Cfg) -> pd.DataFrame:
     aum = cfg.aum0
     groups = dict(tuple(d.groupby("session_date", sort=False)))
     terminated_from = None
+    ledgers: dict[str, list[dict]] = {
+        "signals": [], "orders": [], "fills": [], "round_trips": []}
     # Drive the loop from the exchange calendar, so a session with no bars at
     # all still produces a row instead of vanishing from the time axis.
     for day in daily.index:
         prev_aum = aum
         status, gross, cost = "active", 0.0, 0.0
-        fills = units = traded_shares = 0.0
-        commission = slippage = financing = 0.0
+        fill_events = units = traded_shares = 0.0
+        commission = slippage = cash_interest = financing = 0.0
         holding_minutes = 0.0
-        avg_signed_notional = 0.0
+        positive_cash_integral = borrowed_cash_integral = 0.0
+        long_notional_integral = short_notional_integral = 0.0
+        signal_count = 0
+        traded_notional = long_gross = short_gross = 0.0
         row = daily.loc[day]
         g = groups.get(day)
 
@@ -650,50 +913,74 @@ def backtest(data: dict, cfg: Cfg) -> pd.DataFrame:
                             s[cp < lb] = -1
                         adm = admissible_all.loc[g.index].to_numpy()
                         if cfg.profile == "official_sample_compatible":
-                            res = _session_pnl_notebook(g, s, adm, shares)
+                            res = _session_pnl_notebook(
+                                g, s, adm, shares, cfg=cfg, equity=prev_aum)
                         else:
-                            res = _session_pnl(g, s, adm, shares, cfg)
+                            res = _session_pnl(
+                                g, s, adm, shares, cfg, equity=prev_aum)
                         gross = res["gross"]
-                        fills = res["trade_units"]
+                        fill_events = res["fill_events"]
                         if res["commission"] is None:
                             # notebook path: charge per traded unit
-                            commission = fills * max(cfg.min_comm,
-                                                     cfg.comm_per_share * shares)
-                            slippage = fills * cfg.slip_per_share * shares
+                            commission = res["trade_units"] * max(
+                                cfg.min_comm, cfg.comm_per_share * shares)
+                            slippage = (res["trade_units"]
+                                        * cfg.slip_per_share * shares)
                         else:
                             commission = res["commission"]
                             slippage = res["slippage"]
                         cost = commission + slippage
-                        units = fills
+                        units = res["trade_units"]
                         traded_shares = res["shares_traded"]
+                        traded_notional = res.get("traded_notional", 0.0)
+                        long_gross = res.get("long_gross", 0.0)
+                        short_gross = res.get("short_gross", 0.0)
                         holding_minutes = res.get("holding_minutes", 0.0)
-                        avg_signed_notional = res.get("avg_signed_notional", 0.0)
-                        if fills == 0:
+                        positive_cash_integral = res.get(
+                            "positive_cash_minute_dollars", 0.0)
+                        borrowed_cash_integral = res.get(
+                            "borrowed_cash_minute_dollars", 0.0)
+                        long_notional_integral = res.get(
+                            "long_notional_minute_dollars", 0.0)
+                        short_notional_integral = res.get(
+                            "short_notional_minute_dollars", 0.0)
+                        signal_count = len(res.get("signals", []))
+                        if collect_ledger:
+                            for ledger_name in ledgers:
+                                for item in res.get(ledger_name, []):
+                                    ledgers[ledger_name].append(
+                                        {"session_date": day, **item})
+                        if units == 0:
                             status = "no_signal"
                         # Only a position still open when the tape stops has an
                         # unknown exit. Being flat before the gap is fine.
                         if res["exposed_to_unknown_tail"]:
                             status = "unknown_exit"
 
-        # Cash account. The book is flat overnight, so equity earns the cash
-        # rate for the full day; borrowed cash and short notional are charged
-        # only for the intraday holding window.
+        # Cash account. The book is flat overnight. Intraday cash, borrowed
+        # cash, long notional and short notional are accumulated separately;
+        # long and short exposure must never cancel each other.
         dcf = cfg.financing_daycount_fraction
-        cash_interest = prev_aum * cfg.cash_rate_annual / 252.0
         if status == "active" or status == "unknown_exit":
-            hold = holding_minutes / max(len(g), 1) if g is not None else 0.0
-            gross_notional = abs(avg_signed_notional)
-            borrowed = max(gross_notional - prev_aum, 0.0)
-            short_notional = max(-avg_signed_notional, 0.0)
-            financing = -(borrowed * cfg.funding_rate_annual / 252.0 * dcf * hold
-                          + short_notional * cfg.borrow_rate_annual / 252.0
-                          * dcf * hold)
+            scheduled = max(float(res.get("scheduled_minutes", 0.0)), 1.0)
+            avg_positive_cash = positive_cash_integral / scheduled
+            avg_borrowed_cash = borrowed_cash_integral / scheduled
+            avg_short_notional = short_notional_integral / scheduled
+            cash_interest = (
+                prev_aum * cfg.cash_rate_annual / 252.0 * (1.0 - dcf)
+                + avg_positive_cash * cfg.cash_rate_annual / 252.0 * dcf)
+            financing = -(
+                avg_borrowed_cash * cfg.funding_rate_annual / 252.0 * dcf
+                + avg_short_notional * cfg.borrow_rate_annual / 252.0 * dcf)
+        else:
+            cash_interest = prev_aum * cfg.cash_rate_annual / 252.0
         net = gross - cost + cash_interest + financing
 
         if status in ("tier_excluded", "warmup_no_prev_close", "warmup_no_band",
                       "invalid_feature_dvol", "zero_size", "absent_session",
                       "after_unknown_exit"):
             net = 0.0
+            cash_interest = 0.0
             financing = 0.0
         if status == "unknown_exit":
             # The exit price is a guess, so this day's P&L must not silently
@@ -708,14 +995,27 @@ def backtest(data: dict, cfg: Cfg) -> pd.DataFrame:
                     f"unknown unknown_exit_policy {cfg.unknown_exit_policy!r}")
 
         aum = prev_aum + net
-        rows.append((day, status, gross, commission, slippage, cost, financing,
-                     net, units, traded_shares, prev_aum, aum,
+        rows.append((day, status, gross, commission, slippage, cost,
+                     cash_interest, financing, net, signal_count, fill_events,
+                     units, traded_shares, holding_minutes,
+                     traded_notional, long_gross, short_gross,
+                     positive_cash_integral, borrowed_cash_integral,
+                     long_notional_integral, short_notional_integral,
+                     prev_aum, aum,
                      bool(vs.loc[day, "close_valid"]) if day in vs.index else False))
 
     r = pd.DataFrame(rows, columns=["session_date", "status", "gross",
                                     "commission", "slippage", "cost",
-                                    "financing", "net", "trade_units",
-                                    "shares_traded", "prev_aum", "aum",
+                                    "cash_interest", "financing", "net",
+                                    "signal_count", "fill_events", "trade_units",
+                                    "shares_traded", "holding_minutes",
+                                    "traded_notional", "long_gross",
+                                    "short_gross",
+                                    "positive_cash_minute_dollars",
+                                    "borrowed_cash_minute_dollars",
+                                    "long_notional_minute_dollars",
+                                    "short_notional_minute_dollars",
+                                    "prev_aum", "aum",
                                     "close_valid"]).set_index("session_date")
     r["ret"] = r["net"] / r["prev_aum"]
     # A session whose exit price is a guess does not belong in headline
@@ -724,6 +1024,10 @@ def backtest(data: dict, cfg: Cfg) -> pd.DataFrame:
         ["warmup_no_prev_close", "warmup_no_band", "unknown_exit",
          "after_unknown_exit", "absent_session"])
     r.loc[~r["is_evaluation"], "ret"] = np.nan
+    if collect_ledger:
+        r.attrs["ledger"] = {
+            name: pd.DataFrame(items) for name, items in ledgers.items()}
+        r.attrs["daily_features"] = daily[["dvol"]].copy()
     return r
 
 
@@ -749,8 +1053,8 @@ def stats(r: pd.DataFrame, rf_annual: float = 0.0) -> dict:
         "TotRet%": round((total - 1) * 100, 1),
         "CAGR%": round((total ** (1 / years) - 1) * 100, 2),
         "Vol%": round(float(x.std() * np.sqrt(252)) * 100, 2),
-        "Sharpe_calendar": (round(float((x.mean() - rf_annual / 252)
-                                        / x.std() * np.sqrt(252)), 2)
+        "Sharpe_calendar": (round(float(
+            (x.mean() - rf_annual / 252) / x.std() * np.sqrt(252)), 2)
                             if float(x.std()) > 0 else None),
         # NOT annualised. Scaling active-only returns by sqrt(252) when there
         # are ~153 active sessions a year manufactures a higher number that,

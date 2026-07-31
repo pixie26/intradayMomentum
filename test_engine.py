@@ -132,6 +132,28 @@ def test_reversal_units_and_costs() -> None:
           f"single-order reversal: 3 minimum charges, got {r1['commission']}")
     check(abs(r2["commission"] - 4.0) < 1e-9,
           f"two-order reversal: 4 minimum charges, got {r2['commission']}")
+    check(len(r["fills"]) == 3 and len(r["round_trips"]) == 2,
+          "fill and round-trip ledgers must preserve the reversal path")
+    check({x["direction"] for x in r["round_trips"]} == {"long", "short"},
+          "round trips must identify long and short legs separately")
+
+
+def test_exposure_time_integrals() -> None:
+    g = make_session(60, halt=(20, 29), gap_at_reopen=5.0)
+    sig = np.zeros(60); adm = np.zeros(60, dtype=bool)
+    sig[9] = 1.0; adm[9] = True
+    cfg = profile_cfg("corrected_execution", comm_per_share=0.0,
+                      min_comm=0.0, slip_per_share=0.0)
+    r = E._session_pnl(g, sig, adm, shares=100, cfg=cfg, equity=1_000.0)
+    check(r["holding_minutes"] == 50.0,
+          "holding time must include the 10 scheduled halt minutes")
+    check(r["long_notional_minute_dollars"] > 0
+          and r["short_notional_minute_dollars"] == 0,
+          "a long-only path must not net into short notional")
+    check(r["borrowed_cash_minute_dollars"] > 0,
+          "a leveraged long must accumulate borrowed-cash time")
+    check(r["positive_cash_minute_dollars"] >= 0,
+          "positive-cash time integral cannot be negative")
 
 
 def test_no_final_bar_round_trip() -> None:
@@ -409,6 +431,10 @@ def test_costs_and_calendar(run_dir: Path) -> None:
           f"CAGR must use elapsed calendar time ({st['CalendarYears']} vs {span:.2f})")
     check("Sharpe_calendar" in st and "ActiveMeanRet_bp" in st,
           "conditional active moments must be reported un-annualised")
+    x = ev["ret"].fillna(0.0)
+    expected_sharpe = float(x.mean() / x.std() * np.sqrt(252))
+    check(abs(st["Sharpe_calendar"] - round(expected_sharpe, 2)) < 1e-12,
+          "calendar Sharpe must divide the mean return by daily volatility")
     check(st["EvalSessions"] >= st["ActiveSessions"],
           "evaluation sessions must include non-trading days")
     # unknown-exit sessions must leave the evaluation window entirely
@@ -512,6 +538,7 @@ def main() -> int:
         test_halt_semantics()
         test_no_trading_inside_halt()
         test_reversal_units_and_costs()
+        test_exposure_time_integrals()
         test_no_final_bar_round_trip()
         test_exec_lag_timing()
         test_flat_before_tail_gap_is_known()
