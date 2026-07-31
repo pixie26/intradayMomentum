@@ -57,3 +57,22 @@ Across the 18 cells, that primary combination has the lowest strict
 comparable-month MAE: 0.3059 percentage points over 206 months, versus
 0.3539 points when dividends are ignored. With-dividends has lower monthly
 MAE than ignore-dividends in every matched profile/tier pair.
+
+## Add-on: report2 (interactive date-window view)
+
+`report2.html` sits next to `report.html` in the same result directory and is
+generated separately by `make_report2.py` (it reads only existing artifacts
+and never re-runs the engine or modifies the run outputs). It contains one
+interactive section: the reader picks a start and an end date, and the
+month-end log-scale cumulative-NAV chart (paper Q24 strategy / local
+strategy / local SPY) and a metrics table (指标 | 论文策略 | 论文 SPY |
+本地策略) are recomputed live for that window. Windowed metrics use a
+monthly methodology (vol = monthly std × √12, Sharpe with rf = 0, MDD on
+month-end points); the 论文 SPY column is fixed at the paper's reported
+full-period values because the paper publishes no monthly benchmark series.
+Regenerate:
+
+```bash
+python experiments/paper_replication_v1/make_report2.py \
+  --results-dir experiments/paper_replication_v1/results/data-v1.0_q24_detailed_report_20260730_v2
+```
