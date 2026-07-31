@@ -24,6 +24,8 @@ order before non-trivial work:
 5. `config/data_release_v1.yml` — candidate data-v1.0 boundary, timestamp,
    duplicate and environment contract.
 6. `docs/HISTORICAL_V3_REVIEW.md` — data-layer review history.
+7. `docs/POST_PUBLICATION_EVALUATION_V2_ZH.md` — frozen v2 result,
+   provenance, interpretation and audit caveats.
 
 Run reports (tied to a specific `data/processed/runs/<run_id>/`):
 - `docs/DATA_AUDIT_20260729_ZH.md` — first local full-sample data audit:
@@ -84,23 +86,16 @@ Run reports (tied to a specific `data/processed/runs/<run_id>/`):
 
 ## Current state
 
-Frozen: data-v1.0 begins on 2008-01-22, the raw source's first observed and
-complete XNYS session; the documented re-scope is in
-`docs/DATA_V1_START_DATE_DECISION_ZH.md`. Also frozen: engine (three profiles)
-and evaluation spec v1. Mechanics baseline (zero
-dividends/financing, full sample): official
-17.0% CAGR / 1.15 Sharpe; paper_spec 16.8% / 1.16; corrected_execution
-14.2% / 1.01 — see `docs/PROJECT_WORK_LOG_ZH.md` §6 for the full table.
+Frozen: data-v1.0 begins on 2008-01-22; engine has three profiles; evaluation
+spec v2 uses the independent daily benchmark and point-in-time
+LIBOR-proxy/SOFR financing release. The formal headline
+(`corrected_execution × paper_ready × with-dividends × $0.005/share`) is
+15.35% full-sample CAGR / 0.99 Sharpe and 7.01% post-publication CAGR /
+0.27 Sharpe, versus 21.74% SPY total-return CAGR post-publication. See
+`docs/POST_PUBLICATION_EVALUATION_V2_ZH.md` and its linked HTML.
 
-Pending, in priority order:
-
-1. Real-dividend double run (with / ignore); headlines use with-dividends.
-2. Executable evaluation runner driving `profile × tier × dividend × cost`.
-3. Signals / fills / round-trip ledger for the pre-registered decomposition.
-4. Financing time-integral (cash / borrowed cash / long / short notional
-   separately; current `avg_signed_notional` nets longs against shorts).
-5. Independent daily SPY raw-close benchmark.
-6. Evaluation spec v2, then the single post-publication report.
+Pending: market-impact/capacity and queue-position/partial-fill models.
+HAC and block bootstrap are explicitly deferred; v2 reports point estimates.
 
 Explicitly deferred: parameter optimisation, Qlib, machine learning, live
 deployment.

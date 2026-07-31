@@ -510,6 +510,26 @@ v2统计口径已决定为只报告点估计；bootstrap和HAC置信区间明确
 
 如果毛边际本身接近零，参数优化应停止；如果毛边际为正但成本吞噬，才值得优化执行与容量。
 
+### 10.1 evaluation v2 正式结果（2026-07-31）
+
+正式 run：
+`20260731T043943Z_formal_spec2_b4d7a8f805b9`。
+完整结果、hash 和审计见
+`POST_PUBLICATION_EVALUATION_V2_ZH.md` 与
+`POST_PUBLICATION_EVALUATION_V2.html`。
+
+Headline
+`corrected_execution × paper_ready × with_dividends × $0.005/share`
+在 post-publication window 的 CAGR 为 7.01%，Sharpe 为 0.27，
+MDD 为 −17.48%；同期 SPY total-return CAGR 为 21.74%，
+excess CAGR 为 −14.73pp。gross edge 为 2.139¢/share，
+扣 execution 0.850¢/share 与 funding/borrow 0.136¢/share 后，
+trading edge 仍为 +1.153¢/share。
+
+因此正式结论是：post 的信号毛边际没有归零，也没有被当前固定成本完全吞掉，
+但风险调整收益很弱，并且大幅跑输同期 SPY。下一步如继续研究，应集中在
+market impact、容量和执行模型，而不是参数优化。
+
 ---
 
 ## 11. 项目当前状态
