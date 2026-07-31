@@ -5,11 +5,13 @@ SPY_1min_2008_202607_merged.csv
 data/candidates/
 data/processed/
 data_release_v1/
+benchmark_release_v1/
 
 # Local validation scratch space.
 .codex_spreadsheet_tmp/
 tmp/
 __pycache__/
+evaluation/results/
 
 # Superseded local paper-replication drafts; the dividend comparison is tracked.
 experiments/paper_replication_v1/results/data-v1.0_q24_20260730/
