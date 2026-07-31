@@ -8,14 +8,16 @@ for the chosen window:
 - chart series: paper Q24 strategy (compounded from the published monthly
   table), local strategy, local SPY benchmark (month-end equity of the
   selected profile x tier x dividend mode);
-- metrics table columns: 指标 | 论文策略 | 论文 SPY | 本地策略;
-- 论文策略 / 本地策略 columns are recomputed from month-end series with a
+- metrics table columns: 指标 | 论文策略 | 本地 SPY | 本地策略;
+- all three columns are recomputed from month-end series with a
   monthly methodology (compounding, vol = monthly std x sqrt(12), Sharpe with
   rf = 0, MDD on month-end points) — comparable to each other inside this
   table, but NOT to the paper's daily-frequency Table 3 numbers or to the
   engine's daily full-sample metrics in report.html section 3;
-- 论文 SPY column is fixed at the paper's reported full-period values because
-  the paper publishes no monthly benchmark series.
+- the SPY column uses the local SPY month-end series (same equity file, same
+  profile x tier x dividend selection as the local strategy), because the
+  paper publishes no monthly benchmark series; the paper's Table 3 SPY
+  buy-and-hold values stay as a fixed reference line below the table.
 
 The script reads only existing artifacts (config, paper Q24 table, a finished
 run's equity_curves_monthly.csv and manifest.json) and writes only the
@@ -210,15 +212,17 @@ a { color:var(--blue); }
   <h2>指标（随所选区间重算）</h2>
   <div class="table-wrap">
     <table><thead><tr>
-      <th>指标</th><th>论文策略</th><th>论文 SPY †</th><th>本地策略</th>
+      <th>指标</th><th>论文策略</th><th>本地 SPY †</th><th>本地策略</th>
     </tr></thead><tbody id="mBody"></tbody></table>
   </div>
   <p class="static-ref" id="paperRefLine"></p>
-  <p class="footnote">† 论文 SPY 列：论文未公布 SPY 的逐月序列，该列固定为论文
-  Table 3 报告的全区间值（2007 至 2024 初），不随所选区间变化；图上红色曲线是
-  本地 SPY 月末净值，可作同区间的直观替代。</p>
+  <p class="footnote">† 本地 SPY 列：与图上红色曲线同源（同一净值文件的
+  spy_equity 月末序列，与本地策略同一 profile × tier × dividend 组合），随所选
+  区间重算；论文未公布 SPY 的逐月序列，其 Table 3 SPY Buy&Hold 全区间值
+  （2007 至 2024 初，日频口径）见下方静态参考行，口径不同不能直接等同。</p>
   <p class="footnote">口径：论文策略列 = 论文 Q24 月度收益表（2007-05 至
-  __PAPER_LAST__）在所选区间内的复利；本地策略 = 所选组合月末净值推得的月收益。
+  __PAPER_LAST__）在所选区间内的复利；本地策略 / 本地 SPY = 所选组合月末净值
+  （strategy_equity / spy_equity）推得的月收益。
   波动 = 月收益标准差 × √12；Sharpe = 月均 / 月标准差 × √12（rf=0）；
   最大回撤基于月末净值点（浅于日频回撤）；区间首月收益计入区间
   （净值在区间起点之前归一为 1）。本地净值最后一个点为 __LAST_PARTIAL__，
@@ -393,18 +397,17 @@ function render() {
     { name:"本地 SPY", color:"#c7423b", nav: navMap(lDates, sRets, anchor) },
   ];
   draw(months, series);
-  const bench = PAPER_REF.benchmark;
   const pRange = pm ? pDates[0]+" .. "+pDates[pDates.length-1] : "无数据";
   const lRange = lm ? lDates[0]+" .. "+lDates[lDates.length-1] : "无数据";
   const rows = [
-    ["区间（月末落点）", pRange, "2007–2024初（论文报告）", lRange, true],
-    ["月数", pm&&pm.n, null, lm&&lm.n],
-    ["累计收益 %", pm&&pm.tot*100, bench.total_return_pct, lm&&lm.tot*100],
-    ["年化收益 %", pm&&pm.cagr*100, bench.annual_return_pct, lm&&lm.cagr*100],
-    ["年化波动 %（月频）", pm&&pm.vol*100, bench.volatility_pct, lm&&lm.vol*100],
-    ["Sharpe（月频，rf=0）", pm&&pm.sharpe, bench.sharpe, lm&&lm.sharpe],
-    ["最大回撤 %（月末）", pm&&pm.mdd*100, -bench.mdd_pct, lm&&lm.mdd*100],
-    ["月胜率 %", pm&&pm.hit, bench.hit_ratio_pct, lm&&lm.hit],
+    ["区间（月末落点）", pRange, lRange, lRange, true],
+    ["月数", pm&&pm.n, sm&&sm.n, lm&&lm.n],
+    ["累计收益 %", pm&&pm.tot*100, sm&&sm.tot*100, lm&&lm.tot*100],
+    ["年化收益 %", pm&&pm.cagr*100, sm&&sm.cagr*100, lm&&lm.cagr*100],
+    ["年化波动 %（月频）", pm&&pm.vol*100, sm&&sm.vol*100, lm&&lm.vol*100],
+    ["Sharpe（月频，rf=0）", pm&&pm.sharpe, sm&&sm.sharpe, lm&&lm.sharpe],
+    ["最大回撤 %（月末）", pm&&pm.mdd*100, sm&&sm.mdd*100, lm&&lm.mdd*100],
+    ["月胜率 %", pm&&pm.hit, sm&&sm.hit, lm&&lm.hit],
   ];
   const dec = r0 => r0==="月数" ? 0 : 2;
   byId("mBody").innerHTML = rows.map(r =>

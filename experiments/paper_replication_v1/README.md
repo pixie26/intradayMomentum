@@ -65,11 +65,13 @@ generated separately by `make_report2.py` (it reads only existing artifacts
 and never re-runs the engine or modifies the run outputs). It contains one
 interactive section: the reader picks a start and an end date, and the
 month-end log-scale cumulative-NAV chart (paper Q24 strategy / local
-strategy / local SPY) and a metrics table (指标 | 论文策略 | 论文 SPY |
+strategy / local SPY) and a metrics table (指标 | 论文策略 | 本地 SPY |
 本地策略) are recomputed live for that window. Windowed metrics use a
 monthly methodology (vol = monthly std × √12, Sharpe with rf = 0, MDD on
-month-end points); the 论文 SPY column is fixed at the paper's reported
-full-period values because the paper publishes no monthly benchmark series.
+month-end points); the SPY column is the local SPY month-end series from
+the same equity file and the same profile/tier/dividend selection (the
+paper publishes no monthly benchmark series), while the paper's Table 3
+SPY buy-and-hold values remain as a fixed reference line below the table.
 Regenerate:
 
 ```bash
