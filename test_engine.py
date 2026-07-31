@@ -464,6 +464,17 @@ def test_unknown_exit_does_not_pollute_aum(run_dir: Path) -> None:
             loc = int(r.index.get_loc(day))
             check(abs(r["aum"].iloc[loc] - r["prev_aum"].iloc[loc]) < 1e-9,
                   f"{policy}: unknown-exit day changed AUM")
+            row = r.iloc[loc]
+            check(abs(row["net"] - (
+                row["gross"] - row["cost"] + row["cash_interest"]
+                + row["financing"])) < 1e-9,
+                f"{policy}: unknown-exit accounting identity failed")
+            check(row[[
+                "known_partial_gross", "known_partial_commission",
+                "known_partial_slippage", "known_partial_cash_interest",
+                "known_partial_financing",
+            ]].abs().sum() > 0,
+                f"{policy}: known partial path was not retained for audit")
             if loc + 1 < len(r):
                 check(abs(r["prev_aum"].iloc[loc + 1]
                           - r["prev_aum"].iloc[loc]) < 1e-9,

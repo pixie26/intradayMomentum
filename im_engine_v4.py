@@ -887,6 +887,9 @@ def backtest(
         holding_minutes = 0.0
         positive_cash_integral = borrowed_cash_integral = 0.0
         long_notional_integral = short_notional_integral = 0.0
+        known_partial_gross = known_partial_commission = 0.0
+        known_partial_slippage = known_partial_cash_interest = 0.0
+        known_partial_financing = 0.0
         signal_count = 0
         traded_notional = long_gross = short_gross = 0.0
         row = daily.loc[day]
@@ -1045,12 +1048,22 @@ def backtest(
             # compound into every later session's position size.
             if cfg.unknown_exit_policy == "terminate":
                 terminated_from = day
-                net = 0.0
             elif cfg.unknown_exit_policy == "exclude_session_and_freeze_aum":
-                net = 0.0                      # assumes zero P&L: disclose it
+                pass                           # assumes zero P&L: disclose it
             elif cfg.unknown_exit_policy != "impute_last_observed":
                 raise ValueError(
                     f"unknown unknown_exit_policy {cfg.unknown_exit_policy!r}")
+            if cfg.unknown_exit_policy != "impute_last_observed":
+                # Preserve the auditable known prefix in separate columns, but
+                # keep the formal accounting row internally consistent with
+                # the frozen-AUM assumption.
+                known_partial_gross = gross
+                known_partial_commission = commission
+                known_partial_slippage = slippage
+                known_partial_cash_interest = cash_interest
+                known_partial_financing = financing
+                gross = commission = slippage = cost = 0.0
+                cash_interest = financing = net = 0.0
 
         aum = prev_aum + net
         rows.append((day, status, gross, commission, slippage, cost,
@@ -1059,6 +1072,9 @@ def backtest(
                      traded_notional, long_gross, short_gross,
                      positive_cash_integral, borrowed_cash_integral,
                      long_notional_integral, short_notional_integral,
+                     known_partial_gross, known_partial_commission,
+                     known_partial_slippage, known_partial_cash_interest,
+                     known_partial_financing,
                      cash_rate, funding_rate, borrow_rate,
                      total_dcf, intraday_dcf, cash_hurdle_ret,
                      prev_aum, aum,
@@ -1076,6 +1092,11 @@ def backtest(
                                     "borrowed_cash_minute_dollars",
                                     "long_notional_minute_dollars",
                                     "short_notional_minute_dollars",
+                                    "known_partial_gross",
+                                    "known_partial_commission",
+                                    "known_partial_slippage",
+                                    "known_partial_cash_interest",
+                                    "known_partial_financing",
                                     "cash_rate_annual_used",
                                     "funding_rate_annual_used",
                                     "borrow_rate_annual_used",

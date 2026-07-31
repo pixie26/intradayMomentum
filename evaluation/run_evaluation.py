@@ -742,6 +742,14 @@ def render_html_report(
         "3 profiles × 3 tiers × 2 dividend modes × 4 slippage levels"
         if len(summary) == 216 else
         f"{summary['cell_id'].nunique()} selected smoke cell")
+    missing_metric_rows = int(summary["cagr"].isna().sum())
+    missing_metric_note = (
+        f"<p class=\"note\"><strong>Coverage note:</strong> "
+        f"{missing_metric_rows} rows have no performance estimate. They are "
+        "exploratory post-publication cells whose capital path had already "
+        "terminated at an unknown exit; the runner reports them as unavailable "
+        "instead of fabricating or restarting returns.</p>"
+        if missing_metric_rows else "")
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -817,6 +825,7 @@ experiment and did not tune this economic headline.</p>
 <div class="scroll">{monthly_table}</div></section>
 
 <section class="panel"><h2>{matrix_title}</h2>
+{missing_metric_note}
 <div class="filters">
 <select id="period"></select><select id="profile"></select>
 <select id="tier"></select><select id="dividend"></select>
