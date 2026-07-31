@@ -70,6 +70,14 @@ def main() -> int:
     assert {row["component"] for row in rows} >= {
         "long_vs_short", "signal_count", "turnover",
         "gross_edge_per_traded_share", "cost_per_traded_share"}
+    tagged_parts = []
+    for label in ("a", "b"):
+        tagged = result.reset_index()
+        tagged.attrs = {}
+        tagged.insert(0, "cell_id", label)
+        tagged_parts.append(tagged)
+    combined = pd.concat(tagged_parts, ignore_index=True)
+    assert len(combined) == 2 * len(result)
 
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)

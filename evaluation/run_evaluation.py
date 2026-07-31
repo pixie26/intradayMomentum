@@ -1085,6 +1085,10 @@ def execute(args: argparse.Namespace) -> Path:
                 if data["dividends"] is not None
                 else pd.Series(dtype=float))
         tagged = result.reset_index()
+        # Backtest attrs contain DataFrame-valued ledgers/features. Pandas
+        # compares attrs during concat, where DataFrame equality has no scalar
+        # truth value. Those attrs are published separately below.
+        tagged.attrs = {}
         tagged.insert(0, "cell_id", cell.cell_id)
         daily_frames.append(tagged)
         ledger = result.attrs.get("ledger", {})
