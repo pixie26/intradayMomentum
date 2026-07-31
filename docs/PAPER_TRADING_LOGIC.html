@@ -673,70 +673,132 @@ Shares_t=100
 <p>这比简单使用 <code>position.shift(1) * close.diff()</code> 更容易审计。</p>
 <hr />
 <h2 id="三个-profile-分别回答什么问题">11. 三个 profile 分别回答什么问题</h2>
+<p>三个 profile 共用同一引擎、同一数据层，只在<strong>假设</strong>上分叉。先对照，再分述。</p>
+<table>
+<thead>
+<tr class="header">
+<th>假设</th>
+<th><code>official_sample_compatible</code></th>
+<th><code>paper_spec</code></th>
+<th><code>corrected_execution</code></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>复现对象</td>
+<td>作者公开 notebook 的 conventions</td>
+<td>论文文字 + 作者明确意图</td>
+<td>论文信号 + 诚实的成交路径</td>
+</tr>
+<tr class="even">
+<td>sigma warm-up</td>
+<td>13 个值即可（sample 惯例）</td>
+<td>严格 14 个 eligible sessions</td>
+<td>严格 14</td>
+</tr>
+<tr class="odd">
+<td>日波动率窗口</td>
+<td><code>d-15..d-2</code>（sample 偏差，漏掉最近完成的一天）</td>
+<td><code>t-1..t-14</code>（<code>dvol_lag=1</code>）</td>
+<td><code>t-1..t-14</code></td>
+</tr>
+<tr class="even">
+<td>NaN volatility</td>
+<td>4 倍杠杆 fallback（sample bug）</td>
+<td>不交易（skip）</td>
+<td>不交易</td>
+</tr>
+<tr class="odd">
+<td>成交价</td>
+<td>信号 bar close</td>
+<td>信号 bar close</td>
+<td><strong>下一可执行 bar open</strong></td>
+</tr>
+<tr class="even">
+<td>预定成交 minute 不可用</td>
+<td>queue 到可执行为止</td>
+<td>取消订单</td>
+<td>取消订单（可选 queue）</td>
+</tr>
+<tr class="odd">
+<td>滑点</td>
+<td>$0</td>
+<td>$0.001/share</td>
+<td>$0.005/share</td>
+</tr>
+<tr class="even">
+<td>佣金</td>
+<td>$0.0035/share、最低 $0.35/order</td>
+<td>同左</td>
+<td>同左</td>
+</tr>
+<tr class="odd">
+<td>每股成本（佣金+滑点）</td>
+<td>0.35¢</td>
+<td>0.45¢</td>
+<td>0.85¢</td>
+</tr>
+<tr class="even">
+<td>股数取整</td>
+<td><code>round()</code></td>
+<td><code>floor</code></td>
+<td><code>floor</code></td>
+</tr>
+<tr class="odd">
+<td>反手最低佣金</td>
+<td>收两次（close + reverse 两笔单）</td>
+<td>一次（单笔 2N）</td>
+<td>一次（单笔 2N）</td>
+</tr>
+<tr class="even">
+<td>rolling 口径</td>
+<td>按实际存在的数据行</td>
+<td>严格 eligible slots：缺观测占槽，不向前补</td>
+<td>同左</td>
+</tr>
+<tr class="odd">
+<td>日收益有效性</td>
+<td>用原始收盘</td>
+<td>尊重 return validity，无效收盘按 unknown exit 处理</td>
+<td>同左</td>
+</tr>
+<tr class="even">
+<td>分红文件缺失</td>
+<td>容忍（sample 原本不调整）</td>
+<td>直接报错</td>
+<td>直接报错</td>
+</tr>
+<tr class="odd">
+<td>定位</td>
+<td>convention parity，不是 bit parity</td>
+<td>可归因的论文复现</td>
+<td>最接近经济结果，非完整实盘</td>
+</tr>
+</tbody>
+</table>
+<p>三个 profile 相同的部分：30 分钟信号频率、<code>band_mult=1</code>、2% 日波动目标、4 倍杠杆上限、HLC3 VWAP、全日历特征、最后才应用 tier mask、反手按两个 traded units 计费、EOD 平仓计入成交、AUM 只按净 PnL 变动。</p>
+<p>全样本基线（零分红/零融资的 mechanics baseline）：official 17.0% CAGR / 1.15 Sharpe，paper_spec 16.8% / 1.16，corrected_execution 14.2% / 1.01（见 <code>PROJECT_WORK_LOG_ZH.md</code> §6）。三档差异几乎全来自成本与成交假设：把成交从信号 close 改成下一可执行 open、滑点从 0.1¢ 提到 0.5¢，年化掉约 2.6 个点——远大于任何 session tier 的影响。</p>
 <h3 id="official_sample_compatible">11.1 <code>official_sample_compatible</code></h3>
-<p>目标：</p>
 <blockquote>
-<p>解释作者公开 Python notebook 的结果是如何产生的。</p>
+<p>回答：作者公开 Python notebook 的结果是如何产生的。</p>
 </blockquote>
-<p>保留的作者 sample 约定包括：</p>
-<ul>
-<li><code>sigma_open</code> 有13个值即可 warm-up；</li>
-<li>日波动率使用 <code>d-15..d-2</code>；</li>
-<li>NaN volatility 使用4倍杠杆；</li>
-<li>股数使用 <code>round()</code>；</li>
-<li>不扣论文的 <code>$0.001/share</code> slippage；</li>
-<li>在实际存在的数据行上 rolling；</li>
-<li>exposure 按数据行 shift 后计算 close-to-close PnL。</li>
-</ul>
-<p>它不是逐行 bit parity：</p>
-<ul>
-<li>当前项目仍使用自己的交易日历；</li>
-<li>数据源不同；</li>
-<li>tier 和缺失数据处理不同；</li>
-<li>AUM 时间轴更严格。</li>
-</ul>
-<p>因此它只能称为 <strong>convention parity</strong>。</p>
+<p>它不是逐行 bit parity：交易日历、数据源、tier 与缺失数据处理、AUM 时间轴都是本项目的。因此只能称为 <strong>convention parity</strong>；真正的 parity 检验需要逐日对账 shares / signal / exposure / trade units / commission / gross / net / AUM，仅最终收益相等不算数。</p>
 <h3 id="paper_spec">11.2 <code>paper_spec</code></h3>
-<p>目标：</p>
 <blockquote>
-<p>尽量按论文文字和作者明确意图复现策略信号与成本。</p>
+<p>回答：尽量按论文文字和作者明确意图复现，会得到什么。</p>
 </blockquote>
-<p>主要规则：</p>
+<p>需要谨慎理解的归因细节：</p>
 <ul>
-<li>严格14个历史 eligible sessions；</li>
-<li><code>band_mult=1</code>；</li>
-<li>2%日波动目标；</li>
-<li>最大4倍杠杆；</li>
-<li>floor 股数；</li>
-<li><code>$0.0035/share</code> commission；</li>
-<li><code>$0.001/share</code> slippage；</li>
-<li>分红调整前收；</li>
-<li>signal-bar-close 成交约定。</li>
-</ul>
-<p>需要谨慎理解：</p>
-<ul>
-<li>分红调整来自作者 sample，论文正文未写明；</li>
+<li>分红调整前收来自作者 sample，论文正文未写明；</li>
 <li>HLC3 VWAP 来自作者 sample，论文正文只规定 market-hours VWAP；</li>
-<li><code>$0.35/order</code> 最低佣金来自作者 sample/券商约定，论文正文只写每股费率；</li>
+<li><code>$0.35/order</code> 最低佣金来自作者 sample / 券商约定，论文正文只写每股费率；</li>
 <li>signal-bar-close 是对论文模糊成交描述的一种解释，不是原文唯一可能解释。</li>
 </ul>
 <p>所以 <code>paper_spec</code> 是“可归因的论文复现 profile”，不是声称论文把所有工程细节都写全了。</p>
 <h3 id="corrected_execution">11.3 <code>corrected_execution</code></h3>
-<p>目标：</p>
 <blockquote>
-<p>保留论文信号，但更诚实地模拟现实中能够成交的路径。</p>
+<p>回答：保留论文信号，但只按现实中真正能成交的路径，会得到什么。</p>
 </blockquote>
-<p>相对 <code>paper_spec</code> 的主要变化：</p>
-<ul>
-<li>信号在 bar close 确认；</li>
-<li>下一可执行 bar open 才成交；</li>
-<li>默认执行滑点提高到 <code>$0.005/share</code>；</li>
-<li>真实 pending-order 状态；</li>
-<li>信号后的预定成交 minute 不可用时，默认取消订单；</li>
-<li>可选择 queue 到复牌成交；</li>
-<li>未成交订单不能获得复牌 gap；</li>
-<li>已有持仓必须承担完整复牌 gap。</li>
-</ul>
 <p>它是当前最接近经济结果的 profile，但仍不是完整实盘模型，因为：</p>
 <ul>
 <li>market impact 尚未完整建模；</li>

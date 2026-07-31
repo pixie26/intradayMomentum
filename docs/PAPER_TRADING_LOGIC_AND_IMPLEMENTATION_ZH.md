@@ -562,74 +562,52 @@ signal time
 
 ## 11. 三个 profile 分别回答什么问题
 
+三个 profile 共用同一引擎、同一数据层，只在**假设**上分叉。先对照，再分述。
+
+| 假设 | `official_sample_compatible` | `paper_spec` | `corrected_execution` |
+|---|---|---|---|
+| 复现对象 | 作者公开 notebook 的 conventions | 论文文字 + 作者明确意图 | 论文信号 + 诚实的成交路径 |
+| sigma warm-up | 13 个值即可（sample 惯例） | 严格 14 个 eligible sessions | 严格 14 |
+| 日波动率窗口 | `d-15..d-2`（sample 偏差，漏掉最近完成的一天） | `t-1..t-14`（`dvol_lag=1`） | `t-1..t-14` |
+| NaN volatility | 4 倍杠杆 fallback（sample bug） | 不交易（skip） | 不交易 |
+| 成交价 | 信号 bar close | 信号 bar close | **下一可执行 bar open** |
+| 预定成交 minute 不可用 | queue 到可执行为止 | 取消订单 | 取消订单（可选 queue） |
+| 滑点 | $0 | $0.001/share | $0.005/share |
+| 佣金 | $0.0035/share、最低 $0.35/order | 同左 | 同左 |
+| 每股成本（佣金+滑点） | 0.35¢ | 0.45¢ | 0.85¢ |
+| 股数取整 | `round()` | `floor` | `floor` |
+| 反手最低佣金 | 收两次（close + reverse 两笔单） | 一次（单笔 2N） | 一次（单笔 2N） |
+| rolling 口径 | 按实际存在的数据行 | 严格 eligible slots：缺观测占槽，不向前补 | 同左 |
+| 日收益有效性 | 用原始收盘 | 尊重 return validity，无效收盘按 unknown exit 处理 | 同左 |
+| 分红文件缺失 | 容忍（sample 原本不调整） | 直接报错 | 直接报错 |
+| 定位 | convention parity，不是 bit parity | 可归因的论文复现 | 最接近经济结果，非完整实盘 |
+
+三个 profile 相同的部分：30 分钟信号频率、`band_mult=1`、2% 日波动目标、4 倍杠杆上限、HLC3 VWAP、全日历特征、最后才应用 tier mask、反手按两个 traded units 计费、EOD 平仓计入成交、AUM 只按净 PnL 变动。
+
+全样本基线（零分红/零融资的 mechanics baseline）：official 17.0% CAGR / 1.15 Sharpe，paper_spec 16.8% / 1.16，corrected_execution 14.2% / 1.01（见 `PROJECT_WORK_LOG_ZH.md` §6）。三档差异几乎全来自成本与成交假设：把成交从信号 close 改成下一可执行 open、滑点从 0.1¢ 提到 0.5¢，年化掉约 2.6 个点——远大于任何 session tier 的影响。
+
 ### 11.1 `official_sample_compatible`
 
-目标：
+> 回答：作者公开 Python notebook 的结果是如何产生的。
 
-> 解释作者公开 Python notebook 的结果是如何产生的。
-
-保留的作者 sample 约定包括：
-
-- `sigma_open` 有13个值即可 warm-up；
-- 日波动率使用 `d-15..d-2`；
-- NaN volatility 使用4倍杠杆；
-- 股数使用 `round()`；
-- 不扣论文的 `$0.001/share` slippage；
-- 在实际存在的数据行上 rolling；
-- exposure 按数据行 shift 后计算 close-to-close PnL。
-
-它不是逐行 bit parity：
-
-- 当前项目仍使用自己的交易日历；
-- 数据源不同；
-- tier 和缺失数据处理不同；
-- AUM 时间轴更严格。
-
-因此它只能称为 **convention parity**。
+它不是逐行 bit parity：交易日历、数据源、tier 与缺失数据处理、AUM 时间轴都是本项目的。因此只能称为 **convention parity**；真正的 parity 检验需要逐日对账 shares / signal / exposure / trade units / commission / gross / net / AUM，仅最终收益相等不算数。
 
 ### 11.2 `paper_spec`
 
-目标：
+> 回答：尽量按论文文字和作者明确意图复现，会得到什么。
 
-> 尽量按论文文字和作者明确意图复现策略信号与成本。
+需要谨慎理解的归因细节：
 
-主要规则：
-
-- 严格14个历史 eligible sessions；
-- `band_mult=1`；
-- 2%日波动目标；
-- 最大4倍杠杆；
-- floor 股数；
-- `$0.0035/share` commission；
-- `$0.001/share` slippage；
-- 分红调整前收；
-- signal-bar-close 成交约定。
-
-需要谨慎理解：
-
-- 分红调整来自作者 sample，论文正文未写明；
+- 分红调整前收来自作者 sample，论文正文未写明；
 - HLC3 VWAP 来自作者 sample，论文正文只规定 market-hours VWAP；
-- `$0.35/order` 最低佣金来自作者 sample/券商约定，论文正文只写每股费率；
+- `$0.35/order` 最低佣金来自作者 sample / 券商约定，论文正文只写每股费率；
 - signal-bar-close 是对论文模糊成交描述的一种解释，不是原文唯一可能解释。
 
 所以 `paper_spec` 是“可归因的论文复现 profile”，不是声称论文把所有工程细节都写全了。
 
 ### 11.3 `corrected_execution`
 
-目标：
-
-> 保留论文信号，但更诚实地模拟现实中能够成交的路径。
-
-相对 `paper_spec` 的主要变化：
-
-- 信号在 bar close 确认；
-- 下一可执行 bar open 才成交；
-- 默认执行滑点提高到 `$0.005/share`；
-- 真实 pending-order 状态；
-- 信号后的预定成交 minute 不可用时，默认取消订单；
-- 可选择 queue 到复牌成交；
-- 未成交订单不能获得复牌 gap；
-- 已有持仓必须承担完整复牌 gap。
+> 回答：保留论文信号，但只按现实中真正能成交的路径，会得到什么。
 
 它是当前最接近经济结果的 profile，但仍不是完整实盘模型，因为：
 
