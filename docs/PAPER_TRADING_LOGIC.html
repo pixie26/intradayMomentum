@@ -1386,7 +1386,7 @@ shares = floor(100,000 × 2 / 500) = 400</code></pre>
 <ul>
 <li><strong>论文：</strong> 需要策略和SPY对齐收益；严谨推断还应考虑时间序列相关与稳健标准误。</li>
 <li><strong>作者sample：</strong> 通常是简单OLS或等价点估计，输入benchmark也常是price return。</li>
-<li><strong>当前实现：</strong> 在对齐的SPY total-return sessions上计算beta和年化alpha点估计；尚未实现HAC标准误、置信区间和独立daily benchmark。</li>
+<li><strong>当前实现：</strong> 在对齐的SPY total-return sessions上计算beta和年化alpha点估计；v2明确延期HAC标准误和置信区间，当前报告不得暗示已提供统计置信区间。</li>
 <li><strong>为什么重要：</strong> 点估计可以描述样本关系，但没有稳健误差就不能判断alpha是否统计显著；分钟文件自身的close缺陷也可能同时影响回归两边。</li>
 </ul>
 <h3 id="可复现性与验证">20.6 可复现性与验证</h3>
@@ -1507,7 +1507,7 @@ s_r
 <li>排队位置和部分成交模型；</li>
 <li>独立daily SPY raw-close benchmark；</li>
 <li>唯一的可执行evaluation runner；</li>
-<li>bootstrap/HAC等统计不确定性；</li>
+<li>bootstrap/HAC等统计不确定性明确延期；v2只报告点估计；</li>
 <li>冻结后的唯一post-publication正式报告。</li>
 </ol>
 <p>因此：</p>

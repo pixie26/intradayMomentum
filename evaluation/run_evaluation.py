@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import html
 import json
 import os
 import shutil
@@ -204,7 +205,90 @@ def inspect_release(release_dir: Path) -> dict[str, Any]:
     }
 
 
-def formal_gaps(spec: dict[str, Any], benchmark_path: Path | None) -> list[str]:
+def load_financing_rates(path: Path) -> pd.DataFrame:
+    frame = pd.read_csv(path)
+    required = {
+        "session_date", "benchmark", "benchmark_observation",
+        "benchmark_rate_percent", "cash_rate_annual",
+        "funding_rate_annual", "borrow_rate_annual",
+    }
+    missing = sorted(required - set(frame.columns))
+    if missing:
+        raise ValueError(f"financing rate CSV missing columns: {missing}")
+    frame["session_date"] = pd.to_datetime(
+        frame["session_date"]).dt.normalize()
+    if frame["session_date"].duplicated().any():
+        raise ValueError("financing rate CSV has duplicate session dates")
+    rate_columns = [
+        "benchmark_rate_percent", "cash_rate_annual",
+        "funding_rate_annual", "borrow_rate_annual",
+    ]
+    frame[rate_columns] = frame[rate_columns].apply(
+        pd.to_numeric, errors="coerce")
+    if frame[rate_columns].isna().any(axis=None):
+        raise ValueError("financing rate CSV contains missing or invalid rates")
+    return frame.sort_values("session_date").reset_index(drop=True)
+
+
+def inspect_financing_release(
+        release_dir: Path, spec: dict[str, Any]) -> dict[str, Any]:
+    release_dir = release_dir.resolve()
+    success_path = release_dir / "_SUCCESS"
+    manifest_path = release_dir / "manifest.json"
+    if not success_path.exists() or not manifest_path.exists():
+        raise RuntimeError("financing release requires _SUCCESS and manifest.json")
+    success = json.loads(success_path.read_text(encoding="utf-8"))
+    manifest_hash = sha256(manifest_path)
+    if success.get("manifest_sha256") != manifest_hash:
+        raise RuntimeError("financing release manifest hash does not match _SUCCESS")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    curve_name = "financing_rates_daily.csv"
+    curve_path = release_dir / curve_name
+    declared_file = manifest.get("files", {}).get(curve_name, {})
+    if not curve_path.exists():
+        raise RuntimeError("financing release is missing its daily rate curve")
+    curve_hash = sha256(curve_path)
+    if declared_file.get("sha256") != curve_hash:
+        raise RuntimeError("financing daily curve hash does not match manifest")
+    frame = load_financing_rates(curve_path)
+    financing_spec = spec.get("financing", {})
+    declared_release = financing_spec.get("rate_release", {})
+    checks = {
+        "release_id": manifest.get("release_id"),
+        "manifest_sha256": manifest_hash,
+        "daily_rates_sha256": curve_hash,
+    }
+    for key, observed in checks.items():
+        declared = declared_release.get(key)
+        if declared and declared != observed:
+            raise RuntimeError(
+                f"financing release {key} does not match spec")
+    expected_start = str(frame["session_date"].min().date())
+    expected_end = str(frame["session_date"].max().date())
+    if manifest.get("expected_start") != expected_start:
+        raise RuntimeError("financing release start does not match its curve")
+    if manifest.get("expected_end") != expected_end:
+        raise RuntimeError("financing release end does not match its curve")
+    return {
+        "path": str(release_dir),
+        "release_id": manifest.get("release_id"),
+        "manifest_sha256": manifest_hash,
+        "daily_rates_path": str(curve_path),
+        "daily_rates_sha256": curve_hash,
+        "rows": int(len(frame)),
+        "first": expected_start,
+        "last": expected_end,
+        "day_count": manifest.get("day_count"),
+        "source_hashes": {
+            name: details.get("source_sha256")
+            for name, details in manifest.get("sources", {}).items()
+        },
+    }
+
+
+def formal_gaps(
+        spec: dict[str, Any], benchmark_path: Path | None,
+        financing_release: Path | None = None) -> list[str]:
     gaps = [
         f"spec missing formal v2 field: {field}"
         for field in FORMAL_V2_FIELDS if field not in spec
@@ -226,6 +310,20 @@ def formal_gaps(spec: dict[str, Any], benchmark_path: Path | None) -> list[str]:
         gaps.append("spec status must be frozen for formal publication")
     if spec.get("financing", {}).get("status") != "frozen":
         gaps.append("financing and borrow assumptions are not frozen")
+    if financing_release is None:
+        gaps.append("point-in-time financing rate release is required")
+    else:
+        try:
+            rate_info = inspect_financing_release(financing_release, spec)
+            data_release = spec.get("data_release", {})
+            if rate_info["first"] != data_release.get("expected_start"):
+                gaps.append("financing rate release starts after data release")
+            if rate_info["last"] != spec.get("evaluation_end"):
+                gaps.append("financing rate release does not end at evaluation_end")
+            if rate_info["day_count"] != "ACT/360":
+                gaps.append("financing rate release must use ACT/360")
+        except Exception as exc:
+            gaps.append(f"financing rate release cannot be verified: {exc}")
     if spec.get("statistics", {}).get("status") != "frozen":
         gaps.append("statistical inference assumptions are not frozen")
     if benchmark_path is not None and benchmark_path.exists():
@@ -243,14 +341,15 @@ def formal_gaps(spec: dict[str, Any], benchmark_path: Path | None) -> list[str]:
 
 def make_plan(
         spec_path: Path, release_dir: Path,
-        benchmark_path: Path | None = None) -> dict[str, Any]:
+        benchmark_path: Path | None = None,
+        financing_release: Path | None = None) -> dict[str, Any]:
     spec, spec_hash = load_spec(spec_path)
     release = inspect_release(release_dir)
     cells = build_cells(spec)
     periods = build_periods(
         spec, release["expected_start"], release["expected_end"])
     git = git_state()
-    gaps = formal_gaps(spec, benchmark_path)
+    gaps = formal_gaps(spec, benchmark_path, financing_release)
     declared_release = spec.get("data_release", {})
     if (
         declared_release.get("release_id")
@@ -299,6 +398,11 @@ def make_plan(
             }
             if benchmark_path is not None and benchmark_path.exists() else None
         ),
+        "financing_rates": (
+            inspect_financing_release(financing_release, spec)
+            if financing_release is not None and financing_release.exists()
+            else None
+        ),
         "formal_ready": not gaps,
         "formal_gaps": gaps,
     }
@@ -336,6 +440,9 @@ def performance_metrics(r: pd.DataFrame, rf_annual: float) -> dict[str, Any]:
     shares = float(r["shares_traded"].sum())
     avg_aum = float(r["prev_aum"].mean())
     nonzero = x[x != 0]
+    hurdle = (
+        r["cash_hurdle_ret"].fillna(0.0)
+        if "cash_hurdle_ret" in r else rf_annual / 252.0)
     return {
         "first": str(first.date()),
         "last": str(last.date()),
@@ -346,7 +453,7 @@ def performance_metrics(r: pd.DataFrame, rf_annual: float) -> dict[str, Any]:
         "cagr": total ** (1.0 / years) - 1.0,
         "annual_volatility": std * np.sqrt(252),
         "sharpe_calendar": (
-            float((x.mean() - rf_annual / 252.0) / std * np.sqrt(252))
+            float((x - hurdle).mean() / std * np.sqrt(252))
             if std > 0 else None),
         "max_drawdown": float(dd.min()),
         "worst_day": float(x.min()),
@@ -375,6 +482,11 @@ def performance_metrics(r: pd.DataFrame, rf_annual: float) -> dict[str, Any]:
             float(r["cost"].sum()) / shares if shares > 0 else None),
         "financing_cost_per_traded_share": (
             float(-r["financing"].sum()) / shares if shares > 0 else None),
+        "trading_edge_after_costs_per_traded_share": (
+            float(
+                r["gross"].sum() - r["cost"].sum()
+                + r["financing"].sum()
+            ) / shares if shares > 0 else None),
         "net_edge_per_traded_share": (
             float(r["net"].sum()) / shares if shares > 0 else None),
         "long_gross_pnl": float(r["long_gross"].sum()),
@@ -460,6 +572,307 @@ def benchmark_metrics(
         "benchmark_sessions": int(len(total_ret)),
         "benchmark_aligned_sessions": int(len(aligned)),
     }
+
+
+def headline_cell_id(spec: dict[str, Any]) -> str:
+    headline = spec["headline"]
+    return Cell(
+        headline["profile"], headline["tier"], headline["dividend_mode"],
+        float(headline["slippage_per_share"])).cell_id
+
+
+def headline_calendar_tables(
+        result: pd.DataFrame, close: pd.Series,
+        dividends: pd.Series) -> tuple[pd.DataFrame, pd.DataFrame]:
+    strategy = result.loc[
+        result["is_evaluation"].astype(bool), "ret"].dropna()
+    if strategy.empty:
+        raise RuntimeError("headline result has no evaluation returns")
+    prior = close.index[close.index < strategy.index.min()]
+    if len(prior) == 0:
+        raise RuntimeError("benchmark has no anchor for headline calendar table")
+    px = close.loc[prior[-1]:strategy.index.max()]
+    div = dividends.reindex(px.index).fillna(0.0)
+    benchmark = ((px + div) / px.shift(1) - 1.0).reindex(strategy.index)
+    if benchmark.isna().any():
+        missing = benchmark.index[benchmark.isna()]
+        raise RuntimeError(
+            f"headline benchmark misses {len(missing)} sessions")
+    daily = pd.DataFrame({
+        "strategy": strategy,
+        "benchmark_total_return": benchmark,
+    })
+
+    yearly = (
+        daily.groupby(daily.index.year)
+        .agg(lambda values: (1.0 + values).prod() - 1.0)
+        .rename_axis("year").reset_index()
+    )
+    yearly["excess"] = (
+        yearly["strategy"] - yearly["benchmark_total_return"])
+
+    month_names = [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ]
+    monthly_returns = daily.groupby(
+        [daily.index.year, daily.index.month]
+    ).agg(lambda values: (1.0 + values).prod() - 1.0)
+    monthly_rows: list[dict[str, Any]] = []
+    for series_name in daily.columns:
+        for year, group in monthly_returns[series_name].groupby(level=0):
+            by_month = group.droplevel(0)
+            row: dict[str, Any] = {"series": series_name, "year": int(year)}
+            for month, label in enumerate(month_names, start=1):
+                row[label] = (
+                    float(by_month.loc[month]) if month in by_month.index
+                    else None)
+            year_values = daily.loc[
+                daily.index.year == year, series_name]
+            row["Yearly"] = float((1.0 + year_values).prod() - 1.0)
+            monthly_rows.append(row)
+    return pd.DataFrame(monthly_rows), yearly
+
+
+def render_html_report(
+        summary: pd.DataFrame, monthly: pd.DataFrame, yearly: pd.DataFrame,
+        spec: dict[str, Any], manifest: dict[str, Any]) -> str:
+    headline_id = headline_cell_id(spec)
+    headline = summary[summary["cell_id"].eq(headline_id)].copy()
+    post = headline[headline["subperiod"].eq("post_publication")]
+    if len(post) != 1:
+        raise RuntimeError("formal report requires one post-publication headline")
+    post_row = post.iloc[0]
+
+    def percent(value: Any, digits: int = 2) -> str:
+        if value is None or pd.isna(value):
+            return "—"
+        return f"{float(value) * 100:.{digits}f}%"
+
+    def cents(value: Any, digits: int = 3) -> str:
+        if value is None or pd.isna(value):
+            return "—"
+        return f"{float(value) * 100:.{digits}f}¢"
+
+    gross_edge = float(post_row["gross_edge_per_traded_share"])
+    after_costs = float(
+        post_row["trading_edge_after_costs_per_traded_share"])
+    if gross_edge <= 0:
+        verdict = "Post-publication gross edge is non-positive: the signal is gone."
+        verdict_class = "bad"
+    elif after_costs <= 0:
+        verdict = (
+            "Post-publication gross edge is positive, but execution, funding "
+            "and borrow costs consume it.")
+        verdict_class = "warn"
+    else:
+        verdict = (
+            "Post-publication edge remains positive after execution, funding "
+            "and borrow costs.")
+        verdict_class = "good"
+
+    headline_rows = headline[[
+        "subperiod", "cagr", "benchmark_total_cagr", "excess_cagr",
+        "sharpe_calendar", "max_drawdown", "beta_vs_benchmark_total",
+        "alpha_annualized", "information_ratio",
+        "gross_edge_per_traded_share",
+        "execution_cost_per_traded_share",
+        "financing_cost_per_traded_share",
+        "trading_edge_after_costs_per_traded_share",
+    ]].copy()
+    for column in (
+        "cagr", "benchmark_total_cagr", "excess_cagr", "max_drawdown",
+        "alpha_annualized",
+    ):
+        headline_rows[column] = headline_rows[column].map(percent)
+    for column in (
+        "gross_edge_per_traded_share",
+        "execution_cost_per_traded_share",
+        "financing_cost_per_traded_share",
+        "trading_edge_after_costs_per_traded_share",
+    ):
+        headline_rows[column] = headline_rows[column].map(cents)
+
+    yearly_display = yearly.copy()
+    for column in ("strategy", "benchmark_total_return", "excess"):
+        yearly_display[column] = yearly_display[column].map(percent)
+    monthly_display = monthly.copy()
+    for column in [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Yearly",
+    ]:
+        monthly_display[column] = monthly_display[column].map(percent)
+
+    matrix_columns = [
+        "profile", "tier", "dividend_mode", "slippage_per_share",
+        "subperiod", "cagr", "benchmark_total_cagr", "excess_cagr",
+        "sharpe_calendar", "max_drawdown", "gross_edge_per_traded_share",
+        "execution_cost_per_traded_share",
+        "financing_cost_per_traded_share",
+        "trading_edge_after_costs_per_traded_share",
+        "beta_vs_benchmark_total", "alpha_annualized", "information_ratio",
+    ]
+    matrix_records = summary[matrix_columns].replace(
+        {np.nan: None}).to_dict(orient="records")
+    matrix_json = json.dumps(matrix_records, separators=(",", ":"))
+    spec_json = html.escape(json.dumps(
+        spec, indent=2, sort_keys=True), quote=False)
+    provenance_json = html.escape(json.dumps(
+        manifest, indent=2, sort_keys=True, default=str), quote=False)
+    headline_table = headline_rows.to_html(
+        index=False, classes="data-table", border=0, escape=True)
+    yearly_table = yearly_display.to_html(
+        index=False, classes="data-table", border=0, escape=True)
+    monthly_table = monthly_display.to_html(
+        index=False, classes="data-table compact", border=0, escape=True)
+    is_formal = manifest.get("classification") == (
+        "formal_post_publication_evaluation")
+    title = (
+        "SPY Intraday Momentum — Frozen Post-Publication Evaluation"
+        if is_formal else
+        "SPY Intraday Momentum — Non-Formal Engineering Smoke")
+    classification_badge = (
+        "FORMAL · POINT ESTIMATES ONLY"
+        if is_formal else "NON-FORMAL SMOKE · POINT ESTIMATES ONLY")
+    matrix_title = (
+        "Full 216-row parameter comparison"
+        if len(summary) == 216 else
+        f"Selected {len(summary)}-row smoke comparison")
+    matrix_description = (
+        "3 profiles × 3 tiers × 2 dividend modes × 4 slippage levels"
+        if len(summary) == 216 else
+        f"{summary['cell_id'].nunique()} selected smoke cell")
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{title}</title>
+<style>
+:root{{--ink:#172033;--muted:#667085;--line:#dbe2ea;--paper:#fff;
+--wash:#f4f7fb;--blue:#175cd3;--good:#067647;--warn:#b54708;--bad:#b42318}}
+*{{box-sizing:border-box}} body{{margin:0;background:var(--wash);color:var(--ink);
+font:14px/1.5 Inter,Segoe UI,Arial,sans-serif}} main{{max-width:1500px;margin:auto;
+padding:30px}} h1{{font-size:30px;margin:0 0 6px}} h2{{margin-top:32px}}
+.subtitle,.note{{color:var(--muted)}} .panel{{background:var(--paper);
+border:1px solid var(--line);border-radius:12px;padding:20px;margin:18px 0;
+box-shadow:0 1px 2px #1018280d}} .cards{{display:grid;
+grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}}
+.card{{border:1px solid var(--line);border-radius:10px;padding:14px}}
+.label{{color:var(--muted);font-size:12px;text-transform:uppercase}}
+.value{{font-size:24px;font-weight:700;margin-top:4px}} .verdict{{font-size:17px;
+font-weight:650;border-left:5px solid;padding:12px 14px;background:#f8fafc}}
+.verdict.good{{border-color:var(--good)}} .verdict.warn{{border-color:var(--warn)}}
+.verdict.bad{{border-color:var(--bad)}} .scroll{{overflow:auto}}
+.data-table{{border-collapse:collapse;width:100%;white-space:nowrap}}
+.data-table th,.data-table td{{border-bottom:1px solid var(--line);
+padding:8px 10px;text-align:right}} .data-table th{{background:#f8fafc;
+position:sticky;top:0;z-index:1}} .data-table td:first-child,
+.data-table th:first-child{{text-align:left}} .compact{{font-size:12px}}
+.filters{{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}}
+select{{padding:7px;border:1px solid var(--line);border-radius:7px;background:white}}
+pre{{white-space:pre-wrap;word-break:break-word;background:#101828;color:#e6edf7;
+padding:14px;border-radius:8px;max-height:440px;overflow:auto}}
+.badge{{display:inline-block;background:#eaf2ff;color:var(--blue);
+padding:3px 8px;border-radius:99px;font-weight:650}}
+</style>
+</head>
+<body><main>
+<span class="badge">{classification_badge}</span>
+<h1>{title}</h1>
+<div class="subtitle">Data: 2008-01-22–2026-07-09 · publication cutoff:
+2024-05-01 · {matrix_description}</div>
+
+<section class="panel">
+<h2>Economic headline</h2>
+<p class="verdict {verdict_class}">{html.escape(verdict)}</p>
+<div class="cards">
+<div class="card"><div class="label">Post CAGR</div><div class="value">
+{percent(post_row["cagr"])}</div></div>
+<div class="card"><div class="label">SPY total-return CAGR</div><div class="value">
+{percent(post_row["benchmark_total_cagr"])}</div></div>
+<div class="card"><div class="label">Post excess CAGR</div><div class="value">
+{percent(post_row["excess_cagr"])}</div></div>
+<div class="card"><div class="label">Post Sharpe vs cash</div><div class="value">
+{float(post_row["sharpe_calendar"]):.2f}</div></div>
+<div class="card"><div class="label">Gross edge / share</div><div class="value">
+{cents(gross_edge)}</div></div>
+<div class="card"><div class="label">After-cost edge / share</div><div class="value">
+{cents(after_costs)}</div></div>
+</div>
+<p class="note">Headline: corrected_execution × paper_ready × with-dividends ×
+$0.005/share slippage. Cash earns LIBOR-proxy/SOFR −50bp, borrowed cash costs
+benchmark +100bp, and SPY borrow is 25bp p.a. HAC and block bootstrap are
+deferred; this report does not provide confidence intervals.</p>
+<div class="scroll">{headline_table}</div>
+</section>
+
+<section class="panel"><h2>Annual performance vs SPY total return</h2>
+<div class="scroll">{yearly_table}</div></section>
+
+<section class="panel"><h2>Monthly performance (paper-style calendar table)</h2>
+<p class="note">Both the strategy headline and the independent SPY total-return
+benchmark are shown. Q24 paper matching remains a separate replication
+experiment and did not tune this economic headline.</p>
+<div class="scroll">{monthly_table}</div></section>
+
+<section class="panel"><h2>{matrix_title}</h2>
+<div class="filters">
+<select id="period"></select><select id="profile"></select>
+<select id="tier"></select><select id="dividend"></select>
+<select id="slippage"></select>
+</div><div class="scroll"><table class="data-table" id="matrix"></table></div>
+</section>
+
+<section class="panel"><h2>Frozen specification and provenance</h2>
+<details><summary>evaluation spec v2</summary><pre>{spec_json}</pre></details>
+<details><summary>run provenance</summary><pre>{provenance_json}</pre></details>
+</section>
+</main>
+<script>
+const rows={matrix_json};
+const fields={json.dumps(matrix_columns)};
+const filters=[
+  ["period","subperiod"],["profile","profile"],["tier","tier"],
+  ["dividend","dividend_mode"],["slippage","slippage_per_share"]];
+const labels={{
+  cagr:"Strategy CAGR",benchmark_total_cagr:"SPY total CAGR",
+  excess_cagr:"Excess CAGR",sharpe_calendar:"Sharpe vs cash",
+  max_drawdown:"Max drawdown",gross_edge_per_traded_share:"Gross edge/share",
+  execution_cost_per_traded_share:"Execution/share",
+  financing_cost_per_traded_share:"Funding+borrow/share",
+  trading_edge_after_costs_per_traded_share:"After-cost edge/share",
+  beta_vs_benchmark_total:"Beta",alpha_annualized:"Annual alpha",
+  information_ratio:"Information ratio",slippage_per_share:"Slippage/share"}};
+for(const [id,key] of filters){{
+  const el=document.getElementById(id);
+  const vals=[...new Set(rows.map(r=>String(r[key])))];
+  el.innerHTML=`<option value="">All ${{labels[key]||key}}</option>`+
+    vals.map(v=>`<option>${{v}}</option>`).join("");
+  el.onchange=render;
+}}
+function fmt(key,value){{
+  if(value===null||value===undefined) return "—";
+  if(["cagr","benchmark_total_cagr","excess_cagr","max_drawdown",
+      "alpha_annualized"].includes(key)) return (value*100).toFixed(2)+"%";
+  if(key.includes("per_traded_share")) return (value*100).toFixed(3)+"¢";
+  if(key==="slippage_per_share") return "$"+Number(value).toFixed(4);
+  if(typeof value==="number") return value.toFixed(3);
+  return value;
+}}
+function render(){{
+  const selected=Object.fromEntries(filters.map(([id,key])=>
+    [key,document.getElementById(id).value]));
+  const shown=rows.filter(r=>Object.entries(selected).every(
+    ([k,v])=>!v||String(r[k])===v));
+  const head="<thead><tr>"+fields.map(f=>`<th>${{labels[f]||f}}</th>`).join("")+
+    "</tr></thead>";
+  const body="<tbody>"+shown.map(r=>"<tr>"+fields.map(f=>
+    `<td>${{fmt(f,r[f])}}</td>`).join("")+"</tr>").join("")+"</tbody>";
+  document.getElementById("matrix").innerHTML=head+body;
+}}
+render();
+</script></body></html>"""
 
 
 def decomposition_rows(
@@ -566,7 +979,8 @@ def write_frame(frame: pd.DataFrame, path: Path) -> None:
 
 def publish(
         output_root: Path, run_name: str, frames: dict[str, pd.DataFrame],
-        manifest: dict[str, Any]) -> Path:
+        manifest: dict[str, Any],
+        text_files: dict[str, str] | None = None) -> Path:
     output_root.mkdir(parents=True, exist_ok=True)
     final = output_root / run_name
     if final.exists():
@@ -578,6 +992,10 @@ def publish(
         for name, frame in frames.items():
             path = staging / name
             write_frame(frame, path)
+            files[name] = {"bytes": path.stat().st_size, "sha256": sha256(path)}
+        for name, content in (text_files or {}).items():
+            path = staging / name
+            path.write_text(content, encoding="utf-8")
             files[name] = {"bytes": path.stat().st_size, "sha256": sha256(path)}
         manifest = {**manifest, "files": files}
         manifest_path = staging / "manifest.json"
@@ -612,7 +1030,9 @@ def execute(args: argparse.Namespace) -> Path:
         "non_formal_smoke" if is_smoke else "formal_post_publication_evaluation")
 
     if not is_smoke:
-        preflight = make_plan(spec_path, release_dir, args.benchmark_daily)
+        preflight = make_plan(
+            spec_path, release_dir, args.benchmark_daily,
+            args.financing_rates)
         if not preflight["formal_ready"]:
             raise RuntimeError(
                 "formal execution blocked: "
@@ -621,6 +1041,12 @@ def execute(args: argparse.Namespace) -> Path:
         raise RuntimeError("dirty smoke run requires --allow-dirty-smoke")
 
     financing = spec.get("financing", {})
+    financing_info = (
+        inspect_financing_release(args.financing_rates, spec)
+        if args.financing_rates is not None else None)
+    financing_rates = (
+        load_financing_rates(Path(financing_info["daily_rates_path"]))
+        if financing_info is not None else None)
     data_cache: dict[str, dict[str, Any]] = {}
     benchmark_close = (
         load_daily_benchmark(args.benchmark_daily)
@@ -630,6 +1056,9 @@ def execute(args: argparse.Namespace) -> Path:
     ledger_frames: dict[str, list[pd.DataFrame]] = {
         "signals": [], "orders": [], "fills": [], "round_trips": []}
     decomposition: list[dict[str, Any]] = []
+    headline_result: pd.DataFrame | None = None
+    headline_dividends = pd.Series(dtype=float)
+    target_headline = headline_cell_id(spec) if "headline" in spec else None
 
     for i, cell in enumerate(cells, start=1):
         print(f"[{i}/{len(cells)}] {cell.cell_id}", flush=True)
@@ -646,7 +1075,15 @@ def execute(args: argparse.Namespace) -> Path:
         if cache_key not in data_cache:
             data_cache[cache_key] = engine.load_run(release_dir, cfg)
         data = data_cache[cache_key]
-        result = engine.backtest(data, cfg, collect_ledger=True)
+        result = engine.backtest(
+            data, cfg, collect_ledger=True,
+            financing_rates=financing_rates)
+        if cell.cell_id == target_headline:
+            headline_result = result.copy()
+            headline_dividends = (
+                data["dividends"].copy()
+                if data["dividends"] is not None
+                else pd.Series(dtype=float))
         tagged = result.reset_index()
         tagged.insert(0, "cell_id", cell.cell_id)
         daily_frames.append(tagged)
@@ -688,6 +1125,12 @@ def execute(args: argparse.Namespace) -> Path:
         "decomposition.csv": pd.DataFrame(decomposition),
         "daily_results.parquet": pd.concat(daily_frames, ignore_index=True),
     }
+    monthly = yearly = None
+    if benchmark_close is not None and headline_result is not None:
+        monthly, yearly = headline_calendar_tables(
+            headline_result, benchmark_close, headline_dividends)
+        frames["headline_monthly.csv"] = monthly
+        frames["headline_yearly.csv"] = yearly
     for name, parts in ledger_frames.items():
         frames[f"{name}.parquet"] = (
             pd.concat(parts, ignore_index=True) if parts else pd.DataFrame())
@@ -710,6 +1153,7 @@ def execute(args: argparse.Namespace) -> Path:
             {"path": str(args.benchmark_daily.resolve()),
              "sha256": sha256(args.benchmark_daily)}
             if args.benchmark_daily is not None else None),
+        "financing_rates": financing_info,
         "git": git,
         "matrix_cells": len(cells),
         "subperiods": [asdict(period) for period in periods],
@@ -720,9 +1164,16 @@ def execute(args: argparse.Namespace) -> Path:
         "notes": [
             "post-publication is an evaluation period, not untouched OOS",
             "tier is applied after full-calendar feature construction",
+            "statistics are point estimates; HAC and bootstrap are deferred",
         ],
     }
-    return publish(args.output_root.resolve(), run_name, frames, manifest)
+    text_files = {}
+    if monthly is not None and yearly is not None:
+        text_files["report.html"] = render_html_report(
+            summary, monthly, yearly, spec, manifest)
+    return publish(
+        args.output_root.resolve(), run_name, frames, manifest,
+        text_files=text_files)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -734,6 +1185,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--output-root", type=Path, default=ROOT / "evaluation" / "results")
     parser.add_argument("--benchmark-daily", type=Path)
+    parser.add_argument(
+        "--financing-rates", type=Path,
+        help="immutable financing-rate release directory")
     parser.add_argument("--plan-only", action="store_true")
     parser.add_argument(
         "--smoke-cell", action="append", default=[],
@@ -747,7 +1201,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.plan_only:
         plan = make_plan(
             args.spec.resolve(), args.data_release.resolve(),
-            args.benchmark_daily.resolve() if args.benchmark_daily else None)
+            args.benchmark_daily.resolve() if args.benchmark_daily else None,
+            args.financing_rates.resolve() if args.financing_rates else None)
         print(json.dumps(plan, indent=2, sort_keys=True, default=str))
         return 0
     output = execute(args)

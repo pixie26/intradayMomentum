@@ -58,7 +58,7 @@
 | Sharpe | 应在统一时间轴年化 | active日筛选可能抬高 | calendar Sharpe为主；active只报未年化conditional moments | 删除纯年化因子制造的高Sharpe |
 | CAGR | 应按真实时间 | 用保留收益行数量年化 | 按首末日期/365.2425 | 不因删除坏日压缩时间轴 |
 | MDD | 应来自同一权益曲线 | EOD为主 | 每tier独立完整指标；不跨tier拼接 | 避免无定义的混合Calmar |
-| Alpha/Beta | 应使用对齐total return和稳健误差 | 简单OLS | 当前对齐benchmark；正式版仍建议HAC和独立daily benchmark | 提升统计可信度 |
+| Alpha/Beta | 应使用对齐total return和稳健误差 | 简单OLS | v2只报对齐benchmark的点估计；HAC明确延期 | 当前报告不得暗示存在置信区间 |
 | 数据审计 | 论文非重点 | sample依赖输入 | hash、manifest、reports、`_SUCCESS`、latest pointer | 保证可复现和可追溯 |
 | 测试 | 无完整公开测试矩阵 | 教学代码 | 当前62 engine + 28 data tests | 防止静默patch失败、配置未使用和正式release读取漂移 |
 
@@ -139,7 +139,7 @@
 5. benchmark最好换独立daily raw-close数据；
 6. evaluation spec尚未由唯一runner强制执行；
 7. post-publication区间尚未按冻结spec一次性正式发布；
-8. 统计不确定性仍需block bootstrap和HAC。
+8. v2只报告点估计；block bootstrap和HAC明确延期，当前报告不得暗示存在统计置信区间。
 
 ---
 

@@ -1326,8 +1326,10 @@ profile × tier × dividend × cost × subperiod
 - economic headline是否为corrected × halt-aware；
 - slippage grid如何应用；
 - funding/borrow rate；
-- volatility regime边界；
-- bootstrap/HAC置信区间。
+- volatility regime边界。
+
+v2统计口径已决定为只报告点估计；bootstrap和HAC置信区间明确延期，
+不作为本轮正式发布门槛，报告也不得暗示已提供统计置信区间。
 
 ---
 

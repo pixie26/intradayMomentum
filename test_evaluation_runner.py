@@ -32,6 +32,19 @@ def main() -> int:
     assert plan["matrix"]["expected_summary_rows"] == 216
     assert not plan["formal_ready"]
     assert any("spec_version" in gap for gap in plan["formal_gaps"])
+    assert any("financing rate release" in gap for gap in plan["formal_gaps"])
+
+    financing = R.inspect_financing_release(
+        Path("data/reference/financing_rates_v1"),
+        R.load_spec(Path("config/evaluation_spec_v2.yml"))[0])
+    assert financing["release_id"] == "financing-rates-v1"
+    assert financing["rows"] == 4645
+    assert financing["first"] == "2008-01-22"
+    assert financing["last"] == "2026-07-09"
+    rates = R.load_financing_rates(Path(financing["daily_rates_path"]))
+    assert rates[[
+        "cash_rate_annual", "funding_rate_annual", "borrow_rate_annual"
+    ]].notna().all(axis=None)
 
     import pandas as pd
     cell = cells[0]
@@ -63,8 +76,10 @@ def main() -> int:
         frames = {"summary.csv": __import__("pandas").DataFrame({"x": [1]})}
         out = R.publish(
             root, "unit", frames,
-            {"classification": "unit_test", "created_at_utc": "fixed"})
+            {"classification": "unit_test", "created_at_utc": "fixed"},
+            text_files={"report.html": "<html>unit</html>"})
         assert (out / "_SUCCESS").exists()
+        assert (out / "report.html").exists()
         try:
             R.publish(
                 root, "unit", frames,

@@ -830,11 +830,40 @@ def _session_pnl_notebook(g: pd.DataFrame, signal: np.ndarray,
 # backtest
 # --------------------------------------------------------------------------- #
 
-def backtest(data: dict, cfg: Cfg, collect_ledger: bool = False) -> pd.DataFrame:
+def backtest(
+        data: dict, cfg: Cfg, collect_ledger: bool = False,
+        financing_rates: pd.DataFrame | None = None) -> pd.DataFrame:
     validate(cfg)
     bars, vmin, vsess = data["bars"], data["vmin"], data["vsess"]
     d, daily = build_features(bars, vmin, vsess, cfg, data["dividends"])
     admissible_all = config_validity(d, daily, vsess, cfg)
+    rate_columns = (
+        "cash_rate_annual", "funding_rate_annual", "borrow_rate_annual")
+    rates = None
+    if financing_rates is not None:
+        rates = financing_rates.copy()
+        if "session_date" in rates.columns:
+            rates["session_date"] = pd.to_datetime(
+                rates["session_date"]).dt.normalize()
+            rates = rates.set_index("session_date")
+        rates.index = pd.DatetimeIndex(rates.index).tz_localize(None).normalize()
+        if rates.index.duplicated().any():
+            raise ValueError("financing rates contain duplicate session dates")
+        missing_columns = sorted(set(rate_columns) - set(rates.columns))
+        if missing_columns:
+            raise ValueError(
+                f"financing rates missing columns: {missing_columns}")
+        rates = rates.loc[:, rate_columns].apply(
+            pd.to_numeric, errors="coerce").reindex(daily.index)
+        missing_sessions = rates.index[rates.isna().any(axis=1)]
+        if len(missing_sessions):
+            sample = ", ".join(
+                str(day.date()) for day in missing_sessions[:5])
+            raise ValueError(
+                f"financing rates missing {len(missing_sessions)} sessions "
+                f"(first: {sample})")
+        if not np.isfinite(rates.to_numpy()).all():
+            raise ValueError("financing rates contain non-finite values")
 
     tier_col = {"paper_ready": "is_paper_ready", "halt_aware": "is_halt_usable",
                 "exploratory": "is_exploratory"}[cfg.tier]
@@ -847,6 +876,7 @@ def backtest(data: dict, cfg: Cfg, collect_ledger: bool = False) -> pd.DataFrame
     terminated_from = None
     ledgers: dict[str, list[dict]] = {
         "signals": [], "orders": [], "fills": [], "round_trips": []}
+    previous_day = None
     # Drive the loop from the exchange calendar, so a session with no bars at
     # all still produces a row instead of vanishing from the time axis.
     for day in daily.index:
@@ -861,6 +891,7 @@ def backtest(data: dict, cfg: Cfg, collect_ledger: bool = False) -> pd.DataFrame
         traded_notional = long_gross = short_gross = 0.0
         row = daily.loc[day]
         g = groups.get(day)
+        res = None
 
         if terminated_from is not None:
             status = "after_unknown_exit"
@@ -957,31 +988,58 @@ def backtest(data: dict, cfg: Cfg, collect_ledger: bool = False) -> pd.DataFrame
                         if res["exposed_to_unknown_tail"]:
                             status = "unknown_exit"
 
-        # Cash account. The book is flat overnight. Intraday cash, borrowed
-        # cash, long notional and short notional are accumulated separately;
-        # long and short exposure must never cancel each other.
-        dcf = cfg.financing_daycount_fraction
-        if status == "active" or status == "unknown_exit":
+        # Cash account. A supplied daily curve uses the frozen ACT/360 policy;
+        # scalar rates retain the historical BUS/252 behaviour. The book is
+        # flat overnight. Intraday positive cash, borrowed cash and short
+        # notional are accumulated separately and must never net each other.
+        if rates is None:
+            cash_rate = cfg.cash_rate_annual
+            funding_rate = cfg.funding_rate_annual
+            borrow_rate = cfg.borrow_rate_annual
+            total_dcf = 1.0 / 252.0
+            intraday_dcf = (
+                cfg.financing_daycount_fraction / 252.0)
+        else:
+            cash_rate = float(rates.loc[day, "cash_rate_annual"])
+            funding_rate = float(rates.loc[day, "funding_rate_annual"])
+            borrow_rate = float(rates.loc[day, "borrow_rate_annual"])
+            if res is not None:
+                scheduled_minutes = max(
+                    float(res.get("scheduled_minutes", 0.0)), 1.0)
+            elif g is not None and len(g):
+                scheduled_minutes = max(
+                    float(g["calendar_bars"].iloc[0]), 1.0)
+            else:
+                scheduled_minutes = (
+                    cfg.financing_daycount_fraction * 24.0 * 60.0)
+            intraday_days = scheduled_minutes / (24.0 * 60.0)
+            elapsed_days = (
+                float((day - previous_day).days)
+                if previous_day is not None else intraday_days)
+            total_dcf = elapsed_days / 360.0
+            intraday_dcf = min(intraday_days / 360.0, total_dcf)
+        overnight_dcf = max(total_dcf - intraday_dcf, 0.0)
+        cash_hurdle_ret = cash_rate * total_dcf
+        if res is not None:
             scheduled = max(float(res.get("scheduled_minutes", 0.0)), 1.0)
             avg_positive_cash = positive_cash_integral / scheduled
             avg_borrowed_cash = borrowed_cash_integral / scheduled
             avg_short_notional = short_notional_integral / scheduled
             cash_interest = (
-                prev_aum * cfg.cash_rate_annual / 252.0 * (1.0 - dcf)
-                + avg_positive_cash * cfg.cash_rate_annual / 252.0 * dcf)
+                prev_aum * cash_rate * overnight_dcf
+                + avg_positive_cash * cash_rate * intraday_dcf)
             financing = -(
-                avg_borrowed_cash * cfg.funding_rate_annual / 252.0 * dcf
-                + avg_short_notional * cfg.borrow_rate_annual / 252.0 * dcf)
+                avg_borrowed_cash * funding_rate * intraday_dcf
+                + avg_short_notional * borrow_rate * intraday_dcf)
         else:
-            cash_interest = prev_aum * cfg.cash_rate_annual / 252.0
+            cash_interest = prev_aum * cash_rate * total_dcf
         net = gross - cost + cash_interest + financing
 
-        if status in ("tier_excluded", "warmup_no_prev_close", "warmup_no_band",
-                      "invalid_feature_dvol", "zero_size", "absent_session",
-                      "after_unknown_exit"):
+        if status == "after_unknown_exit":
             net = 0.0
             cash_interest = 0.0
             financing = 0.0
+            cash_hurdle_ret = 0.0
         if status == "unknown_exit":
             # The exit price is a guess, so this day's P&L must not silently
             # compound into every later session's position size.
@@ -1001,8 +1059,11 @@ def backtest(data: dict, cfg: Cfg, collect_ledger: bool = False) -> pd.DataFrame
                      traded_notional, long_gross, short_gross,
                      positive_cash_integral, borrowed_cash_integral,
                      long_notional_integral, short_notional_integral,
+                     cash_rate, funding_rate, borrow_rate,
+                     total_dcf, intraday_dcf, cash_hurdle_ret,
                      prev_aum, aum,
                      bool(vs.loc[day, "close_valid"]) if day in vs.index else False))
+        previous_day = day
 
     r = pd.DataFrame(rows, columns=["session_date", "status", "gross",
                                     "commission", "slippage", "cost",
@@ -1015,6 +1076,12 @@ def backtest(data: dict, cfg: Cfg, collect_ledger: bool = False) -> pd.DataFrame
                                     "borrowed_cash_minute_dollars",
                                     "long_notional_minute_dollars",
                                     "short_notional_minute_dollars",
+                                    "cash_rate_annual_used",
+                                    "funding_rate_annual_used",
+                                    "borrow_rate_annual_used",
+                                    "total_daycount_fraction",
+                                    "intraday_daycount_fraction",
+                                    "cash_hurdle_ret",
                                     "prev_aum", "aum",
                                     "close_valid"]).set_index("session_date")
     r["ret"] = r["net"] / r["prev_aum"]
@@ -1028,6 +1095,7 @@ def backtest(data: dict, cfg: Cfg, collect_ledger: bool = False) -> pd.DataFrame
         r.attrs["ledger"] = {
             name: pd.DataFrame(items) for name, items in ledgers.items()}
         r.attrs["daily_features"] = daily[["dvol"]].copy()
+    r.attrs["financing_rates_supplied"] = financing_rates is not None
     return r
 
 
@@ -1042,6 +1110,9 @@ def stats(r: pd.DataFrame, rf_annual: float = 0.0) -> dict:
     if ev.empty:
         return {}
     x = ev["ret"].fillna(0.0)
+    hurdle = (
+        ev["cash_hurdle_ret"].fillna(0.0)
+        if "cash_hurdle_ret" in ev else rf_annual / 252.0)
     first, last = ev.index.min(), ev.index.max()
     years = (last - first).days / 365.2425
     total = float((1 + x).prod())
@@ -1054,7 +1125,7 @@ def stats(r: pd.DataFrame, rf_annual: float = 0.0) -> dict:
         "CAGR%": round((total ** (1 / years) - 1) * 100, 2),
         "Vol%": round(float(x.std() * np.sqrt(252)) * 100, 2),
         "Sharpe_calendar": (round(float(
-            (x.mean() - rf_annual / 252) / x.std() * np.sqrt(252)), 2)
+            (x - hurdle).mean() / x.std() * np.sqrt(252)), 2)
                             if float(x.std()) > 0 else None),
         # NOT annualised. Scaling active-only returns by sqrt(252) when there
         # are ~153 active sessions a year manufactures a higher number that,

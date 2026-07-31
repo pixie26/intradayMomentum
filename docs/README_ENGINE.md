@@ -65,12 +65,13 @@ cumulative VWAP and from the mark-to-market path.
   `impute_last_observed` (sensitivity only). Marking the day's return `NaN`
   while letting its guessed P&L into AUM would still contaminate every later
   position size.
-- **Financing is a cash account**, not a flat rate on equity: `cash_rate_annual`
-  on equity (the book is flat overnight), `funding_rate_annual` on borrowed
-  cash, `borrow_rate_annual` on short notional, pro-rated by
-  `financing_daycount_fraction` and actual holding time. All default to 0.
-  Crediting rf on all of equity and then deducting a separate leverage fee
-  double-counts.
+- **Financing is a cash account**, not a flat rate on equity. Scalar
+  `cash_rate_annual` / `funding_rate_annual` / `borrow_rate_annual` inputs retain
+  the engineering baseline, while formal v2 supplies a point-in-time daily
+  curve. The formal path uses ACT/360 calendar-day gaps for flat overnight cash
+  and actual minute integrals for positive cash, borrowed cash and short
+  notional. Long and short exposures never net each other. Crediting rf on all
+  equity and then deducting a separate leverage fee would double-count.
 - **Costs are separable.** `commission = Σ max(min_comm, comm_per_share × qty)`,
   `slippage = Σ slip_per_share × qty`. The minimum applies to commission only.
   `shares <= 0` produces no order and no cost.
@@ -131,18 +132,19 @@ file's SHA and event count, and the full engine config.
 
 ## Tests
 
-`python test_engine.py` — 62 checks covering halt fill semantics, reversal unit
+`python test_engine.py` — 75 checks covering halt fill semantics, reversal unit
 accounting and minimum-commission conventions, the final-bar round-trip guard,
 `exec_lag_minutes` fill timing, strict eligible-session rolling, validity
 filtering of the volatility window, `ignore_dividends`, unknown-exit exclusion,
 parameter plumbing (`trade_freq`, `sigma_window`, `use_vwap`, `sizing`),
 dividend band adjustment, cost decomposition, the calendar time axis, and
-equivalent loading from a pipeline run or immutable `data_release_v1` bundle.
+equivalent loading from a pipeline run or immutable `data_release_v1` bundle,
+plus point-in-time rate coverage and ACT/360 weekend accrual.
 `python prepare_spy_data.py --self-test` — 28 data-layer checks.
 
 ## Not yet implemented
 
-Leverage financing, short-borrow cost, market impact, and a queue-position model
-for the passive fill assumption. `corrected_execution` charges a flat
-$0.005/share and no financing, so it is still optimistic for a strategy that
-runs at 2.5× average leverage.
+Market impact and a queue-position model for the passive fill assumption remain
+out of scope. Formal v2 now includes leverage funding, positive-cash interest
+and short-borrow cost; the earlier zero-financing mechanics baselines remain
+labelled as such and are not the economic headline.

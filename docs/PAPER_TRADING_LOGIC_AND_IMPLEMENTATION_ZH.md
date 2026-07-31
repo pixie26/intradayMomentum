@@ -1332,7 +1332,7 @@ minute label到时钟时间的映射见第3节和第10节。
 
 - **论文：** 需要策略和SPY对齐收益；严谨推断还应考虑时间序列相关与稳健标准误。
 - **作者sample：** 通常是简单OLS或等价点估计，输入benchmark也常是price return。
-- **当前实现：** 在对齐的SPY total-return sessions上计算beta和年化alpha点估计；尚未实现HAC标准误、置信区间和独立daily benchmark。
+- **当前实现：** 在对齐的SPY total-return sessions上计算beta和年化alpha点估计；v2明确延期HAC标准误和置信区间，当前报告不得暗示已提供统计置信区间。
 - **为什么重要：** 点估计可以描述样本关系，但没有稳健误差就不能判断alpha是否统计显著；分钟文件自身的close缺陷也可能同时影响回归两边。
 
 ### 20.6 可复现性与验证
@@ -1489,7 +1489,7 @@ paper_spec × halt_aware × with_dividends
 5. 排队位置和部分成交模型；
 6. 独立daily SPY raw-close benchmark；
 7. 唯一的可执行evaluation runner；
-8. bootstrap/HAC等统计不确定性；
+8. bootstrap/HAC等统计不确定性明确延期；v2只报告点估计；
 9. 冻结后的唯一post-publication正式报告。
 
 因此：

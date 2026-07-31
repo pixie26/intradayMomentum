@@ -485,8 +485,10 @@ short_notional_time_integral
 - replication headline与economic headline；
 - slippage grid具体作用于哪个profile；
 - cash/funding/borrow rate来源；
-- volatility quintile只用pre-publication边界；
-- bootstrap和HAC置信区间。
+- volatility quintile只用pre-publication边界。
+
+v2统计口径已决定为只报告点估计；bootstrap和HAC置信区间明确延期，
+不作为本轮正式发布门槛，报告也不得暗示已提供统计置信区间。
 
 ---
 

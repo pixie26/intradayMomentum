@@ -1,9 +1,9 @@
-# Candidate only. This file is NOT frozen and cannot authorize a formal run.
-# Promote it to evaluation_spec_v2.yml only after financing/borrow sources are
-# approved and the clean Git checkpoint records all hashes.
+# Frozen economic evaluation specification. Q24 paper matching remains a
+# separate replication experiment and did not tune this specification.
 spec_version: 2
-status: candidate
+status: frozen
 drafted_utc: "2026-07-31"
+frozen_utc: "2026-07-31"
 
 evaluation_start: "2024-05-01"
 evaluation_end: "2026-07-09"
@@ -62,8 +62,16 @@ decomposition_definitions:
     variable: lagged_14_session_daily_volatility
 
 financing:
-  status: pending_rate_source
-  cash_rate_annual: 0.0
+  status: frozen
+  rate_release:
+    release_id: financing-rates-v1
+    path: data/reference/financing_rates_v1
+    manifest_sha256: ff6df464aa2d7c99a1aab37c3f809e9abe312ba1af4389f357a1222918027e1a
+    daily_file: financing_rates_daily.csv
+    daily_rates_sha256: 3f4addb685cbbdf5f887aec7837825b3fbefff13d4fdfd2192673b5458698be8
+    source_sha256:
+      libor_proxy: 820017b24515d386ef7586a22f5d20a9fda51d422ae5951574fdb17471f37aed
+      sofr: 8cd41958de6d2bb57aef694ec071438bed220f0cf4bf358162b6c6360ed2d670
   cash_rate_decision: usd_3m_libor_then_sofr_minus_50_bps_pa
   cash_rate:
     spread_bps: -50
@@ -73,10 +81,15 @@ financing:
       - start: "2008-01-22"
         end: "2023-06-30"
         benchmark: USD_3M_LIBOR_PUBLIC_PROXY
+        source: European Central Bank Data Portal
+        series: RTD.M.S0.N.C_USL3M.U
+        proxy_policy: previous_completed_calendar_month_average
       - start: "2023-07-03"
         end: "2026-07-09"
         benchmark: SOFR
-  funding_rate_annual: 0.0
+        source: OFR API / Federal Reserve Bank of New York reference rates
+        series: FNYR-SOFR-A
+        proxy_policy: latest_observation_strictly_before_session
   funding_rate_decision: usd_3m_libor_then_sofr_plus_100_bps_pa
   funding_rate:
     spread_bps: 100
@@ -87,19 +100,23 @@ financing:
         end: "2023-06-30"
         benchmark: USD_3M_LIBOR_PUBLIC_PROXY
         source_policy: public_reproducible_source
+        proxy_policy: previous_completed_calendar_month_average
       - start: "2023-07-03"
         end: "2026-07-09"
         benchmark: SOFR
-        source: Federal Reserve Bank of New York
+        source: OFR API / Federal Reserve Bank of New York reference rates
+        proxy_policy: latest_observation_strictly_before_session
     transition_note: Representative USD LIBOR panel ended after 2023-06-30;
       synthetic LIBOR is not used.
+    proxy_sensitivity: none
   borrow_rate_annual: 0.0025
   borrow_rate_decision: fixed_25_bps_pa
   note: Positive cash earns the applicable benchmark minus 50 bps. SPY borrow
     is fixed at 25 bps p.a. Funding is the applicable benchmark plus 100 bps.
     The pre-transition LIBOR input may be a documented public proxy rather
-    than licensed ICE fixing data. Scalar cash/funding values remain smoke
-    placeholders until the point-in-time rate release is wired into the runner.
+    than licensed ICE fixing data. The frozen point-in-time daily rate release
+    is mandatory for formal execution; scalar cash/funding placeholders are
+    not permitted.
 
 benchmark:
   computed_in_engine: false
@@ -114,15 +131,12 @@ benchmark:
   metrics: [excess_cagr, beta, alpha_annualised, information_ratio]
 
 statistics:
-  status: candidate
+  status: frozen
   sharpe_risk_free_rate: same_as_cash_rate
-  alpha_standard_errors: HAC
-  hac_lags: 5
-  bootstrap:
-    method: moving_block
-    block_sessions: 20
-    replications: 5000
-    random_seed: 20260731
+  alpha_standard_errors: none
+  bootstrap: none
+  note: Point estimates only. HAC and block-bootstrap confidence intervals
+    are explicitly deferred and must not be implied in the report.
 
 decision_rule: |
   The question is not the full-sample CAGR. It is whether, after 2024-05-01,
@@ -140,6 +154,8 @@ provenance_required:
   - source_sha256
   - dividend_sha256
   - benchmark_sha256
+  - financing_rate_manifest_sha256
+  - financing_rate_daily_sha256
   - git_commit
   - git_dirty
 

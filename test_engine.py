@@ -507,6 +507,45 @@ def test_cash_interest_not_levered(run_dir: Path) -> None:
           "on notional")
 
 
+def test_point_in_time_financing_curve(run_dir: Path) -> None:
+    cfg = profile_cfg("corrected_execution", sizing="flat", flat_lev=4.0)
+    data = E.load_run(run_dir, cfg)
+    days = pd.DatetimeIndex(data["vsess"]["session_date"]).normalize()
+    curve = pd.DataFrame({
+        "session_date": days,
+        "cash_rate_annual": 0.04,
+        "funding_rate_annual": 0.06,
+        "borrow_rate_annual": 0.0025,
+    })
+    result = E.backtest(data, cfg, financing_rates=curve)
+    check(result.attrs["financing_rates_supplied"],
+          "daily financing curve was not recorded in result provenance")
+    check((result["cash_rate_annual_used"] == 0.04).all()
+          and (result["funding_rate_annual_used"] == 0.06).all(),
+          "daily financing curve did not drive the rates used")
+    first = result.iloc[0]
+    expected_first = (390.0 / (24.0 * 60.0)) / 360.0
+    check(abs(first["total_daycount_fraction"] - expected_first) < 1e-12,
+          "first ACT/360 accrual must cover only the first intraday session")
+    monday = next(
+        day for day in result.index[1:]
+        if day.weekday() == 0
+        and (day - result.index[result.index.get_loc(day) - 1]).days == 3)
+    check(abs(result.loc[monday, "total_daycount_fraction"] - 3 / 360) < 1e-12,
+          "ACT/360 must accrue the full weekend calendar-day gap")
+    warmup = result.iloc[0]
+    check(warmup["cash_interest"] > 0 and abs(
+        warmup["net"] - warmup["cash_interest"]) < 1e-9,
+          "flat warm-up capital must earn the point-in-time cash rate")
+    broken = curve.iloc[1:].copy()
+    try:
+        E.backtest(data, cfg, financing_rates=broken)
+        check(False, "missing financing session did not fail")
+    except ValueError as exc:
+        check("missing 1 sessions" in str(exc),
+              f"unexpected financing coverage error: {exc}")
+
+
 def test_absent_session_occupies_rolling_slot(run_dir: Path) -> None:
     base = profile_cfg("paper_spec")
     data = E.load_run(run_dir, base)
@@ -553,6 +592,7 @@ def main() -> int:
         test_unknown_exit_does_not_pollute_aum(run_dir)
         test_benchmark_hygiene(run_dir)
         test_cash_interest_not_levered(run_dir)
+        test_point_in_time_financing_curve(run_dir)
         test_absent_session_occupies_rolling_slot(run_dir)
         prof = test_profiles(run_dir)
 
