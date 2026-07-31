@@ -1,0 +1,1257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SPY Intraday Momentum — Frozen Post-Publication Evaluation</title>
+<style>
+:root{--ink:#172033;--muted:#667085;--line:#dbe2ea;--paper:#fff;
+--wash:#f4f7fb;--blue:#175cd3;--good:#067647;--warn:#b54708;--bad:#b42318}
+*{box-sizing:border-box} body{margin:0;background:var(--wash);color:var(--ink);
+font:14px/1.5 Inter,Segoe UI,Arial,sans-serif} main{max-width:1500px;margin:auto;
+padding:30px} h1{font-size:30px;margin:0 0 6px} h2{margin-top:32px}
+.subtitle,.note{color:var(--muted)} .panel{background:var(--paper);
+border:1px solid var(--line);border-radius:12px;padding:20px;margin:18px 0;
+box-shadow:0 1px 2px #1018280d} .cards{display:grid;
+grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.card{border:1px solid var(--line);border-radius:10px;padding:14px}
+.label{color:var(--muted);font-size:12px;text-transform:uppercase}
+.value{font-size:24px;font-weight:700;margin-top:4px} .verdict{font-size:17px;
+font-weight:650;border-left:5px solid;padding:12px 14px;background:#f8fafc}
+.verdict.good{border-color:var(--good)} .verdict.warn{border-color:var(--warn)}
+.verdict.bad{border-color:var(--bad)} .scroll{overflow:auto}
+.data-table{border-collapse:collapse;width:100%;white-space:nowrap}
+.data-table th,.data-table td{border-bottom:1px solid var(--line);
+padding:8px 10px;text-align:right} .data-table th{background:#f8fafc;
+position:sticky;top:0;z-index:1} .data-table td:first-child,
+.data-table th:first-child{text-align:left} .compact{font-size:12px}
+.filters{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}
+select{padding:7px;border:1px solid var(--line);border-radius:7px;background:white}
+pre{white-space:pre-wrap;word-break:break-word;background:#101828;color:#e6edf7;
+padding:14px;border-radius:8px;max-height:440px;overflow:auto}
+.badge{display:inline-block;background:#eaf2ff;color:var(--blue);
+padding:3px 8px;border-radius:99px;font-weight:650}
+</style>
+</head>
+<body><main>
+<span class="badge">FORMAL · POINT ESTIMATES ONLY</span>
+<h1>SPY Intraday Momentum — Frozen Post-Publication Evaluation</h1>
+<div class="subtitle">Data: 2008-01-22–2026-07-09 · publication cutoff:
+2024-05-01 · 3 profiles × 3 tiers × 2 dividend modes × 4 slippage levels</div>
+
+<section class="panel">
+<h2>Economic headline</h2>
+<p class="verdict good">Post-publication edge remains positive after execution, funding and borrow costs.</p>
+<div class="cards">
+<div class="card"><div class="label">Post CAGR</div><div class="value">
+7.52%</div></div>
+<div class="card"><div class="label">SPY total-return CAGR</div><div class="value">
+21.74%</div></div>
+<div class="card"><div class="label">Post excess CAGR</div><div class="value">
+-14.22%</div></div>
+<div class="card"><div class="label">Post Sharpe vs cash</div><div class="value">
+0.30</div></div>
+<div class="card"><div class="label">Gross edge / share</div><div class="value">
+2.119¢</div></div>
+<div class="card"><div class="label">After-cost edge / share</div><div class="value">
+1.383¢</div></div>
+</div>
+<p class="note">Headline: corrected_execution × paper_ready × with-dividends ×
+$0.005/share slippage. Cash earns LIBOR-proxy/SOFR −50bp, borrowed cash costs
+benchmark +100bp, and SPY borrow is 25bp p.a. HAC and block bootstrap are
+deferred; this report does not provide confidence intervals.</p>
+<div class="scroll"><table class="dataframe data-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>subperiod</th>
+      <th>cagr</th>
+      <th>benchmark_total_cagr</th>
+      <th>excess_cagr</th>
+      <th>sharpe_calendar</th>
+      <th>max_drawdown</th>
+      <th>beta_vs_benchmark_total</th>
+      <th>alpha_annualized</th>
+      <th>information_ratio</th>
+      <th>gross_edge_per_traded_share</th>
+      <th>execution_cost_per_traded_share</th>
+      <th>financing_cost_per_traded_share</th>
+      <th>trading_edge_after_costs_per_traded_share</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>full_sample</td>
+      <td>16.70%</td>
+      <td>11.96%</td>
+      <td>4.74%</td>
+      <td>1.074999</td>
+      <td>-28.26%</td>
+      <td>-0.058039</td>
+      <td>17.34%</td>
+      <td>0.135403</td>
+      <td>4.367¢</td>
+      <td>0.600¢</td>
+      <td>0.053¢</td>
+      <td>3.714¢</td>
+    </tr>
+    <tr>
+      <td>pre_publication</td>
+      <td>18.00%</td>
+      <td>10.70%</td>
+      <td>7.30%</td>
+      <td>1.183560</td>
+      <td>-28.26%</td>
+      <td>-0.055211</td>
+      <td>18.35%</td>
+      <td>0.219392</td>
+      <td>4.915¢</td>
+      <td>0.600¢</td>
+      <td>0.033¢</td>
+      <td>4.282¢</td>
+    </tr>
+    <tr>
+      <td>post_publication</td>
+      <td>7.52%</td>
+      <td>21.74%</td>
+      <td>-14.22%</td>
+      <td>0.300229</td>
+      <td>-17.06%</td>
+      <td>-0.088918</td>
+      <td>10.24%</td>
+      <td>-0.552376</td>
+      <td>2.119¢</td>
+      <td>0.600¢</td>
+      <td>0.136¢</td>
+      <td>1.383¢</td>
+    </tr>
+  </tbody>
+</table></div>
+</section>
+
+<section class="panel"><h2>Annual performance vs SPY total return</h2>
+<div class="scroll"><table class="dataframe data-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>year</th>
+      <th>strategy</th>
+      <th>benchmark_total_return</th>
+      <th>excess</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>2008</td>
+      <td>56.67%</td>
+      <td>-30.57%</td>
+      <td>87.23%</td>
+    </tr>
+    <tr>
+      <td>2009</td>
+      <td>20.62%</td>
+      <td>23.31%</td>
+      <td>-2.69%</td>
+    </tr>
+    <tr>
+      <td>2010</td>
+      <td>-0.22%</td>
+      <td>15.06%</td>
+      <td>-15.28%</td>
+    </tr>
+    <tr>
+      <td>2011</td>
+      <td>20.06%</td>
+      <td>1.89%</td>
+      <td>18.17%</td>
+    </tr>
+    <tr>
+      <td>2012</td>
+      <td>18.45%</td>
+      <td>15.99%</td>
+      <td>2.46%</td>
+    </tr>
+    <tr>
+      <td>2013</td>
+      <td>7.65%</td>
+      <td>30.76%</td>
+      <td>-23.11%</td>
+    </tr>
+    <tr>
+      <td>2014</td>
+      <td>4.12%</td>
+      <td>14.09%</td>
+      <td>-9.97%</td>
+    </tr>
+    <tr>
+      <td>2015</td>
+      <td>16.91%</td>
+      <td>1.25%</td>
+      <td>15.66%</td>
+    </tr>
+    <tr>
+      <td>2016</td>
+      <td>-15.31%</td>
+      <td>12.00%</td>
+      <td>-27.31%</td>
+    </tr>
+    <tr>
+      <td>2017</td>
+      <td>-9.96%</td>
+      <td>21.70%</td>
+      <td>-31.66%</td>
+    </tr>
+    <tr>
+      <td>2018</td>
+      <td>56.57%</td>
+      <td>-4.56%</td>
+      <td>61.13%</td>
+    </tr>
+    <tr>
+      <td>2019</td>
+      <td>4.93%</td>
+      <td>31.22%</td>
+      <td>-26.29%</td>
+    </tr>
+    <tr>
+      <td>2020</td>
+      <td>26.16%</td>
+      <td>18.37%</td>
+      <td>7.78%</td>
+    </tr>
+    <tr>
+      <td>2021</td>
+      <td>26.81%</td>
+      <td>28.75%</td>
+      <td>-1.94%</td>
+    </tr>
+    <tr>
+      <td>2022</td>
+      <td>26.39%</td>
+      <td>-18.17%</td>
+      <td>44.57%</td>
+    </tr>
+    <tr>
+      <td>2023</td>
+      <td>44.78%</td>
+      <td>26.19%</td>
+      <td>18.59%</td>
+    </tr>
+    <tr>
+      <td>2024</td>
+      <td>37.49%</td>
+      <td>24.89%</td>
+      <td>12.60%</td>
+    </tr>
+    <tr>
+      <td>2025</td>
+      <td>0.71%</td>
+      <td>17.72%</td>
+      <td>-17.01%</td>
+    </tr>
+    <tr>
+      <td>2026</td>
+      <td>-3.82%</td>
+      <td>10.82%</td>
+      <td>-14.64%</td>
+    </tr>
+  </tbody>
+</table></div></section>
+
+<section class="panel"><h2>Monthly performance (paper-style calendar table)</h2>
+<p class="note">Both the strategy headline and the independent SPY total-return
+benchmark are shown. Q24 paper matching remains a separate replication
+experiment and did not tune this economic headline.</p>
+<div class="scroll"><table class="dataframe data-table compact">
+  <thead>
+    <tr style="text-align: right;">
+      <th>series</th>
+      <th>year</th>
+      <th>Jan</th>
+      <th>Feb</th>
+      <th>Mar</th>
+      <th>Apr</th>
+      <th>May</th>
+      <th>Jun</th>
+      <th>Jul</th>
+      <th>Aug</th>
+      <th>Sep</th>
+      <th>Oct</th>
+      <th>Nov</th>
+      <th>Dec</th>
+      <th>Yearly</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>strategy</td>
+      <td>2008</td>
+      <td>—</td>
+      <td>-1.27%</td>
+      <td>1.86%</td>
+      <td>-1.64%</td>
+      <td>8.81%</td>
+      <td>5.33%</td>
+      <td>7.89%</td>
+      <td>4.65%</td>
+      <td>5.59%</td>
+      <td>8.29%</td>
+      <td>3.49%</td>
+      <td>3.43%</td>
+      <td>56.67%</td>
+    </tr>
+    <tr>
+      <td>strategy</td>
+      <td>2009</td>
+      <td>0.89%</td>
+      <td>4.78%</td>
+      <td>2.95%</td>
+      <td>1.35%</td>
+      <td>-0.79%</td>
+      <td>3.39%</td>
+      <td>4.26%</td>
+      <td>-1.01%</td>
+      <td>0.27%</td>
+      <td>9.37%</td>
+      <td>-2.07%</td>
+      <td>-3.83%</td>
+      <td>20.62%</td>
+    </tr>
+    <tr>
+      <td>strategy</td>
+      <td>2010</td>
+      <td>6.54%</td>
+      <td>-1.12%</td>
+      <td>-3.40%</td>
+      <td>2.18%</td>
+      <td>-3.31%</td>
+      <td>2.13%</td>
+      <td>6.04%</td>
+      <td>1.36%</td>
+      <td>1.88%</td>
+      <td>-5.28%</td>
+      <td>-5.26%</td>
+      <td>-1.10%</td>
+      <td>-0.22%</td>
+    </tr>
+    <tr>
+      <td>strategy</td>
+      <td>2011</td>
+      <td>-0.43%</td>
+      <td>2.43%</td>
+      <td>4.48%</td>
+      <td>-5.78%</td>
+      <td>-0.81%</td>
+      <td>8.56%</td>
+      <td>0.98%</td>
+      <td>4.35%</td>
+      <td>-0.69%</td>
+      <td>3.00%</td>
+      <td>1.59%</td>
+      <td>1.43%</td>
+      <td>20.06%</td>
+    </tr>
+    <tr>
+      <td>strategy</td>
+      <td>2012</td>
+      <td>0.41%</td>
+      <td>-4.65%</td>
+      <td>-1.05%</td>
+      <td>6.92%</td>
+      <td>0.44%</td>
+      <td>4.66%</td>
+      <td>3.27%</td>
+      <td>-0.61%</td>
+      <td>3.99%</td>
+      <td>2.47%</td>
+      <td>-1.29%</td>
+      <td>3.03%</td>
+      <td>18.45%</td>
+    </tr>
+    <tr>
+      <td>strategy</td>
+      <td>2013</td>
+      <td>-1.62%</td>
+      <td>7.92%</td>
+      <td>-5.82%</td>
+      <td>5.83%</td>
+      <td>-6.61%</td>
+      <td>2.73%</td>
+      <td>-5.80%</td>
+      <td>-2.55%</td>
+      <td>1.81%</td>
+      <td>4.41%</td>
+      <td>5.99%</td>
+      <td>2.53%</td>
+      <td>7.65%</td>
+    </tr>
+    <tr>
+      <td>strategy</td>
+      <td>2014</td>
+      <td>-0.18%</td>
+      <td>1.70%</td>
+      <td>1.60%</td>
+      <td>2.76%</td>
+      <td>-1.00%</td>
+      <td>-2.29%</td>
+      <td>4.81%</td>
+      <td>-3.75%</td>
+      <td>1.56%</td>
+      <td>2.81%</td>
+      <td>-1.23%</td>
+      <td>-2.37%</td>
+      <td>4.12%</td>
+    </tr>
+    <tr>
+      <td>strategy</td>
+      <td>2015</td>
+      <td>-2.08%</td>
+      <td>-1.39%</td>
+      <td>8.06%</td>
+      <td>-5.71%</td>
+      <td>1.13%</td>
+      <td>4.20%</td>
+      <td>5.30%</td>
+      <td>3.10%</td>
+      <td>-0.61%</td>
+      <td>-1.02%</td>
+      <td>4.62%</td>
+      <td>0.94%</td>
+      <td>16.91%</td>
+    </tr>
+    <tr>
+      <td>strategy</td>
+      <td>2016</td>
+      <td>-0.90%</td>
+      <td>-1.99%</td>
+      <td>1.21%</td>
+      <td>-2.00%</td>
+      <td>0.29%</td>
+      <td>-7.08%</td>
+      <td>-3.30%</td>
+      <td>-5.46%</td>
+      <td>7.94%</td>
+      <td>-5.20%</td>
+      <td>1.49%</td>
+      <td>-0.63%</td>
+      <td>-15.31%</td>
+    </tr>
+    <tr>
+      <td>strategy</td>
+      <td>2017</td>
+      <td>-3.47%</td>
+      <td>0.79%</td>
+      <td>1.11%</td>
+      <td>-3.31%</td>
+      <td>-2.49%</td>
+      <td>0.12%</td>
+      <td>-2.68%</td>
+      <td>3.54%</td>
+      <td>-1.09%</td>
+      <td>2.80%</td>
+      <td>-2.29%</td>
+      <td>-3.14%</td>
+      <td>-9.96%</td>
+    </tr>
+    <tr>
+      <td>strategy</td>
+      <td>2018</td>
+      <td>3.43%</td>
+      <td>8.78%</td>
+      <td>7.46%</td>
+      <td>3.64%</td>
+      <td>-4.82%</td>
+      <td>1.94%</td>
+      <td>4.87%</td>
+      <td>-1.95%</td>
+      <td>-3.14%</td>
+      <td>13.44%</td>
+      <td>2.86%</td>
+      <td>10.82%</td>
+      <td>56.57%</td>
+    </tr>
+    <tr>
+      <td>strategy</td>
+      <td>2019</td>
+      <td>0.96%</td>
+      <td>-0.50%</td>
+      <td>2.99%</td>
+      <td>1.05%</td>
+      <td>-5.28%</td>
+      <td>0.51%</td>
+      <td>1.19%</td>
+      <td>5.13%</td>
+      <td>-1.56%</td>
+      <td>2.62%</td>
+      <td>-1.74%</td>
+      <td>-0.15%</td>
+      <td>4.93%</td>
+    </tr>
+    <tr>
+      <td>strategy</td>
+      <td>2020</td>
+      <td>4.21%</td>
+      <td>1.85%</td>
+      <td>-0.11%</td>
+      <td>-1.40%</td>
+      <td>0.01%</td>
+      <td>7.97%</td>
+      <td>-0.25%</td>
+      <td>-1.83%</td>
+      <td>14.53%</td>
+      <td>2.83%</td>
+      <td>-1.17%</td>
+      <td>-1.94%</td>
+      <td>26.16%</td>
+    </tr>
+    <tr>
+      <td>strategy</td>
+      <td>2021</td>
+      <td>6.27%</td>
+      <td>2.20%</td>
+      <td>0.78%</td>
+      <td>5.78%</td>
+      <td>1.82%</td>
+      <td>-1.17%</td>
+      <td>2.60%</td>
+      <td>1.39%</td>
+      <td>2.52%</td>
+      <td>3.18%</td>
+      <td>-5.03%</td>
+      <td>4.15%</td>
+      <td>26.81%</td>
+    </tr>
+    <tr>
+      <td>strategy</td>
+      <td>2022</td>
+      <td>-6.47%</td>
+      <td>2.87%</td>
+      <td>0.32%</td>
+      <td>8.91%</td>
+      <td>2.10%</td>
+      <td>0.87%</td>
+      <td>0.12%</td>
+      <td>6.36%</td>
+      <td>-0.75%</td>
+      <td>6.06%</td>
+      <td>1.55%</td>
+      <td>2.56%</td>
+      <td>26.39%</td>
+    </tr>
+    <tr>
+      <td>strategy</td>
+      <td>2023</td>
+      <td>3.16%</td>
+      <td>-1.06%</td>
+      <td>8.23%</td>
+      <td>2.52%</td>
+      <td>3.99%</td>
+      <td>4.34%</td>
+      <td>2.27%</td>
+      <td>6.51%</td>
+      <td>3.91%</td>
+      <td>-0.82%</td>
+      <td>0.88%</td>
+      <td>4.04%</td>
+      <td>44.78%</td>
+    </tr>
+    <tr>
+      <td>strategy</td>
+      <td>2024</td>
+      <td>8.97%</td>
+      <td>-1.04%</td>
+      <td>-0.45%</td>
+      <td>5.85%</td>
+      <td>-4.03%</td>
+      <td>1.83%</td>
+      <td>8.99%</td>
+      <td>-2.51%</td>
+      <td>4.72%</td>
+      <td>6.81%</td>
+      <td>-2.67%</td>
+      <td>7.01%</td>
+      <td>37.49%</td>
+    </tr>
+    <tr>
+      <td>strategy</td>
+      <td>2025</td>
+      <td>-1.11%</td>
+      <td>8.08%</td>
+      <td>0.34%</td>
+      <td>4.67%</td>
+      <td>-1.87%</td>
+      <td>-1.64%</td>
+      <td>-1.28%</td>
+      <td>-2.61%</td>
+      <td>-5.12%</td>
+      <td>6.51%</td>
+      <td>-2.78%</td>
+      <td>-1.59%</td>
+      <td>0.71%</td>
+    </tr>
+    <tr>
+      <td>strategy</td>
+      <td>2026</td>
+      <td>-3.27%</td>
+      <td>-0.20%</td>
+      <td>0.91%</td>
+      <td>-0.63%</td>
+      <td>-3.16%</td>
+      <td>4.20%</td>
+      <td>-1.53%</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>-3.82%</td>
+    </tr>
+    <tr>
+      <td>benchmark_total_return</td>
+      <td>2008</td>
+      <td>—</td>
+      <td>0.56%</td>
+      <td>-0.90%</td>
+      <td>4.77%</td>
+      <td>1.51%</td>
+      <td>-8.35%</td>
+      <td>-0.90%</td>
+      <td>1.55%</td>
+      <td>-9.44%</td>
+      <td>-16.52%</td>
+      <td>-6.96%</td>
+      <td>0.98%</td>
+      <td>-30.57%</td>
+    </tr>
+    <tr>
+      <td>benchmark_total_return</td>
+      <td>2009</td>
+      <td>-8.21%</td>
+      <td>-10.74%</td>
+      <td>8.35%</td>
+      <td>9.93%</td>
+      <td>5.85%</td>
+      <td>-0.07%</td>
+      <td>6.96%</td>
+      <td>1.66%</td>
+      <td>3.55%</td>
+      <td>-1.92%</td>
+      <td>6.16%</td>
+      <td>1.91%</td>
+      <td>23.31%</td>
+    </tr>
+    <tr>
+      <td>benchmark_total_return</td>
+      <td>2010</td>
+      <td>-3.63%</td>
+      <td>3.12%</td>
+      <td>6.09%</td>
+      <td>1.55%</td>
+      <td>-7.95%</td>
+      <td>-5.17%</td>
+      <td>6.83%</td>
+      <td>-4.50%</td>
+      <td>8.96%</td>
+      <td>3.82%</td>
+      <td>0.00%</td>
+      <td>6.68%</td>
+      <td>15.06%</td>
+    </tr>
+    <tr>
+      <td>benchmark_total_return</td>
+      <td>2011</td>
+      <td>2.33%</td>
+      <td>3.47%</td>
+      <td>0.01%</td>
+      <td>2.90%</td>
+      <td>-1.12%</td>
+      <td>-1.69%</td>
+      <td>-2.00%</td>
+      <td>-5.50%</td>
+      <td>-6.94%</td>
+      <td>10.91%</td>
+      <td>-0.41%</td>
+      <td>1.04%</td>
+      <td>1.89%</td>
+    </tr>
+    <tr>
+      <td>benchmark_total_return</td>
+      <td>2012</td>
+      <td>4.64%</td>
+      <td>4.34%</td>
+      <td>3.22%</td>
+      <td>-0.67%</td>
+      <td>-6.01%</td>
+      <td>4.05%</td>
+      <td>1.18%</td>
+      <td>2.51%</td>
+      <td>2.54%</td>
+      <td>-1.82%</td>
+      <td>0.57%</td>
+      <td>0.90%</td>
+      <td>15.99%</td>
+    </tr>
+    <tr>
+      <td>benchmark_total_return</td>
+      <td>2013</td>
+      <td>5.12%</td>
+      <td>1.28%</td>
+      <td>3.80%</td>
+      <td>1.92%</td>
+      <td>2.36%</td>
+      <td>-1.34%</td>
+      <td>5.17%</td>
+      <td>-3.00%</td>
+      <td>3.17%</td>
+      <td>4.63%</td>
+      <td>2.96%</td>
+      <td>1.39%</td>
+      <td>30.76%</td>
+    </tr>
+    <tr>
+      <td>benchmark_total_return</td>
+      <td>2014</td>
+      <td>-2.99%</td>
+      <td>4.55%</td>
+      <td>0.83%</td>
+      <td>0.70%</td>
+      <td>2.32%</td>
+      <td>2.06%</td>
+      <td>-1.34%</td>
+      <td>3.95%</td>
+      <td>-1.38%</td>
+      <td>2.36%</td>
+      <td>2.75%</td>
+      <td>-0.26%</td>
+      <td>14.09%</td>
+    </tr>
+    <tr>
+      <td>benchmark_total_return</td>
+      <td>2015</td>
+      <td>-2.96%</td>
+      <td>5.62%</td>
+      <td>-1.57%</td>
+      <td>0.98%</td>
+      <td>1.29%</td>
+      <td>-2.03%</td>
+      <td>2.26%</td>
+      <td>-6.10%</td>
+      <td>-2.54%</td>
+      <td>8.51%</td>
+      <td>0.37%</td>
+      <td>-1.72%</td>
+      <td>1.25%</td>
+    </tr>
+    <tr>
+      <td>benchmark_total_return</td>
+      <td>2016</td>
+      <td>-4.98%</td>
+      <td>-0.08%</td>
+      <td>6.72%</td>
+      <td>0.39%</td>
+      <td>1.70%</td>
+      <td>0.35%</td>
+      <td>3.65%</td>
+      <td>0.12%</td>
+      <td>0.01%</td>
+      <td>-1.73%</td>
+      <td>3.68%</td>
+      <td>2.03%</td>
+      <td>12.00%</td>
+    </tr>
+    <tr>
+      <td>benchmark_total_return</td>
+      <td>2017</td>
+      <td>1.79%</td>
+      <td>3.93%</td>
+      <td>0.13%</td>
+      <td>0.99%</td>
+      <td>1.41%</td>
+      <td>0.64%</td>
+      <td>2.06%</td>
+      <td>0.29%</td>
+      <td>2.01%</td>
+      <td>2.36%</td>
+      <td>3.06%</td>
+      <td>1.21%</td>
+      <td>21.70%</td>
+    </tr>
+    <tr>
+      <td>benchmark_total_return</td>
+      <td>2018</td>
+      <td>5.64%</td>
+      <td>-3.64%</td>
+      <td>-2.74%</td>
+      <td>0.52%</td>
+      <td>2.43%</td>
+      <td>0.58%</td>
+      <td>3.70%</td>
+      <td>3.19%</td>
+      <td>0.59%</td>
+      <td>-6.91%</td>
+      <td>1.85%</td>
+      <td>-8.79%</td>
+      <td>-4.56%</td>
+    </tr>
+    <tr>
+      <td>benchmark_total_return</td>
+      <td>2019</td>
+      <td>8.01%</td>
+      <td>3.24%</td>
+      <td>1.81%</td>
+      <td>4.09%</td>
+      <td>-6.38%</td>
+      <td>6.96%</td>
+      <td>1.51%</td>
+      <td>-1.67%</td>
+      <td>1.95%</td>
+      <td>2.21%</td>
+      <td>3.62%</td>
+      <td>2.90%</td>
+      <td>31.22%</td>
+    </tr>
+    <tr>
+      <td>benchmark_total_return</td>
+      <td>2020</td>
+      <td>-0.04%</td>
+      <td>-7.92%</td>
+      <td>-12.46%</td>
+      <td>12.70%</td>
+      <td>4.76%</td>
+      <td>1.78%</td>
+      <td>5.89%</td>
+      <td>6.98%</td>
+      <td>-3.74%</td>
+      <td>-2.49%</td>
+      <td>10.88%</td>
+      <td>3.71%</td>
+      <td>18.37%</td>
+    </tr>
+    <tr>
+      <td>benchmark_total_return</td>
+      <td>2021</td>
+      <td>-1.02%</td>
+      <td>2.78%</td>
+      <td>4.54%</td>
+      <td>5.29%</td>
+      <td>0.66%</td>
+      <td>2.25%</td>
+      <td>2.44%</td>
+      <td>2.98%</td>
+      <td>-4.66%</td>
+      <td>7.02%</td>
+      <td>-0.80%</td>
+      <td>4.63%</td>
+      <td>28.75%</td>
+    </tr>
+    <tr>
+      <td>benchmark_total_return</td>
+      <td>2022</td>
+      <td>-5.27%</td>
+      <td>-2.95%</td>
+      <td>3.76%</td>
+      <td>-8.78%</td>
+      <td>0.23%</td>
+      <td>-8.25%</td>
+      <td>9.21%</td>
+      <td>-4.08%</td>
+      <td>-9.24%</td>
+      <td>8.13%</td>
+      <td>5.56%</td>
+      <td>-5.76%</td>
+      <td>-18.17%</td>
+    </tr>
+    <tr>
+      <td>benchmark_total_return</td>
+      <td>2023</td>
+      <td>6.29%</td>
+      <td>-2.51%</td>
+      <td>3.71%</td>
+      <td>1.60%</td>
+      <td>0.46%</td>
+      <td>6.48%</td>
+      <td>3.27%</td>
+      <td>-1.63%</td>
+      <td>-4.74%</td>
+      <td>-2.17%</td>
+      <td>9.13%</td>
+      <td>4.57%</td>
+      <td>26.19%</td>
+    </tr>
+    <tr>
+      <td>benchmark_total_return</td>
+      <td>2024</td>
+      <td>1.59%</td>
+      <td>5.22%</td>
+      <td>3.27%</td>
+      <td>-4.03%</td>
+      <td>5.06%</td>
+      <td>3.53%</td>
+      <td>1.21%</td>
+      <td>2.34%</td>
+      <td>2.10%</td>
+      <td>-0.89%</td>
+      <td>5.96%</td>
+      <td>-2.41%</td>
+      <td>24.89%</td>
+    </tr>
+    <tr>
+      <td>benchmark_total_return</td>
+      <td>2025</td>
+      <td>2.69%</td>
+      <td>-1.27%</td>
+      <td>-5.57%</td>
+      <td>-0.87%</td>
+      <td>6.28%</td>
+      <td>5.14%</td>
+      <td>2.30%</td>
+      <td>2.05%</td>
+      <td>3.56%</td>
+      <td>2.38%</td>
+      <td>0.20%</td>
+      <td>0.08%</td>
+      <td>17.72%</td>
+    </tr>
+    <tr>
+      <td>benchmark_total_return</td>
+      <td>2026</td>
+      <td>1.47%</td>
+      <td>-0.86%</td>
+      <td>-4.93%</td>
+      <td>10.51%</td>
+      <td>5.26%</td>
+      <td>-1.03%</td>
+      <td>0.66%</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>10.82%</td>
+    </tr>
+  </tbody>
+</table></div></section>
+
+<section class="panel"><h2>Full 216-row parameter comparison</h2>
+<p class="note"><strong>Coverage note:</strong> 16 rows have no performance estimate. They are exploratory post-publication cells whose capital path had already terminated at an unknown exit; the runner reports them as unavailable instead of fabricating or restarting returns.</p>
+<div class="filters">
+<select id="period"></select><select id="profile"></select>
+<select id="tier"></select><select id="dividend"></select>
+<select id="slippage"></select>
+</div><div class="scroll"><table class="data-table" id="matrix"></table></div>
+</section>
+
+<section class="panel"><h2>Frozen specification and provenance</h2>
+<details><summary>evaluation spec v2</summary><pre>{
+  "benchmark": {
+    "computed_in_engine": false,
+    "daily_close_file": "spy_daily_raw_close.csv",
+    "daily_close_sha256": "5dc28af7090d155da99939928170bfc2bf799d853e11c212d40f6564b836bc28",
+    "dividend_source": "data-v1.0 State Street cash distributions",
+    "external_file_required": true,
+    "metrics": [
+      "excess_cagr",
+      "beta",
+      "alpha_annualised",
+      "information_ratio"
+    ],
+    "price_source": "Yahoo Finance daily raw close",
+    "release_id": "spy-daily-benchmark-v1",
+    "series": [
+      "spy_price_return",
+      "spy_total_return"
+    ],
+    "source_sha256": "a305d2ceb4bbc3aeec9937e113841e439d75c835d793cfab2d7ef0e3576f9c08"
+  },
+  "capital_path": "continuous_full_run_then_slice_returns",
+  "data_release": {
+    "expected_end": "2026-07-09",
+    "expected_start": "2008-01-22",
+    "manifest_sha256": "fc63122dff1d13df95735ba2e1df0a9763db100e0c3efbfa99adf948d602c530",
+    "release_id": "data-v1.0"
+  },
+  "decision_rule": "The question is not the full-sample CAGR. It is whether, after 2024-05-01,\ngross edge per traded share still exceeds execution + financing + borrow cost\nper traded share.\n- gross edge ~ 0        -&gt; the signal is gone; parameter optimisation must stop.\n- gross edge &gt; 0, eaten -&gt; study execution, trade frequency and capacity.\n",
+  "decomposition": [
+    "long_vs_short",
+    "entry_time_bucket",
+    "volatility_regime_quintile",
+    "signal_count",
+    "average_holding_minutes",
+    "turnover",
+    "gross_edge_per_traded_share",
+    "cost_per_traded_share"
+  ],
+  "decomposition_definitions": {
+    "entry_time_bucket": {
+      "close": [
+        271,
+        390
+      ],
+      "midday": [
+        121,
+        270
+      ],
+      "open": [
+        1,
+        120
+      ]
+    },
+    "volatility_regime_quintile": {
+      "boundary_sample_end": "2024-04-30",
+      "variable": "lagged_14_session_daily_volatility"
+    }
+  },
+  "dividends": {
+    "also_report": "ignore_dividends",
+    "headline": "with_dividends"
+  },
+  "drafted_utc": "2026-07-31",
+  "evaluation_end": "2026-07-09",
+  "evaluation_start": "2024-05-01",
+  "financing": {
+    "borrow_rate_annual": 0.0025,
+    "borrow_rate_decision": "fixed_25_bps_pa",
+    "cash_rate": {
+      "day_count": "ACT/360",
+      "observation_policy": "latest_rate_published_before_session_open",
+      "segments": [
+        {
+          "benchmark": "USD_3M_LIBOR_PUBLIC_PROXY",
+          "end": "2023-06-30",
+          "proxy_policy": "previous_completed_calendar_month_average",
+          "series": "RTD.M.S0.N.C_USL3M.U",
+          "source": "European Central Bank Data Portal",
+          "start": "2008-01-22"
+        },
+        {
+          "benchmark": "SOFR",
+          "end": "2026-07-09",
+          "proxy_policy": "latest_observation_strictly_before_session",
+          "series": "FNYR-SOFR-A",
+          "source": "OFR API / Federal Reserve Bank of New York reference rates",
+          "start": "2023-07-03"
+        }
+      ],
+      "spread_bps": -50
+    },
+    "cash_rate_decision": "usd_3m_libor_then_sofr_minus_50_bps_pa",
+    "funding_rate": {
+      "day_count": "ACT/360",
+      "observation_policy": "latest_rate_published_before_session_open",
+      "proxy_sensitivity": "none",
+      "segments": [
+        {
+          "benchmark": "USD_3M_LIBOR_PUBLIC_PROXY",
+          "end": "2023-06-30",
+          "proxy_policy": "previous_completed_calendar_month_average",
+          "source_policy": "public_reproducible_source",
+          "start": "2008-01-22"
+        },
+        {
+          "benchmark": "SOFR",
+          "end": "2026-07-09",
+          "proxy_policy": "latest_observation_strictly_before_session",
+          "source": "OFR API / Federal Reserve Bank of New York reference rates",
+          "start": "2023-07-03"
+        }
+      ],
+      "spread_bps": 100,
+      "transition_note": "Representative USD LIBOR panel ended after 2023-06-30; synthetic LIBOR is not used."
+    },
+    "funding_rate_decision": "usd_3m_libor_then_sofr_plus_100_bps_pa",
+    "note": "Positive cash earns the applicable benchmark minus 50 bps. SPY borrow is fixed at 25 bps p.a. Funding is the applicable benchmark plus 100 bps. The pre-transition LIBOR input may be a documented public proxy rather than licensed ICE fixing data. The frozen point-in-time daily rate release is mandatory for formal execution; scalar cash/funding placeholders are not permitted.",
+    "rate_release": {
+      "daily_file": "financing_rates_daily.csv",
+      "daily_rates_sha256": "3f4addb685cbbdf5f887aec7837825b3fbefff13d4fdfd2192673b5458698be8",
+      "manifest_sha256": "ff6df464aa2d7c99a1aab37c3f809e9abe312ba1af4389f357a1222918027e1a",
+      "path": "data/reference/financing_rates_v1",
+      "release_id": "financing-rates-v1",
+      "source_sha256": {
+        "libor_proxy": "820017b24515d386ef7586a22f5d20a9fda51d422ae5951574fdb17471f37aed",
+        "sofr": "8cd41958de6d2bb57aef694ec071438bed220f0cf4bf358162b6c6360ed2d670"
+      }
+    },
+    "status": "frozen"
+  },
+  "frozen_utc": "2026-07-31",
+  "headline": {
+    "dividend_mode": "with_dividends",
+    "note": "Reporting-headline variant only. The cell belongs to the frozen v2 matrix; no economic parameter, rate, cost or date changed versus the frozen spec (sha256 b4d7a8f805b9dd3dacdaf3f2c0f286db2c8ed3d797a7ea3d21764ae09b0eb1b4). Q24 matching is a separate replication experiment and does not tune this headline.",
+    "profile": "corrected_execution",
+    "slippage_per_share": 0.0025,
+    "tier": "halt_aware"
+  },
+  "naming": "Call this the \"post-publication evaluation period\", not an untouched\nout-of-sample test.\n",
+  "profiles": [
+    "official_sample_compatible",
+    "paper_spec",
+    "corrected_execution"
+  ],
+  "provenance_required": [
+    "spec_sha256",
+    "engine_script_sha256",
+    "data_script_sha256",
+    "data_run_id",
+    "data_release_manifest_sha256",
+    "source_sha256",
+    "dividend_sha256",
+    "benchmark_sha256",
+    "financing_rate_manifest_sha256",
+    "financing_rate_daily_sha256",
+    "git_commit",
+    "git_dirty"
+  ],
+  "slippage_per_share": [
+    0.001,
+    0.0025,
+    0.005,
+    0.01
+  ],
+  "spec_version": 2,
+  "statistics": {
+    "alpha_standard_errors": "none",
+    "bootstrap": "none",
+    "note": "Point estimates only. HAC and block-bootstrap confidence intervals are explicitly deferred and must not be implied in the report.",
+    "sharpe_risk_free_rate": "same_as_cash_rate",
+    "status": "frozen"
+  },
+  "status": "frozen",
+  "subperiods": [
+    "full_sample",
+    "pre_publication",
+    "post_publication"
+  ],
+  "tiers": {
+    "also_report": [
+      "halt_aware",
+      "exploratory"
+    ],
+    "headline": "paper_ready"
+  }
+}</pre></details>
+<details><summary>run provenance</summary><pre>{
+  "actual_summary_rows": 216,
+  "benchmark": {
+    "path": "D:\\projects\\intradayMomentum\\benchmark_release_v1\\spy_daily_raw_close.csv",
+    "sha256": "5dc28af7090d155da99939928170bfc2bf799d853e11c212d40f6564b836bc28"
+  },
+  "capital_path": "continuous_full_run_then_slice_returns",
+  "classification": "formal_post_publication_evaluation",
+  "created_at_utc": "2026-07-31T10:04:57.818218+00:00",
+  "data_release": {
+    "bundle": {
+      "git_commit": "85f81b85615039c8c317e5002276b69d5401703b",
+      "release_id": "data-v1.0",
+      "release_manifest_path": "D:\\projects\\intradayMomentum\\data_release_v1\\data_manifest.json",
+      "release_manifest_sha256": "fc63122dff1d13df95735ba2e1df0a9763db100e0c3efbfa99adf948d602c530",
+      "source_run_id": "20260729T172447Z",
+      "type": "immutable_release",
+      "verified_against_run_id": "20260729T172543Z"
+    },
+    "data_script_sha256": "513721c20e4b44de1c8c28ab1ac09a076c1d1f3b086255e48a48c9d31fef2f4e",
+    "dividend_sha256": "d6f63572845ad46bfac2308fb10af1b60d62065d06f2d6625dcef5d3ce0a3990",
+    "dividend_source_sha256": "7f11b4419d6497e4c9c6d13878d99c4baff6a817377aaecf67aaeba500be0fa7",
+    "expected_end": "2026-07-09",
+    "expected_start": "2008-01-22",
+    "observed_end": "2026-07-09",
+    "observed_start": "2008-01-22",
+    "release_id": "data-v1.0",
+    "release_manifest_sha256": "fc63122dff1d13df95735ba2e1df0a9763db100e0c3efbfa99adf948d602c530",
+    "source_run_id": "20260729T172447Z",
+    "source_sha256": "dedcc3cd460dfdd4fd90495f197868519b513a36e0d0723fc12ee47858714218"
+  },
+  "data_script_sha256_current": "513721c20e4b44de1c8c28ab1ac09a076c1d1f3b086255e48a48c9d31fef2f4e",
+  "engine_script_sha256": "046295025b5df88f1b276092a708c2c00595e8da641219e49b59d46ed39809ee",
+  "expected_summary_rows": 216,
+  "financing_rates": {
+    "daily_rates_path": "D:\\projects\\intradayMomentum\\data\\reference\\financing_rates_v1\\financing_rates_daily.csv",
+    "daily_rates_sha256": "3f4addb685cbbdf5f887aec7837825b3fbefff13d4fdfd2192673b5458698be8",
+    "day_count": "ACT/360",
+    "first": "2008-01-22",
+    "last": "2026-07-09",
+    "manifest_sha256": "ff6df464aa2d7c99a1aab37c3f809e9abe312ba1af4389f357a1222918027e1a",
+    "path": "D:\\projects\\intradayMomentum\\data\\reference\\financing_rates_v1",
+    "release_id": "financing-rates-v1",
+    "rows": 4645,
+    "source_hashes": {
+      "libor_proxy": "820017b24515d386ef7586a22f5d20a9fda51d422ae5951574fdb17471f37aed",
+      "sofr": "8cd41958de6d2bb57aef694ec071438bed220f0cf4bf358162b6c6360ed2d670"
+    }
+  },
+  "git": {
+    "available": true,
+    "commit": "ad89eff8fcee25cc61a7091914faf9d238642225",
+    "dirty": false,
+    "dirty_paths": []
+  },
+  "matrix_cells": 72,
+  "notes": [
+    "post-publication is an evaluation period, not untouched OOS",
+    "tier is applied after full-calendar feature construction",
+    "statistics are point estimates; HAC and bootstrap are deferred"
+  ],
+  "spec_path": "D:\\projects\\intradayMomentum\\tmp\\spec_v2_headline_halt_slip0025\\evaluation_spec_v2.yml",
+  "spec_sha256": "10a9f44dfac67c60ec4fe30372ff3b5ed7f9f0eceb6fa9ad1f53976a9dd2be63",
+  "spec_version": 2,
+  "subperiods": [
+    {
+      "end": "2026-07-09 00:00:00",
+      "name": "full_sample",
+      "start": "2008-01-22 00:00:00"
+    },
+    {
+      "end": "2024-04-30 00:00:00",
+      "name": "pre_publication",
+      "start": "2008-01-22 00:00:00"
+    },
+    {
+      "end": "2026-07-09 00:00:00",
+      "name": "post_publication",
+      "start": "2024-05-01 00:00:00"
+    }
+  ]
+}</pre></details>
+</section>
+</main>
+<script>
+const rows=[{"profile":"official_sample_compatible","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.001,"subperiod":"full_sample","cagr":0.1755966741849202,"benchmark_total_cagr":0.11952284055327,"excess_cagr":0.056073833631650194,"sharpe_calendar":1.0984123615463475,"max_drawdown":-0.25326659130673446,"gross_edge_per_traded_share":0.04488833004150103,"execution_cost_per_traded_share":0.0045000000000000005,"financing_cost_per_traded_share":0.0005687533885169171,"trading_edge_after_costs_per_traded_share":0.039819576652984114,"beta_vs_benchmark_total":-0.06727037638030572,"alpha_annualized":0.1815510687861512,"information_ratio":0.15876005695647413},{"profile":"official_sample_compatible","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.001,"subperiod":"pre_publication","cagr":0.19101528849161853,"benchmark_total_cagr":0.10696244201198235,"excess_cagr":0.08405284647963618,"sharpe_calendar":1.2156913173361512,"max_drawdown":-0.25326659130673446,"gross_edge_per_traded_share":0.05285396600318779,"execution_cost_per_traded_share":0.0045,"financing_cost_per_traded_share":0.00034964358603780093,"trading_edge_after_costs_per_traded_share":0.04800432241714999,"beta_vs_benchmark_total":-0.06365206071915293,"alpha_annualized":0.19326768287811064,"information_ratio":0.24788642768993888},{"profile":"official_sample_compatible","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.001,"subperiod":"post_publication","cagr":0.06751716471147207,"benchmark_total_cagr":0.21741049617676111,"excess_cagr":-0.14989333146528905,"sharpe_calendar":0.24957706698613055,"max_drawdown":-0.18942199573113516,"gross_edge_per_traded_share":0.015809309948786775,"execution_cost_per_traded_share":0.0045,"financing_cost_per_traded_share":0.0013686265410745545,"trading_edge_after_costs_per_traded_share":0.009940683407712222,"beta_vs_benchmark_total":-0.10698438803463267,"alpha_annualized":0.09935651338347391,"information_ratio":-0.5727162764687266},{"profile":"official_sample_compatible","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.0025,"subperiod":"full_sample","cagr":0.1664287048309505,"benchmark_total_cagr":0.11952284055327,"excess_cagr":0.04690586427768051,"sharpe_calendar":1.044277711164001,"max_drawdown":-0.2656853572125377,"gross_edge_per_traded_share":0.044245708404654714,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.0005519185638186242,"trading_edge_after_costs_per_traded_share":0.03769378984083609,"beta_vs_benchmark_total":-0.06719151744163514,"alpha_annualized":0.1737027450957653,"information_ratio":0.12818328896875317},{"profile":"official_sample_compatible","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.0025,"subperiod":"pre_publication","cagr":0.18093896380049546,"benchmark_total_cagr":0.10696244201198235,"excess_cagr":0.0739765217885131,"sharpe_calendar":1.15669751342673,"max_drawdown":-0.2656853572125377,"gross_edge_per_traded_share":0.05161436154445681,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.0003393240970130689,"trading_edge_after_costs_per_traded_share":0.045275037447443746,"beta_vs_benchmark_total":-0.06357931804529304,"alpha_annualized":0.18475919477031993,"information_ratio":0.21506416642112938},{"profile":"official_sample_compatible","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.0025,"subperiod":"post_publication","cagr":0.06443551141048975,"benchmark_total_cagr":0.21741049617676111,"excess_cagr":-0.15297498476627136,"sharpe_calendar":0.23015552916019513,"max_drawdown":-0.19192986582439886,"gross_edge_per_traded_share":0.015936609256155615,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.0013686699734775142,"trading_edge_after_costs_per_traded_share":0.008567939282678102,"beta_vs_benchmark_total":-0.10690176620057783,"alpha_annualized":0.09643283490194653,"information_ratio":-0.5850762907906},{"profile":"official_sample_compatible","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.005,"subperiod":"full_sample","cagr":0.1512842338851934,"benchmark_total_cagr":0.11952284055327,"excess_cagr":0.031761393331923404,"sharpe_calendar":0.9539974854806249,"max_drawdown":-0.285966817156755,"gross_edge_per_traded_share":0.043146832580560894,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.0005234535342212862,"trading_edge_after_costs_per_traded_share":0.03412337904633961,"beta_vs_benchmark_total":-0.06706014865551237,"alpha_annualized":0.16060349520901307,"information_ratio":0.07716198518214622},{"profile":"official_sample_compatible","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.005,"subperiod":"pre_publication","cagr":0.16430500897058042,"benchmark_total_cagr":0.10696244201198235,"excess_cagr":0.057342566958598074,"sharpe_calendar":1.0583049204817692,"max_drawdown":-0.285966817156755,"gross_edge_per_traded_share":0.04957486680978032,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.00032214425410313194,"trading_edge_after_costs_per_traded_share":0.04075272255567718,"beta_vs_benchmark_total":-0.06345850963326635,"alpha_annualized":0.17055491085115035,"information_ratio":0.16028515191581344},{"profile":"official_sample_compatible","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.005,"subperiod":"post_publication","cagr":0.05933683855995664,"benchmark_total_cagr":0.21741049617676111,"excess_cagr":-0.15807365761680447,"sharpe_calendar":0.1979071302327126,"max_drawdown":-0.19609983642722484,"gross_edge_per_traded_share":0.0161563883843684,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.001368723907317061,"trading_edge_after_costs_per_traded_share":0.006287664477051336,"beta_vs_benchmark_total":-0.10676046870987371,"alpha_annualized":0.09157635952740208,"information_ratio":-0.6056018902581638},{"profile":"official_sample_compatible","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.01,"subperiod":"full_sample","cagr":0.12158528521669543,"benchmark_total_cagr":0.11952284055327,"excess_cagr":0.0020624446634254223,"sharpe_calendar":0.7737995431049478,"max_drawdown":-0.32766738110870264,"gross_edge_per_traded_share":0.0409093488188316,"execution_cost_per_traded_share":0.013499999999999998,"financing_cost_per_traded_share":0.0004658957303698136,"trading_edge_after_costs_per_traded_share":0.026943453088461786,"beta_vs_benchmark_total":-0.06682084074275402,"alpha_annualized":0.13441622816513898,"information_ratio":-0.024790607235931017},{"profile":"official_sample_compatible","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.01,"subperiod":"pre_publication","cagr":0.13174300184259602,"benchmark_total_cagr":0.10696244201198235,"excess_cagr":0.02478055983061367,"sharpe_calendar":0.8619814178712673,"max_drawdown":-0.32766738110870264,"gross_edge_per_traded_share":0.04569131993946953,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.0002883697285322951,"trading_edge_after_costs_per_traded_share":0.03190295021093723,"beta_vs_benchmark_total":-0.06324271910022296,"alpha_annualized":0.1421616008571521,"information_ratio":0.050841269254337865},{"profile":"official_sample_compatible","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.01,"subperiod":"post_publication","cagr":0.049190125426379794,"benchmark_total_cagr":0.21741049617676111,"excess_cagr":-0.16822037075038132,"sharpe_calendar":0.1333040956482881,"max_drawdown":-0.2043718973083546,"gross_edge_per_traded_share":0.016586546934612895,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.0013688559664440498,"trading_edge_after_costs_per_traded_share":0.0017176909681688448,"beta_vs_benchmark_total":-0.10647396510594,"alpha_annualized":0.08184103165848883,"information_ratio":-0.6467484661031749},{"profile":"official_sample_compatible","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.001,"subperiod":"full_sample","cagr":0.1774668030380675,"benchmark_total_cagr":0.09904120996752352,"excess_cagr":0.07842559307054398,"sharpe_calendar":1.1080308402739418,"max_drawdown":-0.2517322420446205,"gross_edge_per_traded_share":0.04508280018919493,"execution_cost_per_traded_share":0.0045000000000000005,"financing_cost_per_traded_share":0.0005695675094561502,"trading_edge_after_costs_per_traded_share":0.04001323267973878,"beta_vs_benchmark_total":-0.06768680450880814,"alpha_annualized":0.1819811603874747,"information_ratio":0.23637069691415052},{"profile":"official_sample_compatible","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.001,"subperiod":"pre_publication","cagr":0.19303009513376157,"benchmark_total_cagr":0.08578148704332156,"excess_cagr":0.10724860809044001,"sharpe_calendar":1.2254398024734205,"max_drawdown":-0.2517322420446205,"gross_edge_per_traded_share":0.052924204887106474,"execution_cost_per_traded_share":0.0045,"financing_cost_per_traded_share":0.0003496581934096411,"trading_edge_after_costs_per_traded_share":0.04807454669369683,"beta_vs_benchmark_total":-0.06392257855117707,"alpha_annualized":0.19379992553416997,"information_ratio":0.32803972936798764},{"profile":"official_sample_compatible","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.001,"subperiod":"post_publication","cagr":0.06841910266292639,"benchmark_total_cagr":0.20271616498870992,"excess_cagr":-0.13429706232578353,"sharpe_calendar":0.25541266487234504,"max_drawdown":-0.1840617439540796,"gross_edge_per_traded_share":0.0162978088502308,"execution_cost_per_traded_share":0.0045,"financing_cost_per_traded_share":0.0013768320241217729,"trading_edge_after_costs_per_traded_share":0.010420976826109027,"beta_vs_benchmark_total":-0.1091445112722758,"alpha_annualized":0.09929528134710018,"information_ratio":-0.516992314518039},{"profile":"official_sample_compatible","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.0025,"subperiod":"full_sample","cagr":0.16821144458633097,"benchmark_total_cagr":0.09904120996752352,"excess_cagr":0.06917023461880745,"sharpe_calendar":1.0535345542214072,"max_drawdown":-0.26434203781007526,"gross_edge_per_traded_share":0.044441591329309874,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.0005527138403597433,"trading_edge_after_costs_per_traded_share":0.03788887748895013,"beta_vs_benchmark_total":-0.06761256512316889,"alpha_annualized":0.1740723592931343,"information_ratio":0.20561001941782556},{"profile":"official_sample_compatible","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.0025,"subperiod":"pre_publication","cagr":0.1828495498286531,"benchmark_total_cagr":0.08578148704332156,"excess_cagr":0.09706806278533153,"sharpe_calendar":1.1660359813900538,"max_drawdown":-0.26434203781007526,"gross_edge_per_traded_share":0.05169422028304583,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.0003393510038880172,"trading_edge_after_costs_per_traded_share":0.04535486927915781,"beta_vs_benchmark_total":-0.06385436639289885,"alpha_annualized":0.18521946026148042,"information_ratio":0.295001140516892},{"profile":"official_sample_compatible","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.0025,"subperiod":"post_publication","cagr":0.06535826214689888,"benchmark_total_cagr":0.20271616498870992,"excess_cagr":-0.13735790284181104,"sharpe_calendar":0.23610725891912357,"max_drawdown":-0.1865659799370788,"gross_edge_per_traded_share":0.016426751552654634,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.0013768737024148787,"trading_edge_after_costs_per_traded_share":0.009049877850239755,"beta_vs_benchmark_total":-0.10907349304834646,"alpha_annualized":0.09639732001959392,"information_ratio":-0.5292447930814098},{"profile":"official_sample_compatible","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.005,"subperiod":"full_sample","cagr":0.15294847632436248,"benchmark_total_cagr":0.09904120996752352,"excess_cagr":0.053907266356838957,"sharpe_calendar":0.9628104420733417,"max_drawdown":-0.28487533907909146,"gross_edge_per_traded_share":0.04334594223705733,"execution_cost_per_traded_share":0.008499999999999999,"financing_cost_per_traded_share":0.0005242243397663723,"trading_edge_after_costs_per_traded_share":0.03432171789729096,"beta_vs_benchmark_total":-0.06747464819094179,"alpha_annualized":0.16089161257396317,"information_ratio":0.15436529570901072},{"profile":"official_sample_compatible","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.005,"subperiod":"pre_publication","cagr":0.16607722969461602,"benchmark_total_cagr":0.08578148704332156,"excess_cagr":0.08029574265129447,"sharpe_calendar":1.0671586329321483,"max_drawdown":-0.28487533907909146,"gross_edge_per_traded_share":0.04967373515917982,"execution_cost_per_traded_share":0.008499999999999999,"financing_cost_per_traded_share":0.0003221937668851858,"trading_edge_after_costs_per_traded_share":0.04085154139229463,"beta_vs_benchmark_total":-0.06372787715480946,"alpha_annualized":0.17092094213235678,"information_ratio":0.23996819770803612},{"profile":"official_sample_compatible","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.005,"subperiod":"post_publication","cagr":0.060268641610858875,"benchmark_total_cagr":0.20271616498870992,"excess_cagr":-0.14244752337785105,"sharpe_calendar":0.20389566438401754,"max_drawdown":-0.1907198910311313,"gross_edge_per_traded_share":0.016638258338024806,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.001376933767027673,"trading_edge_after_costs_per_traded_share":0.006761324570997131,"beta_vs_benchmark_total":-0.10892510100020576,"alpha_annualized":0.09155343121416647,"information_ratio":-0.5497146119352239},{"profile":"official_sample_compatible","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.01,"subperiod":"full_sample","cagr":0.1230212621744089,"benchmark_total_cagr":0.09904120996752352,"excess_cagr":0.02398005220688537,"sharpe_calendar":0.7816881801370937,"max_drawdown":-0.32714029342589857,"gross_edge_per_traded_share":0.04111173005194185,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.00046655983967638427,"trading_edge_after_costs_per_traded_share":0.02714517021226547,"beta_vs_benchmark_total":-0.06722453520002417,"alpha_annualized":0.1345426317765287,"information_ratio":0.05196284293991401},{"profile":"official_sample_compatible","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.01,"subperiod":"pre_publication","cagr":0.13324569281111076,"benchmark_total_cagr":0.08578148704332156,"excess_cagr":0.0474642057677892,"sharpe_calendar":0.8698037279100901,"max_drawdown":-0.32714029342589857,"gross_edge_per_traded_share":0.04581722456470534,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.0002884065767589659,"trading_edge_after_costs_per_traded_share":0.03202881798794638,"beta_vs_benchmark_total":-0.06349926073903236,"alpha_annualized":0.14233661419615118,"information_ratio":0.12999899160632045},{"profile":"official_sample_compatible","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.01,"subperiod":"post_publication","cagr":0.05016587893985691,"benchmark_total_cagr":0.20271616498870992,"excess_cagr":-0.152550286048853,"sharpe_calendar":0.13952945409119558,"max_drawdown":-0.19896231976313783,"gross_edge_per_traded_share":0.017063317009780546,"execution_cost_per_traded_share":0.013500000000000002,"financing_cost_per_traded_share":0.001377049319544188,"trading_edge_after_costs_per_traded_share":0.002186267690236355,"beta_vs_benchmark_total":-0.10866943935703537,"alpha_annualized":0.08187874195823325,"information_ratio":-0.5906099412884256},{"profile":"official_sample_compatible","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.001,"subperiod":"full_sample","cagr":0.17411409808667866,"benchmark_total_cagr":0.11952284055327,"excess_cagr":0.054591257533408655,"sharpe_calendar":1.0893468298805256,"max_drawdown":-0.25326659130673446,"gross_edge_per_traded_share":0.04430564979603908,"execution_cost_per_traded_share":0.0045000000000000005,"financing_cost_per_traded_share":0.0005636580509322744,"trading_edge_after_costs_per_traded_share":0.039241991745106806,"beta_vs_benchmark_total":-0.06519143915097399,"alpha_annualized":0.180020869647264,"information_ratio":0.15403208221201473},{"profile":"official_sample_compatible","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.001,"subperiod":"pre_publication","cagr":0.18931070931262184,"benchmark_total_cagr":0.10696244201198235,"excess_cagr":0.08234826730063949,"sharpe_calendar":1.2053117112095295,"max_drawdown":-0.25326659130673446,"gross_edge_per_traded_share":0.051985833893645125,"execution_cost_per_traded_share":0.0045000000000000005,"financing_cost_per_traded_share":0.0003467088454857088,"trading_edge_after_costs_per_traded_share":0.04713912504815942,"beta_vs_benchmark_total":-0.061389599299623544,"alpha_annualized":0.19156890229718698,"information_ratio":0.24268624425412205},{"profile":"official_sample_compatible","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.001,"subperiod":"post_publication","cagr":0.0675167196171198,"benchmark_total_cagr":0.21741049617676111,"excess_cagr":-0.1498937765596413,"sharpe_calendar":0.24957368963850846,"max_drawdown":-0.1894258175631588,"gross_edge_per_traded_share":0.015808881462776276,"execution_cost_per_traded_share":0.0045000000000000005,"financing_cost_per_traded_share":0.001368632406901592,"trading_edge_after_costs_per_traded_share":0.009940249055874682,"beta_vs_benchmark_total":-0.10698454788375411,"alpha_annualized":0.09935626938124904,"information_ratio":-0.5727159937908523},{"profile":"official_sample_compatible","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.0025,"subperiod":"full_sample","cagr":0.1649569111282192,"benchmark_total_cagr":0.11952284055327,"excess_cagr":0.04543407057494919,"sharpe_calendar":1.0352325297438865,"max_drawdown":-0.2656853572125377,"gross_edge_per_traded_share":0.04366984630593072,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.00054685294083429,"trading_edge_after_costs_per_traded_share":0.037122993365096425,"beta_vs_benchmark_total":-0.06511050635886328,"alpha_annualized":0.17217170839769017,"information_ratio":0.12341998430993174},{"profile":"official_sample_compatible","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.0025,"subperiod":"pre_publication","cagr":0.17924793825477403,"benchmark_total_cagr":0.10696244201198235,"excess_cagr":0.07228549624279168,"sharpe_calendar":1.1463430825130005,"max_drawdown":-0.2656853572125377,"gross_edge_per_traded_share":0.05077015555581979,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.0003364525741986238,"trading_edge_after_costs_per_traded_share":0.04443370298162117,"beta_vs_benchmark_total":-0.061315544775849995,"alpha_annualized":0.18305966444245614,"information_ratio":0.2098221155587558},{"profile":"official_sample_compatible","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.0025,"subperiod":"post_publication","cagr":0.06443487959863381,"benchmark_total_cagr":0.21741049617676111,"excess_cagr":-0.1529756165781273,"sharpe_calendar":0.2301519155278738,"max_drawdown":-0.19194233820768336,"gross_edge_per_traded_share":0.015936091846102673,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.0013686751884529438,"trading_edge_after_costs_per_traded_share":0.008567416657649731,"beta_vs_benchmark_total":-0.10689125942109431,"alpha_annualized":0.09642997134668654,"information_ratio":-0.5850827229657877},{"profile":"official_sample_compatible","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.005,"subperiod":"full_sample","cagr":0.14983086484821406,"benchmark_total_cagr":0.11952284055327,"excess_cagr":0.030308024294944058,"sharpe_calendar":0.9449977382972103,"max_drawdown":-0.285966817156755,"gross_edge_per_traded_share":0.042585169085763416,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.0005184644413399956,"trading_edge_after_costs_per_traded_share":0.03356670464442342,"beta_vs_benchmark_total":-0.06497527888358492,"alpha_annualized":0.1590713571657758,"information_ratio":0.0723413805060227},{"profile":"official_sample_compatible","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.005,"subperiod":"pre_publication","cagr":0.16263724609585828,"benchmark_total_cagr":0.10696244201198235,"excess_cagr":0.05567480408387593,"sharpe_calendar":1.048008907726546,"max_drawdown":-0.285966817156755,"gross_edge_per_traded_share":0.04877329918598866,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.0003193885610973553,"trading_edge_after_costs_per_traded_share":0.03995391062489131,"beta_vs_benchmark_total":-0.06118943771724644,"alpha_annualized":0.16885428916168374,"information_ratio":0.15497634191354165},{"profile":"official_sample_compatible","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.005,"subperiod":"post_publication","cagr":0.05933465834431306,"benchmark_total_cagr":0.21741049617676111,"excess_cagr":-0.15807583783244805,"sharpe_calendar":0.19789403366636665,"max_drawdown":-0.1961044407542103,"gross_edge_per_traded_share":0.016155270237015372,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.0013687302393792034,"trading_edge_after_costs_per_traded_share":0.006286539997636167,"beta_vs_benchmark_total":-0.1067623085359502,"alpha_annualized":0.09157444412590876,"information_ratio":-0.6056139811642038},{"profile":"official_sample_compatible","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.01,"subperiod":"full_sample","cagr":0.12016427514312156,"benchmark_total_cagr":0.11952284055327,"excess_cagr":0.0006414345898515528,"sharpe_calendar":0.7648669900819016,"max_drawdown":-0.32766738110870264,"gross_edge_per_traded_share":0.040383057753527025,"execution_cost_per_traded_share":0.013500000000000002,"financing_cost_per_traded_share":0.0004611337970330552,"trading_edge_after_costs_per_traded_share":0.02642192395649397,"beta_vs_benchmark_total":-0.0647306101929696,"alpha_annualized":0.13287878337247036,"information_ratio":-0.029739520067717507},{"profile":"official_sample_compatible","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.01,"subperiod":"pre_publication","cagr":0.13011600080313435,"benchmark_total_cagr":0.10696244201198235,"excess_cagr":0.023153558791151996,"sharpe_calendar":0.8517783943019324,"max_drawdown":-0.32766738110870264,"gross_edge_per_traded_share":0.04497811192832273,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.0002858681970961513,"trading_edge_after_costs_per_traded_share":0.03119224373122658,"beta_vs_benchmark_total":-0.060968926169470083,"alpha_annualized":0.14045508428783587,"information_ratio":0.04538122400576442},{"profile":"official_sample_compatible","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.01,"subperiod":"post_publication","cagr":0.049187986716542786,"benchmark_total_cagr":0.21741049617676111,"excess_cagr":-0.16822250946021833,"sharpe_calendar":0.1332906694434029,"max_drawdown":-0.20437349347095446,"gross_edge_per_traded_share":0.016585505829784155,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.0013688254272693527,"trading_edge_after_costs_per_traded_share":0.0017166804025148007,"beta_vs_benchmark_total":-0.10646328823959343,"alpha_annualized":0.08183725824492995,"information_ratio":-0.6467517555604241},{"profile":"official_sample_compatible","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.001,"subperiod":"full_sample","cagr":0.17598170279816228,"benchmark_total_cagr":0.09904120996752352,"excess_cagr":0.07694049283063875,"sharpe_calendar":1.0989721495463354,"max_drawdown":-0.2517322420446205,"gross_edge_per_traded_share":0.04450102328383656,"execution_cost_per_traded_share":0.0045000000000000005,"financing_cost_per_traded_share":0.000564480304317953,"trading_edge_after_costs_per_traded_share":0.0394365429795186,"beta_vs_benchmark_total":-0.06561632574727706,"alpha_annualized":0.18049007677072362,"information_ratio":0.2317373645509231},{"profile":"official_sample_compatible","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.001,"subperiod":"pre_publication","cagr":0.19132249374069432,"benchmark_total_cagr":0.08578148704332156,"excess_cagr":0.10554100669737276,"sharpe_calendar":1.2150738298178847,"max_drawdown":-0.2517322420446205,"gross_edge_per_traded_share":0.05206076559606014,"execution_cost_per_traded_share":0.0045000000000000005,"financing_cost_per_traded_share":0.00034673482724101697,"trading_edge_after_costs_per_traded_share":0.04721403076881913,"beta_vs_benchmark_total":-0.06167050518954009,"alpha_annualized":0.19214562463372875,"information_ratio":0.3229482507058449},{"profile":"official_sample_compatible","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.001,"subperiod":"post_publication","cagr":0.06841831220586725,"benchmark_total_cagr":0.20271616498870992,"excess_cagr":-0.13429785278284267,"sharpe_calendar":0.25540612639262755,"max_drawdown":-0.18406360802685118,"gross_edge_per_traded_share":0.01629723533764957,"execution_cost_per_traded_share":0.0045000000000000005,"financing_cost_per_traded_share":0.001376842288110608,"trading_edge_after_costs_per_traded_share":0.010420393049538963,"beta_vs_benchmark_total":-0.10914182116383146,"alpha_annualized":0.0992943066205762,"information_ratio":-0.5169919086111663},{"profile":"official_sample_compatible","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.0025,"subperiod":"full_sample","cagr":0.16673662105663256,"benchmark_total_cagr":0.09904120996752352,"excess_cagr":0.06769541108910904,"sharpe_calendar":1.0444983056880972,"max_drawdown":-0.26434203781007526,"gross_edge_per_traded_share":0.04386616635520434,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.0005476515837445024,"trading_edge_after_costs_per_traded_share":0.03731851477145984,"beta_vs_benchmark_total":-0.06554175087495243,"alpha_annualized":0.17258001597302466,"information_ratio":0.20093894113992794},{"profile":"official_sample_compatible","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.0025,"subperiod":"pre_publication","cagr":0.18115567884126027,"benchmark_total_cagr":0.08578148704332156,"excess_cagr":0.09537419179793871,"sharpe_calendar":1.1556999067996159,"max_drawdown":-0.26434203781007526,"gross_edge_per_traded_share":0.050854333792570955,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.0003364885995081305,"trading_edge_after_costs_per_traded_share":0.04451784519306282,"beta_vs_benchmark_total":-0.06160271604764946,"alpha_annualized":0.18356454308034825,"information_ratio":0.28986747744961655},{"profile":"official_sample_compatible","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.0025,"subperiod":"post_publication","cagr":0.0653523646473182,"benchmark_total_cagr":0.20271616498870992,"excess_cagr":-0.13736380034139173,"sharpe_calendar":0.23607136059410955,"max_drawdown":-0.18657008242813533,"gross_edge_per_traded_share":0.016423945020745987,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.0013768791892643454,"trading_edge_after_costs_per_traded_share":0.009047065831481639,"beta_vs_benchmark_total":-0.10906181715646258,"alpha_annualized":0.0963891444743157,"information_ratio":-0.5292755835001233},{"profile":"official_sample_compatible","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.005,"subperiod":"full_sample","cagr":0.1514915364094196,"benchmark_total_cagr":0.09904120996752352,"excess_cagr":0.05245032644189607,"sharpe_calendar":0.9538120746147424,"max_drawdown":-0.28487533907909146,"gross_edge_per_traded_share":0.042784480622212864,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.000519228082699189,"trading_edge_after_costs_per_traded_share":0.03376525253951367,"beta_vs_benchmark_total":-0.06540343382398613,"alpha_annualized":0.15939809292103424,"information_ratio":0.14963446157347576},{"profile":"official_sample_compatible","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.005,"subperiod":"pre_publication","cagr":0.16440459998885548,"benchmark_total_cagr":0.08578148704332156,"excess_cagr":0.07862311294553392,"sharpe_calendar":1.056867099147177,"max_drawdown":-0.28487533907909146,"gross_edge_per_traded_share":0.04887457473638769,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.00031944025348446816,"trading_edge_after_costs_per_traded_share":0.040055134482903224,"beta_vs_benchmark_total":-0.06147549143086608,"alpha_annualized":0.1692635955592854,"information_ratio":0.23475996574295177},{"profile":"official_sample_compatible","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.005,"subperiod":"post_publication","cagr":0.060270789630768595,"benchmark_total_cagr":0.20271616498870992,"excess_cagr":-0.14244537535794133,"sharpe_calendar":0.20390902616531323,"max_drawdown":-0.19072025947096516,"gross_edge_per_traded_share":0.016639229096963384,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.0013769328978587194,"trading_edge_after_costs_per_traded_share":0.006762296199104665,"beta_vs_benchmark_total":-0.10891695056715041,"alpha_annualized":0.09155394469088642,"information_ratio":-0.5497067136827051},{"profile":"official_sample_compatible","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.01,"subperiod":"full_sample","cagr":0.12159927250191593,"benchmark_total_cagr":0.09904120996752352,"excess_cagr":0.02255806253439241,"sharpe_calendar":0.7727768430862324,"max_drawdown":-0.32714029342589857,"gross_edge_per_traded_share":0.04058667719045794,"execution_cost_per_traded_share":0.013500000000000002,"financing_cost_per_traded_share":0.0004618032531299712,"trading_edge_after_costs_per_traded_share":0.026624873937327966,"beta_vs_benchmark_total":-0.06513971453361563,"alpha_annualized":0.13304482323188382,"information_ratio":0.04711186041610556},{"profile":"official_sample_compatible","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.01,"subperiod":"pre_publication","cagr":0.13161415335927074,"benchmark_total_cagr":0.08578148704332156,"excess_cagr":0.04583266631594918,"sharpe_calendar":0.8596043309295843,"max_drawdown":-0.32714029342589857,"gross_edge_per_traded_share":0.04510547877319122,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.0002859093435806376,"trading_edge_after_costs_per_traded_share":0.03131956942961058,"beta_vs_benchmark_total":-0.06123231632639413,"alpha_annualized":0.14067236837538288,"information_ratio":0.12464063644190965},{"profile":"official_sample_compatible","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.01,"subperiod":"post_publication","cagr":0.05018672569572025,"benchmark_total_cagr":0.20271616498870992,"excess_cagr":-0.15252943929298968,"sharpe_calendar":0.1396628257586416,"max_drawdown":-0.19894992392012312,"gross_edge_per_traded_share":0.017072936886345712,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.0013770732942005393,"trading_edge_after_costs_per_traded_share":0.0021958635921451725,"beta_vs_benchmark_total":-0.10865870888990059,"alpha_annualized":0.0818958920912095,"information_ratio":-0.5905387958604288},{"profile":"official_sample_compatible","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.001,"subperiod":"full_sample","cagr":0.17439532291343407,"benchmark_total_cagr":0.11952284055327,"excess_cagr":0.054872482360164065,"sharpe_calendar":1.0909829897641619,"max_drawdown":-0.25234715887492876,"gross_edge_per_traded_share":0.04438932209266404,"execution_cost_per_traded_share":0.0045,"financing_cost_per_traded_share":0.0005643865296664016,"trading_edge_after_costs_per_traded_share":0.03932493556299763,"beta_vs_benchmark_total":-0.06527890126791129,"alpha_annualized":0.1802726637044631,"information_ratio":0.1549615229349201},{"profile":"official_sample_compatible","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.001,"subperiod":"pre_publication","cagr":0.18963438742936778,"benchmark_total_cagr":0.10696244201198235,"excess_cagr":0.08267194541738543,"sharpe_calendar":1.207173808448249,"max_drawdown":-0.25234715887492876,"gross_edge_per_traded_share":0.052109778341110566,"execution_cost_per_traded_share":0.0045,"financing_cost_per_traded_share":0.00034714209582124026,"trading_edge_after_costs_per_traded_share":0.04726263624528933,"beta_vs_benchmark_total":-0.06148502534960228,"alpha_annualized":0.19185329805425927,"information_ratio":0.2437253517892338},{"profile":"official_sample_compatible","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.001,"subperiod":"post_publication","cagr":0.06751437757775491,"benchmark_total_cagr":0.21741049617676111,"excess_cagr":-0.1498961185990062,"sharpe_calendar":0.24956027758923352,"max_drawdown":-0.18942448591611705,"gross_edge_per_traded_share":0.01580802091921873,"execution_cost_per_traded_share":0.0045,"financing_cost_per_traded_share":0.0013686302676232805,"trading_edge_after_costs_per_traded_share":0.009939390651595452,"beta_vs_benchmark_total":-0.10697928378680205,"alpha_annualized":0.09935269556160872,"information_ratio":-0.5727307433047045},{"profile":"official_sample_compatible","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.0025,"subperiod":"full_sample","cagr":0.16522535176724173,"benchmark_total_cagr":0.11952284055327,"excess_cagr":0.04570251121397173,"sharpe_calendar":1.0368098235979186,"max_drawdown":-0.2647991322066905,"gross_edge_per_traded_share":0.04375024897051411,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.0005475472709378187,"trading_edge_after_costs_per_traded_share":0.0372027016995763,"beta_vs_benchmark_total":-0.06519433300318714,"alpha_annualized":0.17241381896687927,"information_ratio":0.12431551758258291},{"profile":"official_sample_compatible","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.0025,"subperiod":"pre_publication","cagr":0.17955510703546818,"benchmark_total_cagr":0.10696244201198235,"excess_cagr":0.07259266502348583,"sharpe_calendar":1.1481328028817592,"max_drawdown":-0.2647991322066905,"gross_edge_per_traded_share":0.05088595312618693,"execution_cost_per_traded_share":0.005999999999999999,"financing_cost_per_traded_share":0.00033685918872384965,"trading_edge_after_costs_per_traded_share":0.04454909393746308,"beta_vs_benchmark_total":-0.061406008015023494,"alpha_annualized":0.18333159146398342,"information_ratio":0.21081845367992577},{"profile":"official_sample_compatible","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.0025,"subperiod":"post_publication","cagr":0.06444326803200151,"benchmark_total_cagr":0.21741049617676111,"excess_cagr":-0.1529672281447596,"sharpe_calendar":0.2302036851857315,"max_drawdown":-0.19192700001033003,"gross_edge_per_traded_share":0.01594007044468351,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.0013686678011348699,"trading_edge_after_costs_per_traded_share":0.00857140264354864,"beta_vs_benchmark_total":-0.10689757381239111,"alpha_annualized":0.09643948740162098,"information_ratio":-0.5850431983808329},{"profile":"official_sample_compatible","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.005,"subperiod":"full_sample","cagr":0.15009730979728908,"benchmark_total_cagr":0.11952284055327,"excess_cagr":0.030574469244019076,"sharpe_calendar":0.9465798837748127,"max_drawdown":-0.285113073490615,"gross_edge_per_traded_share":0.04266604726306179,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.0005191728793434159,"trading_edge_after_costs_per_traded_share":0.03364687438371838,"beta_vs_benchmark_total":-0.06506059229615534,"alpha_annualized":0.15931502073722312,"information_ratio":0.07324449495299964},{"profile":"official_sample_compatible","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.005,"subperiod":"pre_publication","cagr":0.16294215878713914,"benchmark_total_cagr":0.10696244201198235,"excess_cagr":0.055979716775156785,"sharpe_calendar":1.0498055257152783,"max_drawdown":-0.285113073490615,"gross_edge_per_traded_share":0.04888705166817448,"execution_cost_per_traded_share":0.008499999999999999,"financing_cost_per_traded_share":0.0003197956064673838,"trading_edge_after_costs_per_traded_share":0.0400672560617071,"beta_vs_benchmark_total":-0.0612817852353737,"alpha_annualized":0.1691282932895414,"information_ratio":0.15598226243159194},{"profile":"official_sample_compatible","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.005,"subperiod":"post_publication","cagr":0.05934056876724525,"benchmark_total_cagr":0.21741049617676111,"excess_cagr":-0.15806992740951586,"sharpe_calendar":0.19793061925206282,"max_drawdown":-0.19609498762444366,"gross_edge_per_traded_share":0.0161581759231772,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.0013687249377138315,"trading_edge_after_costs_per_traded_share":0.006289450985463371,"beta_vs_benchmark_total":-0.1067655848421762,"alpha_annualized":0.09158101011353591,"information_ratio":-0.6055847911453579},{"profile":"official_sample_compatible","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.01,"subperiod":"full_sample","cagr":0.1204182707011825,"benchmark_total_cagr":0.11952284055327,"excess_cagr":0.0008954301479124904,"sharpe_calendar":0.7664097071489673,"max_drawdown":-0.32691828646560417,"gross_edge_per_traded_share":0.04046113004464589,"execution_cost_per_traded_share":0.013499999999999998,"financing_cost_per_traded_share":0.0004618234501024265,"trading_edge_after_costs_per_traded_share":0.026499306594543467,"beta_vs_benchmark_total":-0.0648087991137377,"alpha_annualized":0.13311661663927812,"information_ratio":-0.028850540448350188},{"profile":"official_sample_compatible","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.01,"subperiod":"pre_publication","cagr":0.13040488960484775,"benchmark_total_cagr":0.10696244201198235,"excess_cagr":0.0234424475928654,"sharpe_calendar":0.8535204814169473,"max_drawdown":-0.32691828646560417,"gross_edge_per_traded_share":0.045081833487410836,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.0002862427052006514,"trading_edge_after_costs_per_traded_share":0.03129559078221019,"beta_vs_benchmark_total":-0.06105143980266935,"alpha_annualized":0.1407214020224578,"information_ratio":0.04636804423622425},{"profile":"official_sample_compatible","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.01,"subperiod":"post_publication","cagr":0.049201488495544954,"benchmark_total_cagr":0.21741049617676111,"excess_cagr":-0.16820900768121616,"sharpe_calendar":0.13337710822749413,"max_drawdown":-0.2043859857606246,"gross_edge_per_traded_share":0.016591572341008796,"execution_cost_per_traded_share":0.013499999999999998,"financing_cost_per_traded_share":0.0013688357208515476,"trading_edge_after_costs_per_traded_share":0.0017227366201572523,"beta_vs_benchmark_total":-0.10649011718842291,"alpha_annualized":0.08185586205196885,"information_ratio":-0.6466886293115504},{"profile":"official_sample_compatible","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.001,"subperiod":"full_sample","cagr":0.17626337984485074,"benchmark_total_cagr":0.09904120996752352,"excess_cagr":0.07722216987732722,"sharpe_calendar":1.1006057643012486,"max_drawdown":-0.250813138748876,"gross_edge_per_traded_share":0.044585089774286525,"execution_cost_per_traded_share":0.0045,"financing_cost_per_traded_share":0.0005652031105601945,"trading_edge_after_costs_per_traded_share":0.039519886663726335,"beta_vs_benchmark_total":-0.06570532742204221,"alpha_annualized":0.18074044688050703,"information_ratio":0.23266029807176036},{"profile":"official_sample_compatible","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.001,"subperiod":"pre_publication","cagr":0.191645516987762,"benchmark_total_cagr":0.08578148704332156,"excess_cagr":0.10586402994444044,"sharpe_calendar":1.2169261804804088,"max_drawdown":-0.250813138748876,"gross_edge_per_traded_share":0.05218376435690682,"execution_cost_per_traded_share":0.004500000000000001,"financing_cost_per_traded_share":0.0003471633043466391,"trading_edge_after_costs_per_traded_share":0.04733660105256018,"beta_vs_benchmark_total":-0.06176635006518782,"alpha_annualized":0.19242720935493618,"information_ratio":0.3239759852248924},{"profile":"official_sample_compatible","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.001,"subperiod":"post_publication","cagr":0.06842400124026793,"benchmark_total_cagr":0.20271616498870992,"excess_cagr":-0.134292163748442,"sharpe_calendar":0.2554425783238243,"max_drawdown":-0.18405967326233652,"gross_edge_per_traded_share":0.01629996600287289,"execution_cost_per_traded_share":0.0045,"financing_cost_per_traded_share":0.0013768292486173884,"trading_edge_after_costs_per_traded_share":0.0104231367542555,"beta_vs_benchmark_total":-0.10915025163579684,"alpha_annualized":0.09930120560929363,"information_ratio":-0.5169688669470001},{"profile":"official_sample_compatible","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.0025,"subperiod":"full_sample","cagr":0.16700796896656178,"benchmark_total_cagr":0.09904120996752352,"excess_cagr":0.06796675899903826,"sharpe_calendar":1.046088206123614,"max_drawdown":-0.26345501975388086,"gross_edge_per_traded_share":0.043947019820621,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.0005483541253064021,"trading_edge_after_costs_per_traded_share":0.037398665695314595,"beta_vs_benchmark_total":-0.06562227690785903,"alpha_annualized":0.1728223486439106,"information_ratio":0.2018372656460335},{"profile":"official_sample_compatible","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.0025,"subperiod":"pre_publication","cagr":0.18146720198146915,"benchmark_total_cagr":0.08578148704332156,"excess_cagr":0.09568571493814759,"sharpe_calendar":1.1575061607048707,"max_drawdown":-0.26345501975388086,"gross_edge_per_traded_share":0.05097135742150129,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.00033689638405686833,"trading_edge_after_costs_per_traded_share":0.044634461037444416,"beta_vs_benchmark_total":-0.06169129872406978,"alpha_annualized":0.18383785835095467,"information_ratio":0.2908698536029162},{"profile":"official_sample_compatible","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.0025,"subperiod":"post_publication","cagr":0.06535415246129306,"benchmark_total_cagr":0.20271616498870992,"excess_cagr":-0.13736201252741687,"sharpe_calendar":0.23608338004624624,"max_drawdown":-0.18656390039331994,"gross_edge_per_traded_share":0.016424741331762777,"execution_cost_per_traded_share":0.006000000000000001,"financing_cost_per_traded_share":0.0013768733642685578,"trading_edge_after_costs_per_traded_share":0.009047867967494216,"beta_vs_benchmark_total":-0.10904805233491405,"alpha_annualized":0.09638792548845933,"information_ratio":-0.529274338352916},{"profile":"official_sample_compatible","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.005,"subperiod":"full_sample","cagr":0.1517608995287565,"benchmark_total_cagr":0.09904120996752352,"excess_cagr":0.05271968956123296,"sharpe_calendar":0.9554015226785696,"max_drawdown":-0.28403699018465245,"gross_edge_per_traded_share":0.04286621546549461,"execution_cost_per_traded_share":0.008499999999999999,"financing_cost_per_traded_share":0.0005199457947481451,"trading_edge_after_costs_per_traded_share":0.033846269670746464,"beta_vs_benchmark_total":-0.06549058596150667,"alpha_annualized":0.1596427408909051,"information_ratio":0.15054010994970862},{"profile":"official_sample_compatible","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.005,"subperiod":"pre_publication","cagr":0.1647126750621295,"benchmark_total_cagr":0.08578148704332156,"excess_cagr":0.07893118801880794,"sharpe_calendar":1.0586671965816614,"max_drawdown":-0.28403699018465245,"gross_edge_per_traded_share":0.04898924183995695,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.00031984764936926436,"trading_edge_after_costs_per_traded_share":0.04016939419058769,"beta_vs_benchmark_total":-0.06156940211494087,"alpha_annualized":0.16953850415228033,"information_ratio":0.23576759477364168},{"profile":"official_sample_compatible","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.005,"subperiod":"post_publication","cagr":0.060278115079810846,"benchmark_total_cagr":0.20271616498870992,"excess_cagr":-0.14243804990889908,"sharpe_calendar":0.20395575225358598,"max_drawdown":-0.19072289512190588,"gross_edge_per_traded_share":0.016642443578312828,"execution_cost_per_traded_share":0.008499999999999999,"financing_cost_per_traded_share":0.001376928567409265,"trading_edge_after_costs_per_traded_share":0.006765515010903563,"beta_vs_benchmark_total":-0.1089245872546431,"alpha_annualized":0.09156237707700433,"information_ratio":-0.5496758712370929},{"profile":"official_sample_compatible","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.01,"subperiod":"full_sample","cagr":0.12184435155908191,"benchmark_total_cagr":0.09904120996752352,"excess_cagr":0.022803141591558385,"sharpe_calendar":0.7742647869092196,"max_drawdown":-0.32637678425311745,"gross_edge_per_traded_share":0.040660239048267224,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.0004624610987837671,"trading_edge_after_costs_per_traded_share":0.02669777794948346,"beta_vs_benchmark_total":-0.06522411168664666,"alpha_annualized":0.1332735599783715,"information_ratio":0.0479623620610748},{"profile":"official_sample_compatible","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.01,"subperiod":"pre_publication","cagr":0.1318977742491878,"benchmark_total_cagr":0.08578148704332156,"excess_cagr":0.046116287205866247,"sharpe_calendar":0.8613162926908778,"max_drawdown":-0.32637678425311745,"gross_edge_per_traded_share":0.04520603731748841,"execution_cost_per_traded_share":0.013499999999999998,"financing_cost_per_traded_share":0.0002862681093832157,"trading_edge_after_costs_per_traded_share":0.03141976920810519,"beta_vs_benchmark_total":-0.06132306456880041,"alpha_annualized":0.140932753578541,"information_ratio":0.1256005780323157},{"profile":"official_sample_compatible","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.01,"subperiod":"post_publication","cagr":0.05016629734805966,"benchmark_total_cagr":0.20271616498870992,"excess_cagr":-0.15254986764065026,"sharpe_calendar":0.13953206408271426,"max_drawdown":-0.19895620548581783,"gross_edge_per_traded_share":0.01706360081333779,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.0013770556285423144,"trading_edge_after_costs_per_traded_share":0.002186545184795478,"beta_vs_benchmark_total":-0.10866804705030725,"alpha_annualized":0.08187864803503556,"information_ratio":-0.590611937000585},{"profile":"paper_spec","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.001,"subperiod":"full_sample","cagr":0.17902521586737108,"benchmark_total_cagr":0.11957924402400799,"excess_cagr":0.05944597184336309,"sharpe_calendar":1.1480633301032745,"max_drawdown":-0.2670641015467944,"gross_edge_per_traded_share":0.04552999794290492,"execution_cost_per_traded_share":0.0045,"financing_cost_per_traded_share":0.0005574681161450407,"trading_edge_after_costs_per_traded_share":0.040472529826759876,"beta_vs_benchmark_total":-0.059917766738729776,"alpha_annualized":0.18394581952200822,"information_ratio":0.1759778282194457},{"profile":"paper_spec","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.001,"subperiod":"pre_publication","cagr":0.1932717331794498,"benchmark_total_cagr":0.10701941927742209,"excess_cagr":0.0862523139020277,"sharpe_calendar":1.2638283191610875,"max_drawdown":-0.2670641015467944,"gross_edge_per_traded_share":0.05197121173294155,"execution_cost_per_traded_share":0.0045,"financing_cost_per_traded_share":0.00034488592702050616,"trading_edge_after_costs_per_traded_share":0.04712632580592105,"beta_vs_benchmark_total":-0.05711791965422686,"alpha_annualized":0.1950033090094874,"information_ratio":0.2630927439845665},{"profile":"paper_spec","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.001,"subperiod":"post_publication","cagr":0.07880858232501953,"benchmark_total_cagr":0.21741049617676111,"excess_cagr":-0.1386019138517416,"sharpe_calendar":0.32310024342615484,"max_drawdown":-0.16814902556853795,"gross_edge_per_traded_share":0.02129182230704317,"execution_cost_per_traded_share":0.0045000000000000005,"financing_cost_per_traded_share":0.001357411202186771,"trading_edge_after_costs_per_traded_share":0.015434411104856398,"beta_vs_benchmark_total":-0.0903931634457067,"alpha_annualized":0.10606781087881377,"information_ratio":-0.5372287094549485},{"profile":"paper_spec","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.0025,"subperiod":"full_sample","cagr":0.16996143462261726,"benchmark_total_cagr":0.11957924402400799,"excess_cagr":0.05038219059860927,"sharpe_calendar":1.0931136775901733,"max_drawdown":-0.2791905735029009,"gross_edge_per_traded_share":0.044877728981968144,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.0005409501629119265,"trading_edge_after_costs_per_traded_share":0.03833677881905622,"beta_vs_benchmark_total":-0.059845582638553246,"alpha_annualized":0.1761640138597587,"information_ratio":0.14533293618569837},{"profile":"paper_spec","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.0025,"subperiod":"pre_publication","cagr":0.18331730274522706,"benchmark_total_cagr":0.10701941927742209,"excess_cagr":0.07629788346780497,"sharpe_calendar":1.203820704907733,"max_drawdown":-0.2791905735029009,"gross_edge_per_traded_share":0.05080260027178049,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.0003347636860952982,"trading_edge_after_costs_per_traded_share":0.04446783658568519,"beta_vs_benchmark_total":-0.057053732238549815,"alpha_annualized":0.18655819560409417,"information_ratio":0.23018187903995946},{"profile":"paper_spec","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.0025,"subperiod":"post_publication","cagr":0.07575445718793317,"benchmark_total_cagr":0.21741049617676111,"excess_cagr":-0.14165603898882795,"sharpe_calendar":0.3037334732144993,"max_drawdown":-0.17069316152655023,"gross_edge_per_traded_share":0.021415461996266715,"execution_cost_per_traded_share":0.006000000000000001,"financing_cost_per_traded_share":0.0013574408394656946,"trading_edge_after_costs_per_traded_share":0.014058021156801019,"beta_vs_benchmark_total":-0.09029660900061381,"alpha_annualized":0.10319622571440039,"information_ratio":-0.5495520847797664},{"profile":"paper_spec","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.005,"subperiod":"full_sample","cagr":0.15500604307471066,"benchmark_total_cagr":0.11957924402400799,"excess_cagr":0.03542679905070267,"sharpe_calendar":1.001571295623106,"max_drawdown":-0.2989146630528693,"gross_edge_per_traded_share":0.043776245315235565,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.0005131235983792303,"trading_edge_after_costs_per_traded_share":0.03476312171685633,"beta_vs_benchmark_total":-0.0597362779262063,"alpha_annualized":0.16319419239262403,"information_ratio":0.09426205050150663},{"profile":"paper_spec","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.005,"subperiod":"pre_publication","cagr":0.16690948125751648,"benchmark_total_cagr":0.10701941927742209,"excess_cagr":0.05989006198009439,"sharpe_calendar":1.1038829923629467,"max_drawdown":-0.2989146630528693,"gross_edge_per_traded_share":0.048898774031040156,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.0003179672652936241,"trading_edge_after_costs_per_traded_share":0.04008080676574654,"beta_vs_benchmark_total":-0.05695689022021095,"alpha_annualized":0.1724848568291468,"information_ratio":0.17534508647241873},{"profile":"paper_spec","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.005,"subperiod":"post_publication","cagr":0.07066369195886102,"benchmark_total_cagr":0.21741049617676111,"excess_cagr":-0.1467468042179001,"sharpe_calendar":0.27133217671119336,"max_drawdown":-0.17492287170218335,"gross_edge_per_traded_share":0.02161286854441036,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.0013574962860410842,"trading_edge_after_costs_per_traded_share":0.011755372258369276,"beta_vs_benchmark_total":-0.09015622948116306,"alpha_annualized":0.09839658346046935,"information_ratio":-0.5701589133770726},{"profile":"paper_spec","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.01,"subperiod":"full_sample","cagr":0.12567336673215168,"benchmark_total_cagr":0.11957924402400799,"excess_cagr":0.00609412270814369,"sharpe_calendar":0.8188632305945366,"max_drawdown":-0.33895059038024533,"gross_edge_per_traded_share":0.04157669058347616,"execution_cost_per_traded_share":0.013500000000000002,"financing_cost_per_traded_share":0.0004570670158237436,"trading_edge_after_costs_per_traded_share":0.027619623567652418,"beta_vs_benchmark_total":-0.05950648860337437,"alpha_annualized":0.1372645498108045,"information_ratio":-0.007780442493875001},{"profile":"paper_spec","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.01,"subperiod":"pre_publication","cagr":0.1347798125905657,"benchmark_total_cagr":0.10701941927742209,"excess_cagr":0.027760393313143616,"sharpe_calendar":0.9044614792151576,"max_drawdown":-0.33895059038024533,"gross_edge_per_traded_share":0.045314255846340204,"execution_cost_per_traded_share":0.013500000000000002,"financing_cost_per_traded_share":0.00028503593281369315,"trading_edge_after_costs_per_traded_share":0.03152921991352651,"beta_vs_benchmark_total":-0.056750725649091116,"alpha_annualized":0.14434846584874578,"information_ratio":0.06578328546684849},{"profile":"paper_spec","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.01,"subperiod":"post_publication","cagr":0.06056437184712271,"benchmark_total_cagr":0.21741049617676111,"excess_cagr":-0.1568461243296384,"sharpe_calendar":0.206622359756345,"max_drawdown":-0.18331704377316704,"gross_edge_per_traded_share":0.02201200495359244,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.0013575821429043478,"trading_edge_after_costs_per_traded_share":0.00715442281068809,"beta_vs_benchmark_total":-0.08987885154102394,"alpha_annualized":0.08880709865679204,"information_ratio":-0.6113437371795911},{"profile":"paper_spec","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.001,"subperiod":"full_sample","cagr":0.1808464471666411,"benchmark_total_cagr":0.09908752573291846,"excess_cagr":0.08175892143372265,"sharpe_calendar":1.1575001607033304,"max_drawdown":-0.26556981174778627,"gross_edge_per_traded_share":0.045732335787222814,"execution_cost_per_traded_share":0.0045,"financing_cost_per_traded_share":0.0005583247669950153,"trading_edge_after_costs_per_traded_share":0.040674011020227795,"beta_vs_benchmark_total":-0.060382858259849265,"alpha_annualized":0.18447348539063263,"information_ratio":0.254676892675028},{"profile":"paper_spec","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.001,"subperiod":"pre_publication","cagr":0.19523398803962788,"benchmark_total_cagr":0.08582674873697838,"excess_cagr":0.1094072393026495,"sharpe_calendar":1.2733488624061617,"max_drawdown":-0.26556981174778627,"gross_edge_per_traded_share":0.05205696115591405,"execution_cost_per_traded_share":0.0045000000000000005,"financing_cost_per_traded_share":0.0003449166041650711,"trading_edge_after_costs_per_traded_share":0.04721204455174898,"beta_vs_benchmark_total":-0.05743465202192214,"alpha_annualized":0.19562296528607856,"information_ratio":0.3443953156751024},{"profile":"paper_spec","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.001,"subperiod":"post_publication","cagr":0.07967978521025532,"benchmark_total_cagr":0.20271616498870992,"excess_cagr":-0.12303637977845461,"sharpe_calendar":0.3289134410665086,"max_drawdown":-0.16261611302748458,"gross_edge_per_traded_share":0.021808196186624704,"execution_cost_per_traded_share":0.0045,"financing_cost_per_traded_share":0.0013655831233120586,"trading_edge_after_costs_per_traded_share":0.015942613063312648,"beta_vs_benchmark_total":-0.09258725897673015,"alpha_annualized":0.10617717366776712,"information_ratio":-0.48085428410480613},{"profile":"paper_spec","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.0025,"subperiod":"full_sample","cagr":0.17171250675894756,"benchmark_total_cagr":0.09908752573291846,"excess_cagr":0.0726249810260291,"sharpe_calendar":1.1022700072982743,"max_drawdown":-0.2778449130971652,"gross_edge_per_traded_share":0.045081917985846216,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.0005417986639259033,"trading_edge_after_costs_per_traded_share":0.038540119321920314,"beta_vs_benchmark_total":-0.06031895880274204,"alpha_annualized":0.17664595181117979,"information_ratio":0.2239041065889339},{"profile":"paper_spec","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.0025,"subperiod":"pre_publication","cagr":0.1851983078537256,"benchmark_total_cagr":0.08582674873697838,"excess_cagr":0.09937155911674722,"sharpe_calendar":1.2130399972510781,"max_drawdown":-0.2778449130971652,"gross_edge_per_traded_share":0.05090042646515478,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.0003348116419879175,"trading_edge_after_costs_per_traded_share":0.044565614823166864,"beta_vs_benchmark_total":-0.05737842666739795,"alpha_annualized":0.18712506255839095,"information_ratio":0.3113403879690005},{"profile":"paper_spec","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.0025,"subperiod":"post_publication","cagr":0.07662590703405425,"benchmark_total_cagr":0.20271616498870992,"excess_cagr":-0.12609025795465567,"sharpe_calendar":0.3095311597043405,"max_drawdown":-0.16515321326170773,"gross_edge_per_traded_share":0.02192422226591522,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.0013656081486177886,"trading_edge_after_costs_per_traded_share":0.014558614117297431,"beta_vs_benchmark_total":-0.09250812938792143,"alpha_annualized":0.103312842021963,"information_ratio":-0.4931535905323103},{"profile":"paper_spec","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.005,"subperiod":"full_sample","cagr":0.156640837921886,"benchmark_total_cagr":0.09908752573291846,"excess_cagr":0.05755331218896753,"sharpe_calendar":1.0102884110830639,"max_drawdown":-0.2978383175037588,"gross_edge_per_traded_share":0.04398432119009729,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.0005139539846352711,"trading_edge_after_costs_per_traded_share":0.03497036720546202,"beta_vs_benchmark_total":-0.06019642452443075,"alpha_annualized":0.16359462283245718,"information_ratio":0.17261660584989014},{"profile":"paper_spec","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.005,"subperiod":"pre_publication","cagr":0.16865234787814565,"benchmark_total_cagr":0.08582674873697838,"excess_cagr":0.08282559914116727,"sharpe_calendar":1.1126108985173577,"max_drawdown":-0.2978383175037588,"gross_edge_per_traded_share":0.04901373972688988,"execution_cost_per_traded_share":0.008499999999999999,"financing_cost_per_traded_share":0.0003180336230886563,"trading_edge_after_costs_per_traded_share":0.04019570610380122,"beta_vs_benchmark_total":-0.05726890619368087,"alpha_annualized":0.17295548572960587,"information_ratio":0.25624932980978976},{"profile":"paper_spec","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.005,"subperiod":"post_publication","cagr":0.07156074279811553,"benchmark_total_cagr":0.20271616498870992,"excess_cagr":-0.1311554221905944,"sharpe_calendar":0.27726879598142534,"max_drawdown":-0.16936824767017877,"gross_edge_per_traded_share":0.022120294309247182,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.0013656643801858582,"trading_edge_after_costs_per_traded_share":0.012254629929061322,"beta_vs_benchmark_total":-0.09235775929694937,"alpha_annualized":0.09854034294053414,"information_ratio":-0.5136372886902665},{"profile":"paper_spec","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.01,"subperiod":"full_sample","cagr":0.12706557412381603,"benchmark_total_cagr":0.09908752573291846,"excess_cagr":0.02797804839089757,"sharpe_calendar":0.8265701596064998,"max_drawdown":-0.33837397526956026,"gross_edge_per_traded_share":0.041781096567085285,"execution_cost_per_traded_share":0.013500000000000003,"financing_cost_per_traded_share":0.0004577517981196109,"trading_edge_after_costs_per_traded_share":0.02782334476896567,"beta_vs_benchmark_total":-0.05995959972066069,"alpha_annualized":0.13748864924464957,"information_ratio":0.0700712912379029},{"profile":"paper_spec","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.01,"subperiod":"pre_publication","cagr":0.13623602415783598,"benchmark_total_cagr":0.08582674873697838,"excess_cagr":0.0504092754208576,"sharpe_calendar":0.9120609377059393,"max_drawdown":-0.33837397526956026,"gross_edge_per_traded_share":0.04544477532496502,"execution_cost_per_traded_share":0.013500000000000002,"financing_cost_per_traded_share":0.0002850580276449532,"trading_edge_after_costs_per_traded_share":0.03165971729732007,"beta_vs_benchmark_total":-0.05705710113266848,"alpha_annualized":0.14461082606956366,"information_ratio":0.14609953506745893},{"profile":"paper_spec","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.01,"subperiod":"post_publication","cagr":0.061512363514631296,"benchmark_total_cagr":0.20271616498870992,"excess_cagr":-0.14120380147407863,"sharpe_calendar":0.2128322353675314,"max_drawdown":-0.1777210820359696,"gross_edge_per_traded_share":0.022517658878749534,"execution_cost_per_traded_share":0.013500000000000002,"financing_cost_per_traded_share":0.0013657669125854757,"trading_edge_after_costs_per_traded_share":0.007651891966164056,"beta_vs_benchmark_total":-0.09207688836082069,"alpha_annualized":0.08900979759897457,"information_ratio":-0.5545557212998715},{"profile":"paper_spec","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.001,"subperiod":"full_sample","cagr":0.17761733751357034,"benchmark_total_cagr":0.11957924402400799,"excess_cagr":0.05803809348956235,"sharpe_calendar":1.1392072602335275,"max_drawdown":-0.2670641015467944,"gross_edge_per_traded_share":0.0449659529925619,"execution_cost_per_traded_share":0.0045,"financing_cost_per_traded_share":0.0005526798992401508,"trading_edge_after_costs_per_traded_share":0.039913273093321745,"beta_vs_benchmark_total":-0.057936004115860675,"alpha_annualized":0.18248895114123678,"information_ratio":0.1714477930513689},{"profile":"paper_spec","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.001,"subperiod":"pre_publication","cagr":0.19165352355980758,"benchmark_total_cagr":0.10701941927742209,"excess_cagr":0.08463410428238549,"sharpe_calendar":1.2536624908789533,"max_drawdown":-0.2670641015467944,"gross_edge_per_traded_share":0.051159424442699886,"execution_cost_per_traded_share":0.0045000000000000005,"financing_cost_per_traded_share":0.00034212697117076235,"trading_edge_after_costs_per_traded_share":0.04631729747152913,"beta_vs_benchmark_total":-0.054960474899672616,"alpha_annualized":0.1933841560552377,"information_ratio":0.2581053008327072},{"profile":"paper_spec","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.001,"subperiod":"post_publication","cagr":0.07881525793830768,"benchmark_total_cagr":0.21741049617676111,"excess_cagr":-0.13859523823845343,"sharpe_calendar":0.32314340718817,"max_drawdown":-0.16814907856806383,"gross_edge_per_traded_share":0.021294854998993865,"execution_cost_per_traded_share":0.0045,"financing_cost_per_traded_share":0.0013574012955181816,"trading_edge_after_costs_per_traded_share":0.015437453703475688,"beta_vs_benchmark_total":-0.09039717131758022,"alpha_annualized":0.10607476783762175,"information_ratio":-0.5372023922210949},{"profile":"paper_spec","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.0025,"subperiod":"full_sample","cagr":0.16856157916874093,"benchmark_total_cagr":0.11957924402400799,"excess_cagr":0.048982335144732936,"sharpe_calendar":1.0842686205368244,"max_drawdown":-0.2791905735029009,"gross_edge_per_traded_share":0.04431996371709196,"execution_cost_per_traded_share":0.005999999999999999,"financing_cost_per_traded_share":0.0005361915823805392,"trading_edge_after_costs_per_traded_share":0.037783772134711416,"beta_vs_benchmark_total":-0.057860079298066434,"alpha_annualized":0.17470425567340192,"information_ratio":0.14076107228108456},{"profile":"paper_spec","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.0025,"subperiod":"pre_publication","cagr":0.18171013402156944,"benchmark_total_cagr":0.10701941927742209,"excess_cagr":0.07469071474414735,"sharpe_calendar":1.1936799008209773,"max_drawdown":-0.2791905735029009,"gross_edge_per_traded_share":0.050012886415138486,"execution_cost_per_traded_share":0.005999999999999999,"financing_cost_per_traded_share":0.0003320613476866576,"trading_edge_after_costs_per_traded_share":0.04368082506745183,"beta_vs_benchmark_total":-0.05489108467748788,"alpha_annualized":0.18493626215268424,"information_ratio":0.22514820368718333},{"profile":"paper_spec","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.0025,"subperiod":"post_publication","cagr":0.07575601384224195,"benchmark_total_cagr":0.21741049617676111,"excess_cagr":-0.14165448233451916,"sharpe_calendar":0.30373988796334767,"max_drawdown":-0.1706938046186387,"gross_edge_per_traded_share":0.02141619875145319,"execution_cost_per_traded_share":0.006000000000000001,"financing_cost_per_traded_share":0.0013574482840416474,"trading_edge_after_costs_per_traded_share":0.014058750467411542,"beta_vs_benchmark_total":-0.09031328279927045,"alpha_annualized":0.1032016473363309,"information_ratio":-0.5495345527691906},{"profile":"paper_spec","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.005,"subperiod":"full_sample","cagr":0.15362223513147266,"benchmark_total_cagr":0.11957924402400799,"excess_cagr":0.03404299110746467,"sharpe_calendar":0.992766591523336,"max_drawdown":-0.2989146630528693,"gross_edge_per_traded_share":0.04323316431123389,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.0005084378762756447,"trading_edge_after_costs_per_traded_share":0.03422472643495824,"beta_vs_benchmark_total":-0.05774539089299607,"alpha_annualized":0.16173201715857424,"information_ratio":0.08962939750563494},{"profile":"paper_spec","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.005,"subperiod":"pre_publication","cagr":0.16532183705399905,"benchmark_total_cagr":0.10701941927742209,"excess_cagr":0.058302417776576965,"sharpe_calendar":1.0937861484743463,"max_drawdown":-0.2989146630528693,"gross_edge_per_traded_share":0.04814875348615322,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.000315373698362685,"trading_edge_after_costs_per_traded_share":0.039333379787790536,"beta_vs_benchmark_total":-0.054790353654101745,"alpha_annualized":0.1708600532340853,"information_ratio":0.17023769751939155},{"profile":"paper_spec","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.005,"subperiod":"post_publication","cagr":0.07066962176773428,"benchmark_total_cagr":0.21741049617676111,"excess_cagr":-0.14674087440902683,"sharpe_calendar":0.27137176671687874,"max_drawdown":-0.1749217868707792,"gross_edge_per_traded_share":0.021615534841709944,"execution_cost_per_traded_share":0.008499999999999999,"financing_cost_per_traded_share":0.0013574896813482499,"trading_edge_after_costs_per_traded_share":0.011758045160361696,"beta_vs_benchmark_total":-0.09015076303176235,"alpha_annualized":0.09840073259447132,"information_ratio":-0.5701406391690919},{"profile":"paper_spec","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.01,"subperiod":"full_sample","cagr":0.12433025563858413,"benchmark_total_cagr":0.11957924402400799,"excess_cagr":0.004751011614576139,"sharpe_calendar":0.8101784521074364,"max_drawdown":-0.33895059038024533,"gross_edge_per_traded_share":0.04107369980670892,"execution_cost_per_traded_share":0.013500000000000002,"financing_cost_per_traded_share":0.00045264869578022965,"trading_edge_after_costs_per_traded_share":0.027121051110928694,"beta_vs_benchmark_total":-0.05751140920066937,"alpha_annualized":0.13580704116747194,"information_ratio":-0.01250181898284445},{"profile":"paper_spec","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.01,"subperiod":"pre_publication","cagr":0.1332425715052945,"benchmark_total_cagr":0.10701941927742209,"excess_cagr":0.026223152227872415,"sharpe_calendar":0.8945178198762346,"max_drawdown":-0.33895059038024533,"gross_edge_per_traded_share":0.04465318182185314,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.0002827024419328085,"trading_edge_after_costs_per_traded_share":0.030870479379920338,"beta_vs_benchmark_total":-0.05458105492732721,"alpha_annualized":0.14272943619414044,"information_ratio":0.060570120357871814},{"profile":"paper_spec","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.01,"subperiod":"post_publication","cagr":0.06056791884742352,"benchmark_total_cagr":0.21741049617676111,"excess_cagr":-0.1568425773293376,"sharpe_calendar":0.20664435160488248,"max_drawdown":-0.1833081231159318,"gross_edge_per_traded_share":0.022013660669424173,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.0013575791398674766,"trading_edge_after_costs_per_traded_share":0.007156081529556695,"beta_vs_benchmark_total":-0.08985718737760044,"alpha_annualized":0.08880612702556273,"information_ratio":-0.6113318493164658},{"profile":"paper_spec","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.001,"subperiod":"full_sample","cagr":0.17943301292131464,"benchmark_total_cagr":0.09908752573291846,"excess_cagr":0.08034548718839618,"sharpe_calendar":1.1486360727261595,"max_drawdown":-0.26556981174778627,"gross_edge_per_traded_share":0.045166998520841634,"execution_cost_per_traded_share":0.0045000000000000005,"financing_cost_per_traded_share":0.0005535309501398323,"trading_edge_after_costs_per_traded_share":0.040113467570701805,"beta_vs_benchmark_total":-0.0584106103615409,"alpha_annualized":0.18305147047364326,"information_ratio":0.25023009803355417},{"profile":"paper_spec","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.001,"subperiod":"pre_publication","cagr":0.19361107766689378,"benchmark_total_cagr":0.08582674873697838,"excess_cagr":0.10778432892991541,"sharpe_calendar":1.2631894280041571,"max_drawdown":-0.26556981174778627,"gross_edge_per_traded_share":0.051247821678931486,"execution_cost_per_traded_share":0.0045000000000000005,"financing_cost_per_traded_share":0.00034215992516143604,"trading_edge_after_costs_per_traded_share":0.04640566175377005,"beta_vs_benchmark_total":-0.05528897972759095,"alpha_annualized":0.19404504669048556,"information_ratio":0.33950956534425486},{"profile":"paper_spec","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.001,"subperiod":"post_publication","cagr":0.07967409971911299,"benchmark_total_cagr":0.20271616498870992,"excess_cagr":-0.12304206526959693,"sharpe_calendar":0.3288792053668266,"max_drawdown":-0.16261511780451754,"gross_edge_per_traded_share":0.02180564761744705,"execution_cost_per_traded_share":0.0045,"financing_cost_per_traded_share":0.0013655777005474915,"trading_edge_after_costs_per_traded_share":0.015940069916899557,"beta_vs_benchmark_total":-0.09258525943829977,"alpha_annualized":0.10617129827042696,"information_ratio":-0.48088016739174044},{"profile":"paper_spec","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.0025,"subperiod":"full_sample","cagr":0.17031146683386011,"benchmark_total_cagr":0.09908752573291846,"excess_cagr":0.07122394110094166,"sharpe_calendar":1.0934463992840258,"max_drawdown":-0.2778449130971652,"gross_edge_per_traded_share":0.0445251481289022,"execution_cost_per_traded_share":0.005999999999999999,"financing_cost_per_traded_share":0.0005370443515604144,"trading_edge_after_costs_per_traded_share":0.03798810377734178,"beta_vs_benchmark_total":-0.058345245067526516,"alpha_annualized":0.175224964783145,"information_ratio":0.21942984073419666},{"profile":"paper_spec","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.0025,"subperiod":"pre_publication","cagr":0.18358938939203018,"benchmark_total_cagr":0.08582674873697838,"excess_cagr":0.0977626406550518,"sharpe_calendar":1.2029237288009083,"max_drawdown":-0.2778449130971652,"gross_edge_per_traded_share":0.05011455831574619,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.0003321171519232799,"trading_edge_after_costs_per_traded_share":0.04378244116382291,"beta_vs_benchmark_total":-0.05523115264197931,"alpha_annualized":0.18554721149798223,"information_ratio":0.30641755530707143},{"profile":"paper_spec","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.0025,"subperiod":"post_publication","cagr":0.07662908591996498,"benchmark_total_cagr":0.20271616498870992,"excess_cagr":-0.12608707906874494,"sharpe_calendar":0.3095523337985253,"max_drawdown":-0.16514723112659924,"gross_edge_per_traded_share":0.021925774691532764,"execution_cost_per_traded_share":0.005999999999999999,"financing_cost_per_traded_share":0.001365615910501402,"trading_edge_after_costs_per_traded_share":0.01456015878103136,"beta_vs_benchmark_total":-0.09250629745446262,"alpha_annualized":0.10331532432069855,"information_ratio":-0.4931429286427527},{"profile":"paper_spec","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.005,"subperiod":"full_sample","cagr":0.15525069064123787,"benchmark_total_cagr":0.09908752573291846,"excess_cagr":0.05616316490831941,"sharpe_calendar":1.0014683916017388,"max_drawdown":-0.2978383175037588,"gross_edge_per_traded_share":0.04343984299380549,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.0005092516618137716,"trading_edge_after_costs_per_traded_share":0.034430591331991715,"beta_vs_benchmark_total":-0.058219114047502754,"alpha_annualized":0.16216701152615026,"information_ratio":0.1680637622408287},{"profile":"paper_spec","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.005,"subperiod":"pre_publication","cagr":0.16705654642478596,"benchmark_total_cagr":0.08582674873697838,"excess_cagr":0.08122979768780758,"sharpe_calendar":1.1024986897629632,"max_drawdown":-0.2978383175037588,"gross_edge_per_traded_share":0.04826356150687628,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.0003154322868551504,"trading_edge_after_costs_per_traded_share":0.039448129220021125,"beta_vs_benchmark_total":-0.055116379684230554,"alpha_annualized":0.1713690225351904,"information_ratio":0.25123127694534964},{"profile":"paper_spec","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.005,"subperiod":"post_publication","cagr":0.07157186944900795,"benchmark_total_cagr":0.20271616498870992,"excess_cagr":-0.13114429553970197,"sharpe_calendar":0.27733990149053334,"max_drawdown":-0.16936131358582251,"gross_edge_per_traded_share":0.022125431871096588,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.0013656751513313262,"trading_edge_after_costs_per_traded_share":0.012259756719765263,"beta_vs_benchmark_total":-0.09237122411536988,"alpha_annualized":0.09855343313567252,"information_ratio":-0.5135891676697404},{"profile":"paper_spec","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.01,"subperiod":"full_sample","cagr":0.12570956697521352,"benchmark_total_cagr":0.09908752573291846,"excess_cagr":0.026622041242295058,"sharpe_calendar":0.8178357633000007,"max_drawdown":-0.33837397526956026,"gross_edge_per_traded_share":0.041273211180463835,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.0004532941573783783,"trading_edge_after_costs_per_traded_share":0.027319917023085456,"beta_vs_benchmark_total":-0.05797313737612148,"alpha_annualized":0.1360587187517066,"information_ratio":0.06540472936226698},{"profile":"paper_spec","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.01,"subperiod":"pre_publication","cagr":0.134685638515873,"benchmark_total_cagr":0.08582674873697838,"excess_cagr":0.04885888977889463,"sharpe_calendar":0.9020773799776336,"max_drawdown":-0.33837397526956026,"gross_edge_per_traded_share":0.04478038256852504,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.00028270702816489613,"trading_edge_after_costs_per_traded_share":0.03099767554036014,"beta_vs_benchmark_total":-0.05489786070600009,"alpha_annualized":0.14302463625843925,"information_ratio":0.14095637865292115},{"profile":"paper_spec","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.01,"subperiod":"post_publication","cagr":0.06150424784921271,"benchmark_total_cagr":0.20271616498870992,"excess_cagr":-0.1412119171394972,"sharpe_calendar":0.2127793567367619,"max_drawdown":-0.17773688689746037,"gross_edge_per_traded_share":0.022513508350982356,"execution_cost_per_traded_share":0.013500000000000002,"financing_cost_per_traded_share":0.0013657570787722357,"trading_edge_after_costs_per_traded_share":0.0076477512722101185,"beta_vs_benchmark_total":-0.092053389741143,"alpha_annualized":0.08899767147542058,"information_ratio":-0.5545920089290333},{"profile":"paper_spec","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.001,"subperiod":"full_sample","cagr":0.1513633572691433,"benchmark_total_cagr":0.1983368334002944,"excess_cagr":-0.046973476131151104,"sharpe_calendar":1.031306161586513,"max_drawdown":-0.26616304764853527,"gross_edge_per_traded_share":0.022715304251403556,"execution_cost_per_traded_share":0.0045,"financing_cost_per_traded_share":0.00015541011173491204,"trading_edge_after_costs_per_traded_share":0.018059894139668645,"beta_vs_benchmark_total":-0.06180182690218803,"alpha_annualized":0.15914919275369768,"information_ratio":0.18060125623959555},{"profile":"paper_spec","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.001,"subperiod":"pre_publication","cagr":0.1513633572691433,"benchmark_total_cagr":0.15428728178788598,"excess_cagr":-0.002923924518742682,"sharpe_calendar":1.031306161586513,"max_drawdown":-0.26616304764853527,"gross_edge_per_traded_share":0.022715304251403556,"execution_cost_per_traded_share":0.0045,"financing_cost_per_traded_share":0.00015541011173491204,"trading_edge_after_costs_per_traded_share":0.018059894139668645,"beta_vs_benchmark_total":-0.06180182690218803,"alpha_annualized":0.15914919275369768,"information_ratio":0.18060125623959555},{"profile":"paper_spec","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.001,"subperiod":"post_publication","cagr":null,"benchmark_total_cagr":null,"excess_cagr":null,"sharpe_calendar":null,"max_drawdown":null,"gross_edge_per_traded_share":null,"execution_cost_per_traded_share":null,"financing_cost_per_traded_share":null,"trading_edge_after_costs_per_traded_share":null,"beta_vs_benchmark_total":null,"alpha_annualized":null,"information_ratio":null},{"profile":"paper_spec","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.0025,"subperiod":"full_sample","cagr":0.1396047258144426,"benchmark_total_cagr":0.1983368334002944,"excess_cagr":-0.05873210758585179,"sharpe_calendar":0.9584057441082061,"max_drawdown":-0.2783001425344125,"gross_edge_per_traded_share":0.0227604190235229,"execution_cost_per_traded_share":0.006000000000000001,"financing_cost_per_traded_share":0.0001525809661722676,"trading_edge_after_costs_per_traded_share":0.01660783805735063,"beta_vs_benchmark_total":-0.06170354084079198,"alpha_annualized":0.1487788190569986,"information_ratio":0.13979427602925},{"profile":"paper_spec","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.0025,"subperiod":"pre_publication","cagr":0.1396047258144426,"benchmark_total_cagr":0.15428728178788598,"excess_cagr":-0.014682555973443367,"sharpe_calendar":0.9584057441082061,"max_drawdown":-0.2783001425344125,"gross_edge_per_traded_share":0.0227604190235229,"execution_cost_per_traded_share":0.006000000000000001,"financing_cost_per_traded_share":0.0001525809661722676,"trading_edge_after_costs_per_traded_share":0.01660783805735063,"beta_vs_benchmark_total":-0.06170354084079198,"alpha_annualized":0.1487788190569986,"information_ratio":0.13979427602925},{"profile":"paper_spec","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.0025,"subperiod":"post_publication","cagr":null,"benchmark_total_cagr":null,"excess_cagr":null,"sharpe_calendar":null,"max_drawdown":null,"gross_edge_per_traded_share":null,"execution_cost_per_traded_share":null,"financing_cost_per_traded_share":null,"trading_edge_after_costs_per_traded_share":null,"beta_vs_benchmark_total":null,"alpha_annualized":null,"information_ratio":null},{"profile":"paper_spec","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.005,"subperiod":"full_sample","cagr":0.1202747648935063,"benchmark_total_cagr":0.1983368334002944,"excess_cagr":-0.0780620685067881,"sharpe_calendar":0.83708845324321,"max_drawdown":-0.29807980540665,"gross_edge_per_traded_share":0.022869993251874596,"execution_cost_per_traded_share":0.008499999999999999,"financing_cost_per_traded_share":0.00014793726609769464,"trading_edge_after_costs_per_traded_share":0.014222055985776902,"beta_vs_benchmark_total":-0.06156124722635858,"alpha_annualized":0.13150057164420986,"information_ratio":0.07181936929134904},{"profile":"paper_spec","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.005,"subperiod":"pre_publication","cagr":0.1202747648935063,"benchmark_total_cagr":0.15428728178788598,"excess_cagr":-0.034012516894379674,"sharpe_calendar":0.83708845324321,"max_drawdown":-0.29807980540665,"gross_edge_per_traded_share":0.022869993251874596,"execution_cost_per_traded_share":0.008499999999999999,"financing_cost_per_traded_share":0.00014793726609769464,"trading_edge_after_costs_per_traded_share":0.014222055985776902,"beta_vs_benchmark_total":-0.06156124722635858,"alpha_annualized":0.13150057164420986,"information_ratio":0.07181936929134904},{"profile":"paper_spec","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.005,"subperiod":"post_publication","cagr":null,"benchmark_total_cagr":null,"excess_cagr":null,"sharpe_calendar":null,"max_drawdown":null,"gross_edge_per_traded_share":null,"execution_cost_per_traded_share":null,"financing_cost_per_traded_share":null,"trading_edge_after_costs_per_traded_share":null,"beta_vs_benchmark_total":null,"alpha_annualized":null,"information_ratio":null},{"profile":"paper_spec","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.01,"subperiod":"full_sample","cagr":0.08259559214948875,"benchmark_total_cagr":0.1983368334002944,"excess_cagr":-0.11574124125080565,"sharpe_calendar":0.5951863034382704,"max_drawdown":-0.33823164726610655,"gross_edge_per_traded_share":0.023217265133045718,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.0001389526035742444,"trading_edge_after_costs_per_traded_share":0.009578312529471474,"beta_vs_benchmark_total":-0.061263876020972996,"alpha_annualized":0.09695378026015751,"information_ratio":-0.06397502625360109},{"profile":"paper_spec","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.01,"subperiod":"pre_publication","cagr":0.08259559214948875,"benchmark_total_cagr":0.15428728178788598,"excess_cagr":-0.07169168963839723,"sharpe_calendar":0.5951863034382704,"max_drawdown":-0.33823164726610655,"gross_edge_per_traded_share":0.023217265133045718,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.0001389526035742444,"trading_edge_after_costs_per_traded_share":0.009578312529471474,"beta_vs_benchmark_total":-0.061263876020972996,"alpha_annualized":0.09695378026015751,"information_ratio":-0.06397502625360109},{"profile":"paper_spec","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.01,"subperiod":"post_publication","cagr":null,"benchmark_total_cagr":null,"excess_cagr":null,"sharpe_calendar":null,"max_drawdown":null,"gross_edge_per_traded_share":null,"execution_cost_per_traded_share":null,"financing_cost_per_traded_share":null,"trading_edge_after_costs_per_traded_share":null,"beta_vs_benchmark_total":null,"alpha_annualized":null,"information_ratio":null},{"profile":"paper_spec","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.001,"subperiod":"full_sample","cagr":0.15489841422830675,"benchmark_total_cagr":0.16339690299225085,"excess_cagr":-0.008498488763944101,"sharpe_calendar":1.0507213833937754,"max_drawdown":-0.26466798638472955,"gross_edge_per_traded_share":0.023131705257403427,"execution_cost_per_traded_share":0.0045,"financing_cost_per_traded_share":0.0001549077741870033,"trading_edge_after_costs_per_traded_share":0.018476797483216425,"beta_vs_benchmark_total":-0.06285063735726876,"alpha_annualized":0.16110161871720377,"information_ratio":0.2741244660292304},{"profile":"paper_spec","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.001,"subperiod":"pre_publication","cagr":0.15489841422830675,"benchmark_total_cagr":0.12322540583308794,"excess_cagr":0.031673008395218805,"sharpe_calendar":1.0507213833937754,"max_drawdown":-0.26466798638472955,"gross_edge_per_traded_share":0.023131705257403427,"execution_cost_per_traded_share":0.0045,"financing_cost_per_traded_share":0.0001549077741870033,"trading_edge_after_costs_per_traded_share":0.018476797483216425,"beta_vs_benchmark_total":-0.06285063735726876,"alpha_annualized":0.16110161871720377,"information_ratio":0.2741244660292304},{"profile":"paper_spec","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.001,"subperiod":"post_publication","cagr":null,"benchmark_total_cagr":null,"excess_cagr":null,"sharpe_calendar":null,"max_drawdown":null,"gross_edge_per_traded_share":null,"execution_cost_per_traded_share":null,"financing_cost_per_traded_share":null,"trading_edge_after_costs_per_traded_share":null,"beta_vs_benchmark_total":null,"alpha_annualized":null,"information_ratio":null},{"profile":"paper_spec","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.0025,"subperiod":"full_sample","cagr":0.14300806056518223,"benchmark_total_cagr":0.16339690299225085,"excess_cagr":-0.02038884242706862,"sharpe_calendar":0.9773868163726266,"max_drawdown":-0.27698216166784373,"gross_edge_per_traded_share":0.023162602169242128,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.00015207122717420467,"trading_edge_after_costs_per_traded_share":0.017010530942067923,"beta_vs_benchmark_total":-0.0627675380021947,"alpha_annualized":0.150650198126416,"information_ratio":0.23307717482069265},{"profile":"paper_spec","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.0025,"subperiod":"pre_publication","cagr":0.14300806056518223,"benchmark_total_cagr":0.12322540583308794,"excess_cagr":0.019782654732094285,"sharpe_calendar":0.9773868163726266,"max_drawdown":-0.27698216166784373,"gross_edge_per_traded_share":0.023162602169242128,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.00015207122717420467,"trading_edge_after_costs_per_traded_share":0.017010530942067923,"beta_vs_benchmark_total":-0.0627675380021947,"alpha_annualized":0.150650198126416,"information_ratio":0.23307717482069265},{"profile":"paper_spec","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.0025,"subperiod":"post_publication","cagr":null,"benchmark_total_cagr":null,"excess_cagr":null,"sharpe_calendar":null,"max_drawdown":null,"gross_edge_per_traded_share":null,"execution_cost_per_traded_share":null,"financing_cost_per_traded_share":null,"trading_edge_after_costs_per_traded_share":null,"beta_vs_benchmark_total":null,"alpha_annualized":null,"information_ratio":null},{"profile":"paper_spec","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.005,"subperiod":"full_sample","cagr":0.12345993212756601,"benchmark_total_cagr":0.16339690299225085,"excess_cagr":-0.03993697086468484,"sharpe_calendar":0.8553493397506816,"max_drawdown":-0.2970177984564981,"gross_edge_per_traded_share":0.023248938277383703,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.00014740819342734727,"trading_edge_after_costs_per_traded_share":0.014601530083956354,"beta_vs_benchmark_total":-0.06260586850500181,"alpha_annualized":0.1332285171852874,"information_ratio":0.16469156105496355},{"profile":"paper_spec","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.005,"subperiod":"pre_publication","cagr":0.12345993212756601,"benchmark_total_cagr":0.12322540583308794,"excess_cagr":0.00023452629447806572,"sharpe_calendar":0.8553493397506816,"max_drawdown":-0.2970177984564981,"gross_edge_per_traded_share":0.023248938277383703,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.00014740819342734727,"trading_edge_after_costs_per_traded_share":0.014601530083956354,"beta_vs_benchmark_total":-0.06260586850500181,"alpha_annualized":0.1332285171852874,"information_ratio":0.16469156105496355},{"profile":"paper_spec","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.005,"subperiod":"post_publication","cagr":null,"benchmark_total_cagr":null,"excess_cagr":null,"sharpe_calendar":null,"max_drawdown":null,"gross_edge_per_traded_share":null,"execution_cost_per_traded_share":null,"financing_cost_per_traded_share":null,"trading_edge_after_costs_per_traded_share":null,"beta_vs_benchmark_total":null,"alpha_annualized":null,"information_ratio":null},{"profile":"paper_spec","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.01,"subperiod":"full_sample","cagr":0.08534102635338758,"benchmark_total_cagr":0.16339690299225085,"excess_cagr":-0.07805587663886326,"sharpe_calendar":0.6118518811405492,"max_drawdown":-0.3376639058088353,"gross_edge_per_traded_share":0.02354752264914195,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.00013838340886550258,"trading_edge_after_costs_per_traded_share":0.009909139240276447,"beta_vs_benchmark_total":-0.062299070410934694,"alpha_annualized":0.09837665854010871,"information_ratio":0.027980151271391102},{"profile":"paper_spec","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.01,"subperiod":"pre_publication","cagr":0.08534102635338758,"benchmark_total_cagr":0.12322540583308794,"excess_cagr":-0.03788437947970036,"sharpe_calendar":0.6118518811405492,"max_drawdown":-0.3376639058088353,"gross_edge_per_traded_share":0.02354752264914195,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.00013838340886550258,"trading_edge_after_costs_per_traded_share":0.009909139240276447,"beta_vs_benchmark_total":-0.062299070410934694,"alpha_annualized":0.09837665854010871,"information_ratio":0.027980151271391102},{"profile":"paper_spec","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.01,"subperiod":"post_publication","cagr":null,"benchmark_total_cagr":null,"excess_cagr":null,"sharpe_calendar":null,"max_drawdown":null,"gross_edge_per_traded_share":null,"execution_cost_per_traded_share":null,"financing_cost_per_traded_share":null,"trading_edge_after_costs_per_traded_share":null,"beta_vs_benchmark_total":null,"alpha_annualized":null,"information_ratio":null},{"profile":"corrected_execution","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.001,"subperiod":"full_sample","cagr":0.17746086184646104,"benchmark_total_cagr":0.11957924402400799,"excess_cagr":0.057881617822453046,"sharpe_calendar":1.1388970429000262,"max_drawdown":-0.27052385921219724,"gross_edge_per_traded_share":0.04487528109417875,"execution_cost_per_traded_share":0.0045,"financing_cost_per_traded_share":0.0005516549620384303,"trading_edge_after_costs_per_traded_share":0.03982362613214032,"beta_vs_benchmark_total":-0.06009507716954406,"alpha_annualized":0.1826263478918165,"information_ratio":0.170678980973862},{"profile":"corrected_execution","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.001,"subperiod":"pre_publication","cagr":0.19155703335484842,"benchmark_total_cagr":0.10701941927742209,"excess_cagr":0.08453761407742633,"sharpe_calendar":1.2538097478940107,"max_drawdown":-0.27052385921219724,"gross_edge_per_traded_share":0.05108274940839907,"execution_cost_per_traded_share":0.0045000000000000005,"financing_cost_per_traded_share":0.00034147345924172344,"trading_edge_after_costs_per_traded_share":0.04624127594915734,"beta_vs_benchmark_total":-0.057435451637338535,"alpha_annualized":0.19358828182035315,"information_ratio":0.25739098195732835},{"profile":"corrected_execution","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.001,"subperiod":"post_publication","cagr":0.07825673846853243,"benchmark_total_cagr":0.21741049617676111,"excess_cagr":-0.1391537577082287,"sharpe_calendar":0.31970183768262955,"max_drawdown":-0.16801758810728984,"gross_edge_per_traded_share":0.02107585413744554,"execution_cost_per_traded_share":0.0045,"financing_cost_per_traded_share":0.0013574906216433959,"trading_edge_after_costs_per_traded_share":0.015218363515802143,"beta_vs_benchmark_total":-0.08900505728773908,"alpha_annualized":0.1052496474449014,"information_ratio":-0.5399828044988292},{"profile":"corrected_execution","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.0025,"subperiod":"full_sample","cagr":0.1683998283483754,"benchmark_total_cagr":0.11957924402400799,"excess_cagr":0.04882058432436742,"sharpe_calendar":1.0838764087024026,"max_drawdown":-0.2825638689229465,"gross_edge_per_traded_share":0.044226929624027495,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.000535126824935996,"trading_edge_after_costs_per_traded_share":0.0376918027990915,"beta_vs_benchmark_total":-0.060028414905762266,"alpha_annualized":0.1748374494547055,"information_ratio":0.14000418311129617},{"profile":"corrected_execution","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.0025,"subperiod":"pre_publication","cagr":0.18160775678226204,"benchmark_total_cagr":0.10701941927742209,"excess_cagr":0.07458833750483995,"sharpe_calendar":1.193735632304141,"max_drawdown":-0.2825638689229465,"gross_edge_per_traded_share":0.04993317649772965,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.0003313886918819011,"trading_edge_after_costs_per_traded_share":0.043601787805847746,"beta_vs_benchmark_total":-0.057376894854374846,"alpha_annualized":0.18513620408532563,"information_ratio":0.22445454186629793},{"profile":"corrected_execution","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.0025,"subperiod":"post_publication","cagr":0.07519405680938318,"benchmark_total_cagr":0.21741049617676111,"excess_cagr":-0.14221643936737793,"sharpe_calendar":0.3002585843510088,"max_drawdown":-0.1705669087481908,"gross_edge_per_traded_share":0.021193590405149808,"execution_cost_per_traded_share":0.005999999999999999,"financing_cost_per_traded_share":0.0013575184308938341,"trading_edge_after_costs_per_traded_share":0.013836071974255976,"beta_vs_benchmark_total":-0.08891280050218424,"alpha_annualized":0.10236985737793583,"information_ratio":-0.552351914968044},{"profile":"corrected_execution","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.005,"subperiod":"full_sample","cagr":0.15347719349474898,"benchmark_total_cagr":0.11957924402400799,"excess_cagr":0.033897949470740985,"sharpe_calendar":0.9924026952700608,"max_drawdown":-0.3021870783220204,"gross_edge_per_traded_share":0.04314317490459582,"execution_cost_per_traded_share":0.008499999999999999,"financing_cost_per_traded_share":0.0005073676588806696,"trading_edge_after_costs_per_traded_share":0.034135807245715154,"beta_vs_benchmark_total":-0.05991211264390946,"alpha_annualized":0.16187791486809852,"information_ratio":0.08898116492334118},{"profile":"corrected_execution","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.005,"subperiod":"pre_publication","cagr":0.16523801975356434,"benchmark_total_cagr":0.10701941927742209,"excess_cagr":0.058218600476142246,"sharpe_calendar":1.0938761303216853,"max_drawdown":-0.3021870783220204,"gross_edge_per_traded_share":0.04807282389376082,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.00031469946399874653,"trading_edge_after_costs_per_traded_share":0.03925812442976207,"beta_vs_benchmark_total":-0.05727199803341553,"alpha_annualized":0.17107445886325978,"information_ratio":0.1696768851302025},{"profile":"corrected_execution","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.005,"subperiod":"post_publication","cagr":0.07010792634127849,"benchmark_total_cagr":0.21741049617676111,"excess_cagr":-0.14730256983548262,"sharpe_calendar":0.2678589952084207,"max_drawdown":-0.17479213760875878,"gross_edge_per_traded_share":0.02138967174605209,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.0013575718407862754,"trading_edge_after_costs_per_traded_share":0.011532099905265816,"beta_vs_benchmark_total":-0.08877715751976988,"alpha_annualized":0.09757236999413252,"information_ratio":-0.5729790973178612},{"profile":"corrected_execution","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.01,"subperiod":"full_sample","cagr":0.12417873533277834,"benchmark_total_cagr":0.11957924402400799,"excess_cagr":0.004599491308770354,"sharpe_calendar":0.8096483830095884,"max_drawdown":-0.341360603792918,"gross_edge_per_traded_share":0.04098145222226126,"execution_cost_per_traded_share":0.013500000000000002,"financing_cost_per_traded_share":0.00045148530226575643,"trading_edge_after_costs_per_traded_share":0.027029966919995502,"beta_vs_benchmark_total":-0.059689255243992864,"alpha_annualized":0.13594502972001532,"information_ratio":-0.01307144520830181},{"profile":"corrected_execution","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.01,"subperiod":"pre_publication","cagr":0.1331489431906674,"benchmark_total_cagr":0.10701941927742209,"excess_cagr":0.0261295239132453,"sharpe_calendar":0.8944170161960167,"max_drawdown":-0.341360603792918,"gross_edge_per_traded_share":0.04457197008661307,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.0002819868200500464,"trading_edge_after_costs_per_traded_share":0.03078998326656303,"beta_vs_benchmark_total":-0.057077267375361014,"alpha_annualized":0.14293454014026874,"information_ratio":0.060114379873305895},{"profile":"corrected_execution","tier":"paper_ready","dividend_mode":"with_dividends","slippage_per_share":0.01,"subperiod":"post_publication","cagr":0.06001493735565866,"benchmark_total_cagr":0.21741049617676111,"excess_cagr":-0.15739555882110245,"sharpe_calendar":0.20312189308208645,"max_drawdown":-0.1831889045186026,"gross_edge_per_traded_share":0.021785499270936842,"execution_cost_per_traded_share":0.013500000000000002,"financing_cost_per_traded_share":0.0013576734937346352,"trading_edge_after_costs_per_traded_share":0.006927825777202205,"beta_vs_benchmark_total":-0.08845617900959371,"alpha_annualized":0.08797508871066931,"information_ratio":-0.6142045772835304},{"profile":"corrected_execution","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.001,"subperiod":"full_sample","cagr":0.1792072989696143,"benchmark_total_cagr":0.09908752573291846,"excess_cagr":0.08011977323669583,"sharpe_calendar":1.147902508019167,"max_drawdown":-0.2692015387207659,"gross_edge_per_traded_share":0.045052095458054824,"execution_cost_per_traded_share":0.0045,"financing_cost_per_traded_share":0.0005523956208021605,"trading_edge_after_costs_per_traded_share":0.03999969983725266,"beta_vs_benchmark_total":-0.0605594233176734,"alpha_annualized":0.18308900318132787,"information_ratio":0.24914371588997253},{"profile":"corrected_execution","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.001,"subperiod":"pre_publication","cagr":0.19346455353701097,"benchmark_total_cagr":0.08582674873697838,"excess_cagr":0.1076378048000326,"sharpe_calendar":1.263023904181538,"max_drawdown":-0.2692015387207659,"gross_edge_per_traded_share":0.051161725433516575,"execution_cost_per_traded_share":0.0045000000000000005,"financing_cost_per_traded_share":0.0003414593411886528,"trading_edge_after_costs_per_traded_share":0.04632026609232793,"beta_vs_benchmark_total":-0.057749302072506566,"alpha_annualized":0.19415793226063932,"information_ratio":0.33852533167388493},{"profile":"corrected_execution","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.001,"subperiod":"post_publication","cagr":0.07891818369189729,"benchmark_total_cagr":0.20271616498870992,"excess_cagr":-0.12379798129681263,"sharpe_calendar":0.32418747737957737,"max_drawdown":-0.162704165609323,"gross_edge_per_traded_share":0.021496954980507584,"execution_cost_per_traded_share":0.0045000000000000005,"financing_cost_per_traded_share":0.0013656418759866798,"trading_edge_after_costs_per_traded_share":0.015631313104520907,"beta_vs_benchmark_total":-0.09121418940572756,"alpha_annualized":0.10518353120807304,"information_ratio":-0.48439859468197616},{"profile":"corrected_execution","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.0025,"subperiod":"full_sample","cagr":0.17009324598785347,"benchmark_total_cagr":0.09908752573291846,"excess_cagr":0.07100572025493501,"sharpe_calendar":1.0927159400616682,"max_drawdown":-0.28140992065743875,"gross_edge_per_traded_share":0.044407752900261915,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.0005358513152390653,"trading_edge_after_costs_per_traded_share":0.037871901585022856,"beta_vs_benchmark_total":-0.060489289177326794,"alpha_annualized":0.17526688038016394,"information_ratio":0.21839820558208436},{"profile":"corrected_execution","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.0025,"subperiod":"pre_publication","cagr":0.18345007769641164,"benchmark_total_cagr":0.08582674873697838,"excess_cagr":0.09762332895943326,"sharpe_calendar":1.2027578735510327,"max_drawdown":-0.28140992065743875,"gross_edge_per_traded_share":0.05002317515328839,"execution_cost_per_traded_share":0.006000000000000001,"financing_cost_per_traded_share":0.00033138577102569296,"trading_edge_after_costs_per_traded_share":0.043691789382262695,"beta_vs_benchmark_total":-0.057687367001976755,"alpha_annualized":0.18566475319096645,"information_ratio":0.3054984792931355},{"profile":"corrected_execution","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.0025,"subperiod":"post_publication","cagr":0.07587945336095325,"benchmark_total_cagr":0.20271616498870992,"excess_cagr":-0.12683671162775667,"sharpe_calendar":0.3048782562831882,"max_drawdown":-0.16523882637190201,"gross_edge_per_traded_share":0.021617787492843557,"execution_cost_per_traded_share":0.005999999999999999,"financing_cost_per_traded_share":0.0013656665044922533,"trading_edge_after_costs_per_traded_share":0.014252120988351304,"beta_vs_benchmark_total":-0.09112296100044225,"alpha_annualized":0.10232892005191528,"information_ratio":-0.49665995811687236},{"profile":"corrected_execution","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.005,"subperiod":"full_sample","cagr":0.15503800898993325,"benchmark_total_cagr":0.09908752573291846,"excess_cagr":0.055950483257014794,"sharpe_calendar":1.0006922310665214,"max_drawdown":-0.3013103427310879,"gross_edge_per_traded_share":0.043323464811596615,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.0005080394768052283,"trading_edge_after_costs_per_traded_share":0.034315425334791386,"beta_vs_benchmark_total":-0.06036366809530148,"alpha_annualized":0.16221151868855524,"information_ratio":0.16709916177630554},{"profile":"corrected_execution","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.005,"subperiod":"pre_publication","cagr":0.16692358969474497,"benchmark_total_cagr":0.08582674873697838,"excess_cagr":0.08109684095776659,"sharpe_calendar":1.102290220074062,"max_drawdown":-0.3013103427310879,"gross_edge_per_traded_share":0.04817283317857636,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.0003146945246000046,"trading_edge_after_costs_per_traded_share":0.03935813865397636,"beta_vs_benchmark_total":-0.05757480940278724,"alpha_annualized":0.17149072466587553,"information_ratio":0.2504006653918296},{"profile":"corrected_execution","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.005,"subperiod":"post_publication","cagr":0.07081706888961437,"benchmark_total_cagr":0.20271616498870992,"excess_cagr":-0.13189909609909556,"sharpe_calendar":0.2725921943830185,"max_drawdown":-0.16945133603621465,"gross_edge_per_traded_share":0.021811172090601055,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.0013657374063514892,"trading_edge_after_costs_per_traded_share":0.011945434684249563,"beta_vs_benchmark_total":-0.09096898208620724,"alpha_annualized":0.09755542182326643,"information_ratio":-0.5171604757429552},{"profile":"corrected_execution","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.01,"subperiod":"full_sample","cagr":0.12551319918812132,"benchmark_total_cagr":0.09908752573291846,"excess_cagr":0.026425673455202858,"sharpe_calendar":0.8170256371831133,"max_drawdown":-0.3409652705437526,"gross_edge_per_traded_share":0.041160738872062876,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.00045202303084347135,"trading_edge_after_costs_per_traded_share":0.027208715841219405,"beta_vs_benchmark_total":-0.06013002938877786,"alpha_annualized":0.1361141469685543,"information_ratio":0.06459246478696402},{"profile":"corrected_execution","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.01,"subperiod":"pre_publication","cagr":0.13456727131248036,"benchmark_total_cagr":0.08582674873697838,"excess_cagr":0.04874052257550199,"sharpe_calendar":0.901818523149534,"max_drawdown":-0.3409652705437526,"gross_edge_per_traded_share":0.0446896881136825,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.0002819455154698881,"trading_edge_after_costs_per_traded_share":0.030907742598212613,"beta_vs_benchmark_total":-0.05736561968860297,"alpha_annualized":0.14315682898619025,"information_ratio":0.14031047527937424},{"profile":"corrected_execution","tier":"paper_ready","dividend_mode":"ignore_dividends","slippage_per_share":0.01,"subperiod":"post_publication","cagr":0.06076722518296407,"benchmark_total_cagr":0.20271616498870992,"excess_cagr":-0.14194893980574586,"sharpe_calendar":0.20807168221667519,"max_drawdown":-0.1778163147555264,"gross_edge_per_traded_share":0.02219985678354876,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.0013658417043662236,"trading_edge_after_costs_per_traded_share":0.0073340150791825365,"beta_vs_benchmark_total":-0.0906975148713593,"alpha_annualized":0.08801829034424678,"information_ratio":-0.5581554630799214},{"profile":"corrected_execution","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.001,"subperiod":"full_sample","cagr":0.17604834663703217,"benchmark_total_cagr":0.11957924402400799,"excess_cagr":0.05646910261302418,"sharpe_calendar":1.1300062855836417,"max_drawdown":-0.27052385921219724,"gross_edge_per_traded_share":0.044310647273221586,"execution_cost_per_traded_share":0.0045,"financing_cost_per_traded_share":0.0005468634245517215,"trading_edge_after_costs_per_traded_share":0.03926378384866987,"beta_vs_benchmark_total":-0.05810743732504793,"alpha_annualized":0.18116308970547457,"information_ratio":0.16612196066295637},{"profile":"corrected_execution","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.001,"subperiod":"pre_publication","cagr":0.18993461034223125,"benchmark_total_cagr":0.10701941927742209,"excess_cagr":0.08291519106480916,"sharpe_calendar":1.2436126799612495,"max_drawdown":-0.27052385921219724,"gross_edge_per_traded_share":0.0502763386632957,"execution_cost_per_traded_share":0.0045000000000000005,"financing_cost_per_traded_share":0.0003387265476695332,"trading_edge_after_costs_per_traded_share":0.045437612115626164,"beta_vs_benchmark_total":-0.05527118524044892,"alpha_annualized":0.19196269229852805,"information_ratio":0.25237688800396996},{"profile":"corrected_execution","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.001,"subperiod":"post_publication","cagr":0.07825715076118112,"benchmark_total_cagr":0.21741049617676111,"excess_cagr":-0.13915334541558,"sharpe_calendar":0.3197037778626742,"max_drawdown":-0.16801595432460148,"gross_edge_per_traded_share":0.02107595606345661,"execution_cost_per_traded_share":0.0045000000000000005,"financing_cost_per_traded_share":0.0013574980597540695,"trading_edge_after_costs_per_traded_share":0.01521845800370254,"beta_vs_benchmark_total":-0.08901379052669388,"alpha_annualized":0.10525195902176149,"information_ratio":-0.5399775804844416},{"profile":"corrected_execution","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.0025,"subperiod":"full_sample","cagr":0.16699484368990491,"benchmark_total_cagr":0.11957924402400799,"excess_cagr":0.047415599665896924,"sharpe_calendar":1.0749989557125093,"max_drawdown":-0.2825638689229465,"gross_edge_per_traded_share":0.043669120554627794,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.0005303599713428925,"trading_edge_after_costs_per_traded_share":0.0371387605832849,"beta_vs_benchmark_total":-0.058039363792212154,"alpha_annualized":0.1733710177442831,"information_ratio":0.1354029215180007},{"profile":"corrected_execution","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.0025,"subperiod":"pre_publication","cagr":0.17999587100178815,"benchmark_total_cagr":0.10701941927742209,"excess_cagr":0.07297645172436606,"sharpe_calendar":1.183560100167712,"max_drawdown":-0.2825638689229465,"gross_edge_per_traded_share":0.049149263638487525,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.0003286970010341516,"trading_edge_after_costs_per_traded_share":0.04282056663745337,"beta_vs_benchmark_total":-0.05521141406023329,"alpha_annualized":0.18350783544717764,"information_ratio":0.21939160227512866},{"profile":"corrected_execution","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.0025,"subperiod":"post_publication","cagr":0.07518890968333802,"benchmark_total_cagr":0.21741049617676111,"excess_cagr":-0.1422215864934231,"sharpe_calendar":0.300228598054576,"max_drawdown":-0.17057502714950945,"gross_edge_per_traded_share":0.02119127150880198,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.0013575189953624123,"trading_edge_after_costs_per_traded_share":0.013833752513439568,"beta_vs_benchmark_total":-0.08891786912086166,"alpha_annualized":0.102365776326048,"information_ratio":-0.5523764929474667},{"profile":"corrected_execution","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.005,"subperiod":"full_sample","cagr":0.15209262524054035,"benchmark_total_cagr":0.11957924402400799,"excess_cagr":0.032513381216532355,"sharpe_calendar":0.9835759090189243,"max_drawdown":-0.3021870783220204,"gross_edge_per_traded_share":0.042602290714481315,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.0005026963171148793,"trading_edge_after_costs_per_traded_share":0.03359959439736643,"beta_vs_benchmark_total":-0.0579192227316087,"alpha_annualized":0.16041340083127345,"information_ratio":0.08433460778962844},{"profile":"corrected_execution","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.005,"subperiod":"pre_publication","cagr":0.16365000030205445,"benchmark_total_cagr":0.10701941927742209,"excess_cagr":0.056630581024632365,"sharpe_calendar":1.083758958221855,"max_drawdown":-0.3021870783220204,"gross_edge_per_traded_share":0.04733067260267394,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.0003121290807889602,"trading_edge_after_costs_per_traded_share":0.03851854352188498,"beta_vs_benchmark_total":-0.055104103768142544,"alpha_annualized":0.16944735365347982,"information_ratio":0.1645547899038978},{"profile":"corrected_execution","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.005,"subperiod":"post_publication","cagr":0.07011165614122405,"benchmark_total_cagr":0.21741049617676111,"excess_cagr":-0.14729884003553706,"sharpe_calendar":0.26788165762356897,"max_drawdown":-0.1747994025255909,"gross_edge_per_traded_share":0.02139125708894719,"execution_cost_per_traded_share":0.008499999999999999,"financing_cost_per_traded_share":0.001357561290633177,"trading_edge_after_costs_per_traded_share":0.011533695798314014,"beta_vs_benchmark_total":-0.08876243284855587,"alpha_annualized":0.09757294725248858,"information_ratio":-0.572965336556784},{"profile":"corrected_execution","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.01,"subperiod":"full_sample","cagr":0.1228233463126076,"benchmark_total_cagr":0.11957924402400799,"excess_cagr":0.003244102288599615,"sharpe_calendar":0.8008818184729759,"max_drawdown":-0.341360603792918,"gross_edge_per_traded_share":0.04047769786473589,"execution_cost_per_traded_share":0.013499999999999998,"financing_cost_per_traded_share":0.00044705051185382663,"trading_edge_after_costs_per_traded_share":0.026530647352882065,"beta_vs_benchmark_total":-0.057690102938718305,"alpha_annualized":0.13447423988177656,"information_ratio":-0.017848717935746262},{"profile":"corrected_execution","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.01,"subperiod":"pre_publication","cagr":0.13159696596715986,"benchmark_total_cagr":0.10701941927742209,"excess_cagr":0.024577546689737773,"sharpe_calendar":0.88437634866697,"max_drawdown":-0.341360603792918,"gross_edge_per_traded_share":0.04391295493554495,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.00027966075539275035,"trading_edge_after_costs_per_traded_share":0.030133294180152207,"beta_vs_benchmark_total":-0.054899945789086343,"alpha_annualized":0.14129935079303663,"information_ratio":0.0548361373374996},{"profile":"corrected_execution","tier":"halt_aware","dividend_mode":"with_dividends","slippage_per_share":0.01,"subperiod":"post_publication","cagr":0.06002445585634186,"benchmark_total_cagr":0.21741049617676111,"excess_cagr":-0.15738604032041925,"sharpe_calendar":0.2031824085642175,"max_drawdown":-0.18318294937554136,"gross_edge_per_traded_share":0.021789916273384887,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.0013576499647900487,"trading_edge_after_costs_per_traded_share":0.006932266308594839,"beta_vs_benchmark_total":-0.0884709125927637,"alpha_annualized":0.08798749753775155,"information_ratio":-0.6141567005054732},{"profile":"corrected_execution","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.001,"subperiod":"full_sample","cagr":0.17779243476727324,"benchmark_total_cagr":0.09908752573291846,"excess_cagr":0.07870490903435479,"sharpe_calendar":1.1390179738701898,"max_drawdown":-0.2692015387207659,"gross_edge_per_traded_share":0.0444882106506028,"execution_cost_per_traded_share":0.0045,"financing_cost_per_traded_share":0.0005476066512742608,"trading_edge_after_costs_per_traded_share":0.039440603999328534,"beta_vs_benchmark_total":-0.0585842944747643,"alpha_annualized":0.18166380856171413,"information_ratio":0.24468017161863181},{"profile":"corrected_execution","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.001,"subperiod":"pre_publication","cagr":0.19183868971370477,"benchmark_total_cagr":0.08582674873697838,"excess_cagr":0.1060119409767264,"sharpe_calendar":1.252834671967096,"max_drawdown":-0.2692015387207659,"gross_edge_per_traded_share":0.05035847630437646,"execution_cost_per_traded_share":0.0045000000000000005,"financing_cost_per_traded_share":0.0003387205979610656,"trading_edge_after_costs_per_traded_share":0.045519755706415393,"beta_vs_benchmark_total":-0.05560103423666344,"alpha_annualized":0.1925752483739461,"information_ratio":0.3336161503531597},{"profile":"corrected_execution","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.001,"subperiod":"post_publication","cagr":0.07892229974285914,"benchmark_total_cagr":0.20271616498870992,"excess_cagr":-0.12379386524585079,"sharpe_calendar":0.32421350161911083,"max_drawdown":-0.16270526227056203,"gross_edge_per_traded_share":0.021498837630484817,"execution_cost_per_traded_share":0.0045000000000000005,"financing_cost_per_traded_share":0.001365654705918986,"trading_edge_after_costs_per_traded_share":0.01563318292456583,"beta_vs_benchmark_total":-0.09120625111601248,"alpha_annualized":0.10518581364445288,"information_ratio":-0.48438369387988506},{"profile":"corrected_execution","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.0025,"subperiod":"full_sample","cagr":0.1686884291983346,"benchmark_total_cagr":0.09908752573291846,"excess_cagr":0.06960090346541614,"sharpe_calendar":1.0838493727425496,"max_drawdown":-0.28140992065743875,"gross_edge_per_traded_share":0.04385131976183728,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.0005310986808931199,"trading_edge_after_costs_per_traded_share":0.03732022108094417,"beta_vs_benchmark_total":-0.05851100562482187,"alpha_annualized":0.17384067472628417,"information_ratio":0.2138994990233824},{"profile":"corrected_execution","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.0025,"subperiod":"pre_publication","cagr":0.1818378100263831,"benchmark_total_cagr":0.08582674873697838,"excess_cagr":0.09601106128940473,"sharpe_calendar":1.1925995384989907,"max_drawdown":-0.28140992065743875,"gross_edge_per_traded_share":0.04924339574583504,"execution_cost_per_traded_share":0.005999999999999999,"financing_cost_per_traded_share":0.00032870651750691786,"trading_edge_after_costs_per_traded_share":0.042914689228328126,"beta_vs_benchmark_total":-0.055535621977113155,"alpha_annualized":0.18408177891141703,"information_ratio":0.3005510220101332},{"profile":"corrected_execution","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.0025,"subperiod":"post_publication","cagr":0.07587699377526613,"benchmark_total_cagr":0.20271616498870992,"excess_cagr":-0.1268391712134438,"sharpe_calendar":0.3048609691051244,"max_drawdown":-0.16524530669729487,"gross_edge_per_traded_share":0.02161656440812922,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.001365682661488929,"trading_edge_after_costs_per_traded_share":0.01425088174664029,"beta_vs_benchmark_total":-0.09111542483690875,"alpha_annualized":0.10232532582946423,"information_ratio":-0.4966688794764091},{"profile":"corrected_execution","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.005,"subperiod":"full_sample","cagr":0.15365118323497473,"benchmark_total_cagr":0.09908752573291846,"excess_cagr":0.05456365750205627,"sharpe_calendar":0.9918762733582369,"max_drawdown":-0.3013103427310879,"gross_edge_per_traded_share":0.04278287963915293,"execution_cost_per_traded_share":0.008499999999999999,"financing_cost_per_traded_share":0.0005033694708528561,"trading_edge_after_costs_per_traded_share":0.03377951016830007,"beta_vs_benchmark_total":-0.05838085117860572,"alpha_annualized":0.1607846618117436,"information_ratio":0.16254608368702123},{"profile":"corrected_execution","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.005,"subperiod":"pre_publication","cagr":0.16533369075743054,"benchmark_total_cagr":0.08582674873697838,"excess_cagr":0.07950694202045216,"sharpe_calendar":1.0921928733724378,"max_drawdown":-0.3013103427310879,"gross_edge_per_traded_share":0.047433812058130714,"execution_cost_per_traded_share":0.008499999999999999,"financing_cost_per_traded_share":0.0003121287504221903,"trading_edge_after_costs_per_traded_share":0.03862168330770853,"beta_vs_benchmark_total":-0.05541750103413828,"alpha_annualized":0.1699070498810181,"information_ratio":0.24538895665824206},{"profile":"corrected_execution","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.005,"subperiod":"post_publication","cagr":0.07081495719627418,"benchmark_total_cagr":0.20271616498870992,"excess_cagr":-0.13190120779243575,"sharpe_calendar":0.27258031986782433,"max_drawdown":-0.16945251123213734,"gross_edge_per_traded_share":0.021810299180901365,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.0013657366339963806,"trading_edge_after_costs_per_traded_share":0.011944562546904982,"beta_vs_benchmark_total":-0.09096853442873587,"alpha_annualized":0.09755308426159796,"information_ratio":-0.5171729176361624},{"profile":"corrected_execution","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.01,"subperiod":"full_sample","cagr":0.12415960709727014,"benchmark_total_cagr":0.09908752573291846,"excess_cagr":0.025072081364351684,"sharpe_calendar":0.808291528375901,"max_drawdown":-0.3409652705437526,"gross_edge_per_traded_share":0.040658248549095895,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.0004476048980655626,"trading_edge_after_costs_per_traded_share":0.026710643651030333,"beta_vs_benchmark_total":-0.05814096604437932,"alpha_annualized":0.13468457729214076,"information_ratio":0.05992261598305156},{"profile":"corrected_execution","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.01,"subperiod":"pre_publication","cagr":0.1330197097146011,"benchmark_total_cagr":0.08582674873697838,"excess_cagr":0.04719296097762271,"sharpe_calendar":0.891832578301677,"max_drawdown":-0.3409652705437526,"gross_edge_per_traded_share":0.04403553292088701,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.0002796284201674715,"trading_edge_after_costs_per_traded_share":0.030255904500719542,"beta_vs_benchmark_total":-0.0552028900927832,"alpha_annualized":0.14157101952211654,"information_ratio":0.13516368518320748},{"profile":"corrected_execution","tier":"halt_aware","dividend_mode":"ignore_dividends","slippage_per_share":0.01,"subperiod":"post_publication","cagr":0.06075966439395053,"benchmark_total_cagr":0.20271616498870992,"excess_cagr":-0.1419565005947594,"sharpe_calendar":0.20802373045134745,"max_drawdown":-0.17782475227630024,"gross_edge_per_traded_share":0.022196504462552988,"execution_cost_per_traded_share":0.013500000000000002,"financing_cost_per_traded_share":0.0013658393154619048,"trading_edge_after_costs_per_traded_share":0.007330665147091083,"beta_vs_benchmark_total":-0.09068143291611294,"alpha_annualized":0.08800771044523646,"information_ratio":-0.5581942346652554},{"profile":"corrected_execution","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.001,"subperiod":"full_sample","cagr":0.15032728841102805,"benchmark_total_cagr":0.1983368334002944,"excess_cagr":-0.04800954498926635,"sharpe_calendar":1.0251568686485915,"max_drawdown":-0.26957600607649657,"gross_edge_per_traded_share":0.022459539818925723,"execution_cost_per_traded_share":0.0045,"financing_cost_per_traded_share":0.00015481551630798293,"trading_edge_after_costs_per_traded_share":0.01780472430261774,"beta_vs_benchmark_total":-0.06208533324207434,"alpha_annualized":0.1582652414467411,"information_ratio":0.17698425686034217},{"profile":"corrected_execution","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.001,"subperiod":"pre_publication","cagr":0.15032728841102805,"benchmark_total_cagr":0.15428728178788598,"excess_cagr":-0.003959993376857929,"sharpe_calendar":1.0251568686485915,"max_drawdown":-0.26957600607649657,"gross_edge_per_traded_share":0.022459539818925723,"execution_cost_per_traded_share":0.0045,"financing_cost_per_traded_share":0.00015481551630798293,"trading_edge_after_costs_per_traded_share":0.01780472430261774,"beta_vs_benchmark_total":-0.06208533324207434,"alpha_annualized":0.1582652414467411,"information_ratio":0.17698425686034217},{"profile":"corrected_execution","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.001,"subperiod":"post_publication","cagr":null,"benchmark_total_cagr":null,"excess_cagr":null,"sharpe_calendar":null,"max_drawdown":null,"gross_edge_per_traded_share":null,"execution_cost_per_traded_share":null,"financing_cost_per_traded_share":null,"trading_edge_after_costs_per_traded_share":null,"beta_vs_benchmark_total":null,"alpha_annualized":null,"information_ratio":null},{"profile":"corrected_execution","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.0025,"subperiod":"full_sample","cagr":0.13856673853273582,"benchmark_total_cagr":0.1983368334002944,"excess_cagr":-0.059770094867558576,"sharpe_calendar":0.9521720921678622,"max_drawdown":-0.2816629619222678,"gross_edge_per_traded_share":0.022513912010226154,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.00015199617105275264,"trading_edge_after_costs_per_traded_share":0.016361915839173402,"beta_vs_benchmark_total":-0.062000957826576775,"alpha_annualized":0.14788516900050266,"information_ratio":0.1361370036210232},{"profile":"corrected_execution","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.0025,"subperiod":"pre_publication","cagr":0.13856673853273582,"benchmark_total_cagr":0.15428728178788598,"excess_cagr":-0.015720543255150154,"sharpe_calendar":0.9521720921678622,"max_drawdown":-0.2816629619222678,"gross_edge_per_traded_share":0.022513912010226154,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.00015199617105275264,"trading_edge_after_costs_per_traded_share":0.016361915839173402,"beta_vs_benchmark_total":-0.062000957826576775,"alpha_annualized":0.14788516900050266,"information_ratio":0.1361370036210232},{"profile":"corrected_execution","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.0025,"subperiod":"post_publication","cagr":null,"benchmark_total_cagr":null,"excess_cagr":null,"sharpe_calendar":null,"max_drawdown":null,"gross_edge_per_traded_share":null,"execution_cost_per_traded_share":null,"financing_cost_per_traded_share":null,"trading_edge_after_costs_per_traded_share":null,"beta_vs_benchmark_total":null,"alpha_annualized":null,"information_ratio":null},{"profile":"corrected_execution","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.005,"subperiod":"full_sample","cagr":0.11925575594144489,"benchmark_total_cagr":0.1983368334002944,"excess_cagr":-0.07908107745884951,"sharpe_calendar":0.8308451172848058,"max_drawdown":-0.30134308250117137,"gross_edge_per_traded_share":0.022640990356971737,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.00014737046843712657,"trading_edge_after_costs_per_traded_share":0.013993619888534613,"beta_vs_benchmark_total":-0.06184794679673442,"alpha_annualized":0.13060699636457435,"information_ratio":0.0681756314053261},{"profile":"corrected_execution","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.005,"subperiod":"pre_publication","cagr":0.11925575594144489,"benchmark_total_cagr":0.15428728178788598,"excess_cagr":-0.03503152584644109,"sharpe_calendar":0.8308451172848058,"max_drawdown":-0.30134308250117137,"gross_edge_per_traded_share":0.022640990356971737,"execution_cost_per_traded_share":0.0085,"financing_cost_per_traded_share":0.00014737046843712657,"trading_edge_after_costs_per_traded_share":0.013993619888534613,"beta_vs_benchmark_total":-0.06184794679673442,"alpha_annualized":0.13060699636457435,"information_ratio":0.0681756314053261},{"profile":"corrected_execution","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.005,"subperiod":"post_publication","cagr":null,"benchmark_total_cagr":null,"excess_cagr":null,"sharpe_calendar":null,"max_drawdown":null,"gross_edge_per_traded_share":null,"execution_cost_per_traded_share":null,"financing_cost_per_traded_share":null,"trading_edge_after_costs_per_traded_share":null,"beta_vs_benchmark_total":null,"alpha_annualized":null,"information_ratio":null},{"profile":"corrected_execution","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.01,"subperiod":"full_sample","cagr":0.08160199050654371,"benchmark_total_cagr":0.1983368334002944,"excess_cagr":-0.11673484289375069,"sharpe_calendar":0.5888531255193397,"max_drawdown":-0.34060302966466194,"gross_edge_per_traded_share":0.0230239505445363,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.0001384330218961152,"trading_edge_after_costs_per_traded_share":0.009385517522640184,"beta_vs_benchmark_total":-0.061559895096209905,"alpha_annualized":0.09605263993666088,"information_ratio":-0.06763688206440195},{"profile":"corrected_execution","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.01,"subperiod":"pre_publication","cagr":0.08160199050654371,"benchmark_total_cagr":0.15428728178788598,"excess_cagr":-0.07268529128134227,"sharpe_calendar":0.5888531255193397,"max_drawdown":-0.34060302966466194,"gross_edge_per_traded_share":0.0230239505445363,"execution_cost_per_traded_share":0.0135,"financing_cost_per_traded_share":0.0001384330218961152,"trading_edge_after_costs_per_traded_share":0.009385517522640184,"beta_vs_benchmark_total":-0.061559895096209905,"alpha_annualized":0.09605263993666088,"information_ratio":-0.06763688206440195},{"profile":"corrected_execution","tier":"exploratory","dividend_mode":"with_dividends","slippage_per_share":0.01,"subperiod":"post_publication","cagr":null,"benchmark_total_cagr":null,"excess_cagr":null,"sharpe_calendar":null,"max_drawdown":null,"gross_edge_per_traded_share":null,"execution_cost_per_traded_share":null,"financing_cost_per_traded_share":null,"trading_edge_after_costs_per_traded_share":null,"beta_vs_benchmark_total":null,"alpha_annualized":null,"information_ratio":null},{"profile":"corrected_execution","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.001,"subperiod":"full_sample","cagr":0.15380345686007502,"benchmark_total_cagr":0.16339690299225085,"excess_cagr":-0.009593446132175831,"sharpe_calendar":1.0442469824236453,"max_drawdown":-0.2682454920831592,"gross_edge_per_traded_share":0.022866971033088615,"execution_cost_per_traded_share":0.0045000000000000005,"financing_cost_per_traded_share":0.00015429685940237845,"trading_edge_after_costs_per_traded_share":0.018212674173686237,"beta_vs_benchmark_total":-0.06313996906010104,"alpha_annualized":0.1601635726696229,"information_ratio":0.27031495079176454},{"profile":"corrected_execution","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.001,"subperiod":"pre_publication","cagr":0.15380345686007502,"benchmark_total_cagr":0.12322540583308794,"excess_cagr":0.030578051026987074,"sharpe_calendar":1.0442469824236453,"max_drawdown":-0.2682454920831592,"gross_edge_per_traded_share":0.022866971033088615,"execution_cost_per_traded_share":0.0045000000000000005,"financing_cost_per_traded_share":0.00015429685940237845,"trading_edge_after_costs_per_traded_share":0.018212674173686237,"beta_vs_benchmark_total":-0.06313996906010104,"alpha_annualized":0.1601635726696229,"information_ratio":0.27031495079176454},{"profile":"corrected_execution","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.001,"subperiod":"post_publication","cagr":null,"benchmark_total_cagr":null,"excess_cagr":null,"sharpe_calendar":null,"max_drawdown":null,"gross_edge_per_traded_share":null,"execution_cost_per_traded_share":null,"financing_cost_per_traded_share":null,"trading_edge_after_costs_per_traded_share":null,"beta_vs_benchmark_total":null,"alpha_annualized":null,"information_ratio":null},{"profile":"corrected_execution","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.0025,"subperiod":"full_sample","cagr":0.14194290604205473,"benchmark_total_cagr":0.16339690299225085,"excess_cagr":-0.02145399695019612,"sharpe_calendar":0.9710133146217078,"max_drawdown":-0.2804901378962774,"gross_edge_per_traded_share":0.02290933183233675,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.00015147364874220918,"trading_edge_after_costs_per_traded_share":0.01675785818359454,"beta_vs_benchmark_total":-0.06305172361010873,"alpha_annualized":0.14972817704974706,"information_ratio":0.22933780836489234},{"profile":"corrected_execution","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.0025,"subperiod":"pre_publication","cagr":0.14194290604205473,"benchmark_total_cagr":0.12322540583308794,"excess_cagr":0.018717500208966786,"sharpe_calendar":0.9710133146217078,"max_drawdown":-0.2804901378962774,"gross_edge_per_traded_share":0.02290933183233675,"execution_cost_per_traded_share":0.006,"financing_cost_per_traded_share":0.00015147364874220918,"trading_edge_after_costs_per_traded_share":0.01675785818359454,"beta_vs_benchmark_total":-0.06305172361010873,"alpha_annualized":0.14972817704974706,"information_ratio":0.22933780836489234},{"profile":"corrected_execution","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.0025,"subperiod":"post_publication","cagr":null,"benchmark_total_cagr":null,"excess_cagr":null,"sharpe_calendar":null,"max_drawdown":null,"gross_edge_per_traded_share":null,"execution_cost_per_traded_share":null,"financing_cost_per_traded_share":null,"trading_edge_after_costs_per_traded_share":null,"beta_vs_benchmark_total":null,"alpha_annualized":null,"information_ratio":null},{"profile":"corrected_execution","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.005,"subperiod":"full_sample","cagr":0.1224045488611969,"benchmark_total_cagr":0.16339690299225085,"excess_cagr":-0.040992354131053954,"sharpe_calendar":0.8488890315372436,"max_drawdown":-0.3004412757722468,"gross_edge_per_traded_share":0.023012861101769994,"execution_cost_per_traded_share":0.008500000000000002,"financing_cost_per_traded_share":0.00014683018803237656,"trading_edge_after_costs_per_traded_share":0.014366030913737617,"beta_vs_benchmark_total":-0.0628924166385862,"alpha_annualized":0.13229957253482819,"information_ratio":0.16093089342438632},{"profile":"corrected_execution","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.005,"subperiod":"pre_publication","cagr":0.1224045488611969,"benchmark_total_cagr":0.12322540583308794,"excess_cagr":-0.0008208569718910486,"sharpe_calendar":0.8488890315372436,"max_drawdown":-0.3004412757722468,"gross_edge_per_traded_share":0.023012861101769994,"execution_cost_per_traded_share":0.008500000000000002,"financing_cost_per_traded_share":0.00014683018803237656,"trading_edge_after_costs_per_traded_share":0.014366030913737617,"beta_vs_benchmark_total":-0.0628924166385862,"alpha_annualized":0.13229957253482819,"information_ratio":0.16093089342438632},{"profile":"corrected_execution","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.005,"subperiod":"post_publication","cagr":null,"benchmark_total_cagr":null,"excess_cagr":null,"sharpe_calendar":null,"max_drawdown":null,"gross_edge_per_traded_share":null,"execution_cost_per_traded_share":null,"financing_cost_per_traded_share":null,"trading_edge_after_costs_per_traded_share":null,"beta_vs_benchmark_total":null,"alpha_annualized":null,"information_ratio":null},{"profile":"corrected_execution","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.01,"subperiod":"full_sample","cagr":0.0843481954687546,"benchmark_total_cagr":0.16339690299225085,"excess_cagr":-0.07904870752349624,"sharpe_calendar":0.6055302263751003,"max_drawdown":-0.3401719620811432,"gross_edge_per_traded_share":0.02335153011581858,"execution_cost_per_traded_share":0.013500000000000002,"financing_cost_per_traded_share":0.00013785662304402756,"trading_edge_after_costs_per_traded_share":0.009713673492774551,"beta_vs_benchmark_total":-0.06259851630419096,"alpha_annualized":0.0974739439937555,"information_ratio":0.024335098093418894},{"profile":"corrected_execution","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.01,"subperiod":"pre_publication","cagr":0.0843481954687546,"benchmark_total_cagr":0.12322540583308794,"excess_cagr":-0.03887721036433334,"sharpe_calendar":0.6055302263751003,"max_drawdown":-0.3401719620811432,"gross_edge_per_traded_share":0.02335153011581858,"execution_cost_per_traded_share":0.013500000000000002,"financing_cost_per_traded_share":0.00013785662304402756,"trading_edge_after_costs_per_traded_share":0.009713673492774551,"beta_vs_benchmark_total":-0.06259851630419096,"alpha_annualized":0.0974739439937555,"information_ratio":0.024335098093418894},{"profile":"corrected_execution","tier":"exploratory","dividend_mode":"ignore_dividends","slippage_per_share":0.01,"subperiod":"post_publication","cagr":null,"benchmark_total_cagr":null,"excess_cagr":null,"sharpe_calendar":null,"max_drawdown":null,"gross_edge_per_traded_share":null,"execution_cost_per_traded_share":null,"financing_cost_per_traded_share":null,"trading_edge_after_costs_per_traded_share":null,"beta_vs_benchmark_total":null,"alpha_annualized":null,"information_ratio":null}];
+const fields=["profile", "tier", "dividend_mode", "slippage_per_share", "subperiod", "cagr", "benchmark_total_cagr", "excess_cagr", "sharpe_calendar", "max_drawdown", "gross_edge_per_traded_share", "execution_cost_per_traded_share", "financing_cost_per_traded_share", "trading_edge_after_costs_per_traded_share", "beta_vs_benchmark_total", "alpha_annualized", "information_ratio"];
+const filters=[
+  ["period","subperiod"],["profile","profile"],["tier","tier"],
+  ["dividend","dividend_mode"],["slippage","slippage_per_share"]];
+const labels={
+  cagr:"Strategy CAGR",benchmark_total_cagr:"SPY total CAGR",
+  excess_cagr:"Excess CAGR",sharpe_calendar:"Sharpe vs cash",
+  max_drawdown:"Max drawdown",gross_edge_per_traded_share:"Gross edge/share",
+  execution_cost_per_traded_share:"Execution/share",
+  financing_cost_per_traded_share:"Funding+borrow/share",
+  trading_edge_after_costs_per_traded_share:"After-cost edge/share",
+  beta_vs_benchmark_total:"Beta",alpha_annualized:"Annual alpha",
+  information_ratio:"Information ratio",slippage_per_share:"Slippage/share"};
+for(const [id,key] of filters){
+  const el=document.getElementById(id);
+  const vals=[...new Set(rows.map(r=>String(r[key])))];
+  el.innerHTML=`<option value="">All ${labels[key]||key}</option>`+
+    vals.map(v=>`<option>${v}</option>`).join("");
+  el.onchange=render;
+}
+function fmt(key,value){
+  if(value===null||value===undefined) return "—";
+  if(["cagr","benchmark_total_cagr","excess_cagr","max_drawdown",
+      "alpha_annualized"].includes(key)) return (value*100).toFixed(2)+"%";
+  if(key.includes("per_traded_share")) return (value*100).toFixed(3)+"¢";
+  if(key==="slippage_per_share") return "$"+Number(value).toFixed(4);
+  if(typeof value==="number") return value.toFixed(3);
+  return value;
+}
+function render(){
+  const selected=Object.fromEntries(filters.map(([id,key])=>
+    [key,document.getElementById(id).value]));
+  const shown=rows.filter(r=>Object.entries(selected).every(
+    ([k,v])=>!v||String(r[k])===v));
+  const head="<thead><tr>"+fields.map(f=>`<th>${labels[f]||f}</th>`).join("")+
+    "</tr></thead>";
+  const body="<tbody>"+shown.map(r=>"<tr>"+fields.map(f=>
+    `<td>${fmt(f,r[f])}</td>`).join("")+"</tr>").join("")+"</tbody>";
+  document.getElementById("matrix").innerHTML=head+body;
+}
+render();
+</script></body></html>

@@ -1,0 +1,173 @@
+# Headline-designation variant of the frozen v2 spec (sha256 b4d7a8f805b9...).
+# Economic content is byte-identical to config/evaluation_spec_v2.yml; the ONLY
+# change is which pre-existing matrix cell is designated the reporting headline
+# (paper_ready x $0.005 -> halt_aware x $0.0025), requested 2026-07-31.
+# The frozen spec file itself is untouched; this variant is the durable copy
+# (the formal run that used it recorded spec_sha256 10a9f44dfac6...).
+# Frozen economic evaluation specification. Q24 paper matching remains a
+# separate replication experiment and did not tune this specification.
+spec_version: 2
+status: frozen
+drafted_utc: "2026-07-31"
+frozen_utc: "2026-07-31"
+
+evaluation_start: "2024-05-01"
+evaluation_end: "2026-07-09"
+subperiods:
+  - full_sample
+  - pre_publication
+  - post_publication
+
+data_release:
+  release_id: data-v1.0
+  manifest_sha256: fc63122dff1d13df95735ba2e1df0a9763db100e0c3efbfa99adf948d602c530
+  expected_start: "2008-01-22"
+  expected_end: "2026-07-09"
+
+capital_path: continuous_full_run_then_slice_returns
+
+profiles:
+  - official_sample_compatible
+  - paper_spec
+  - corrected_execution
+
+tiers:
+  headline: paper_ready
+  also_report: [halt_aware, exploratory]
+
+dividends:
+  headline: with_dividends
+  also_report: ignore_dividends
+
+slippage_per_share: [0.001, 0.0025, 0.005, 0.010]
+
+headline:
+  profile: corrected_execution
+  tier: halt_aware
+  dividend_mode: with_dividends
+  slippage_per_share: 0.0025
+  note: Reporting-headline variant only. The cell belongs to the frozen v2
+    matrix; no economic parameter, rate, cost or date changed versus the
+    frozen spec (sha256 b4d7a8f805b9dd3dacdaf3f2c0f286db2c8ed3d797a7ea3d21764ae09b0eb1b4).
+    Q24 matching is a separate replication experiment and does not tune this headline.
+
+decomposition:
+  - long_vs_short
+  - entry_time_bucket
+  - volatility_regime_quintile
+  - signal_count
+  - average_holding_minutes
+  - turnover
+  - gross_edge_per_traded_share
+  - cost_per_traded_share
+
+decomposition_definitions:
+  entry_time_bucket:
+    open: [1, 120]
+    midday: [121, 270]
+    close: [271, 390]
+  volatility_regime_quintile:
+    boundary_sample_end: "2024-04-30"
+    variable: lagged_14_session_daily_volatility
+
+financing:
+  status: frozen
+  rate_release:
+    release_id: financing-rates-v1
+    path: data/reference/financing_rates_v1
+    manifest_sha256: ff6df464aa2d7c99a1aab37c3f809e9abe312ba1af4389f357a1222918027e1a
+    daily_file: financing_rates_daily.csv
+    daily_rates_sha256: 3f4addb685cbbdf5f887aec7837825b3fbefff13d4fdfd2192673b5458698be8
+    source_sha256:
+      libor_proxy: 820017b24515d386ef7586a22f5d20a9fda51d422ae5951574fdb17471f37aed
+      sofr: 8cd41958de6d2bb57aef694ec071438bed220f0cf4bf358162b6c6360ed2d670
+  cash_rate_decision: usd_3m_libor_then_sofr_minus_50_bps_pa
+  cash_rate:
+    spread_bps: -50
+    observation_policy: latest_rate_published_before_session_open
+    day_count: ACT/360
+    segments:
+      - start: "2008-01-22"
+        end: "2023-06-30"
+        benchmark: USD_3M_LIBOR_PUBLIC_PROXY
+        source: European Central Bank Data Portal
+        series: RTD.M.S0.N.C_USL3M.U
+        proxy_policy: previous_completed_calendar_month_average
+      - start: "2023-07-03"
+        end: "2026-07-09"
+        benchmark: SOFR
+        source: OFR API / Federal Reserve Bank of New York reference rates
+        series: FNYR-SOFR-A
+        proxy_policy: latest_observation_strictly_before_session
+  funding_rate_decision: usd_3m_libor_then_sofr_plus_100_bps_pa
+  funding_rate:
+    spread_bps: 100
+    observation_policy: latest_rate_published_before_session_open
+    day_count: ACT/360
+    segments:
+      - start: "2008-01-22"
+        end: "2023-06-30"
+        benchmark: USD_3M_LIBOR_PUBLIC_PROXY
+        source_policy: public_reproducible_source
+        proxy_policy: previous_completed_calendar_month_average
+      - start: "2023-07-03"
+        end: "2026-07-09"
+        benchmark: SOFR
+        source: OFR API / Federal Reserve Bank of New York reference rates
+        proxy_policy: latest_observation_strictly_before_session
+    transition_note: Representative USD LIBOR panel ended after 2023-06-30;
+      synthetic LIBOR is not used.
+    proxy_sensitivity: none
+  borrow_rate_annual: 0.0025
+  borrow_rate_decision: fixed_25_bps_pa
+  note: Positive cash earns the applicable benchmark minus 50 bps. SPY borrow
+    is fixed at 25 bps p.a. Funding is the applicable benchmark plus 100 bps.
+    The pre-transition LIBOR input may be a documented public proxy rather
+    than licensed ICE fixing data. The frozen point-in-time daily rate release
+    is mandatory for formal execution; scalar cash/funding placeholders are
+    not permitted.
+
+benchmark:
+  computed_in_engine: false
+  external_file_required: true
+  release_id: spy-daily-benchmark-v1
+  daily_close_file: spy_daily_raw_close.csv
+  daily_close_sha256: 5dc28af7090d155da99939928170bfc2bf799d853e11c212d40f6564b836bc28
+  source_sha256: a305d2ceb4bbc3aeec9937e113841e439d75c835d793cfab2d7ef0e3576f9c08
+  price_source: Yahoo Finance daily raw close
+  dividend_source: data-v1.0 State Street cash distributions
+  series: [spy_price_return, spy_total_return]
+  metrics: [excess_cagr, beta, alpha_annualised, information_ratio]
+
+statistics:
+  status: frozen
+  sharpe_risk_free_rate: same_as_cash_rate
+  alpha_standard_errors: none
+  bootstrap: none
+  note: Point estimates only. HAC and block-bootstrap confidence intervals
+    are explicitly deferred and must not be implied in the report.
+
+decision_rule: |
+  The question is not the full-sample CAGR. It is whether, after 2024-05-01,
+  gross edge per traded share still exceeds execution + financing + borrow cost
+  per traded share.
+  - gross edge ~ 0        -> the signal is gone; parameter optimisation must stop.
+  - gross edge > 0, eaten -> study execution, trade frequency and capacity.
+
+provenance_required:
+  - spec_sha256
+  - engine_script_sha256
+  - data_script_sha256
+  - data_run_id
+  - data_release_manifest_sha256
+  - source_sha256
+  - dividend_sha256
+  - benchmark_sha256
+  - financing_rate_manifest_sha256
+  - financing_rate_daily_sha256
+  - git_commit
+  - git_dirty
+
+naming: |
+  Call this the "post-publication evaluation period", not an untouched
+  out-of-sample test.

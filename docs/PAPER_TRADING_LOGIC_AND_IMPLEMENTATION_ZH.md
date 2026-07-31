@@ -1594,7 +1594,274 @@ im_engine_v4.report
 
 ---
 
-## 28. 最终总结
+## 28. 当前交易执行口径与待验证假设
+
+本节记录当前代码中“信号何时产生、用什么价格建仓、订单未成交如何处理、
+尾盘如何平仓，以及成本如何进入收益”的精确定义。需要区分：
+
+- **冻结实现**：已经进入正式 v2 结果、不能根据结果倒推修改；
+- **经济解释**：用于判断正式结果是否接近可交易现实；
+- **后续敏感性实验**：应写入新的配置和输出路径，不能覆盖冻结结果。
+
+### 28.1 信号时点与建仓价格
+
+信号在 minute bar `t` 的 **close 已知后**计算。三个 profile 的成交约定不同：
+
+| profile | 当前建仓/调仓价格 |
+|---|---|
+| `official_sample_compatible` | 信号 bar 的 close，即 \(C_t\) |
+| `paper_spec` | 信号 bar 的 close，即 \(C_t\) |
+| `corrected_execution` | 默认延迟 1 分钟，在计划成交 minute 的 open 成交，即 \(O_{t+1}\) |
+
+因此，正式经济口径 `corrected_execution`：
+
+- 不是用前一分钟 close 建仓；
+- 不是直接使用信号 bar close；
+- 正常情况下使用下一分钟 bar 的 open；
+- 持仓 PnL 从这个实际 fill 以后开始计算。
+
+可写成：
+
+```text
+bar t close 可见
+→ 计算 signal_t
+→ 创建 intended minute = t + 1 的 pending order
+→ 若 t+1 可执行，以 open[t+1] 成交
+→ 成交后才拥有 position
+```
+
+账本中的 `fill_price` 保留原始 bar open。固定每股滑点不通过修改
+`fill_price` 实现，而是作为独立现金成本扣除。因此“账本成交价”和“包含滑点后的
+经济成交价”不能混为一列。
+
+### 28.2 Pending order、缺失 minute 与 halt
+
+`corrected_execution` 当前默认：
+
+```text
+exec_lag_minutes = 1
+pending_order_policy = cancel_if_next_unavailable
+```
+
+具体语义如下：
+
+1. 如果计划成交 minute `t+1` 可执行，订单按该 minute 的 open 成交；
+2. 如果 `t+1` 不可执行，而后续首先遇到的是更晚的 minute，默认取消订单，
+   原因记为 `intended_minute_unavailable`；
+3. `queue_until_executable` 仅作为替代规则：订单在恢复交易后的第一个
+   executable open 成交；
+4. 无论 cancel 还是 queue，未成交订单都不能获得信号 close 到复牌 open
+   之间的跳空收益；
+5. 已在 halt 前成交并持有的仓位必须完整承担或获得复牌跳空。
+
+从经济语义看，`halt_aware` 比把已核实 halt 日全部排除的 `paper_ready`
+更接近真实持仓路径。但正式 v2 headline 已冻结为 `paper_ready`，不能回改；
+`halt_aware` 应作为主要经济解释和敏感性结果并列报告。
+
+当前正式 v2 的代表性账本没有发生 pending cancellation，因此
+`cancel_if_next_unavailable` 与 `queue_until_executable` 并未改变该次正式结果。
+这不代表两者在未来数据或实时交易中等价。更稳健的后续规则是：订单过期即取消，
+复牌后重新计算新信号；queue 继续作为敏感性场景。
+
+### 28.3 EOD flatten 的价格代理及限制
+
+当前代码在日末仍有仓位时，使用：
+
+```text
+最后一个 executable minute bar 的 close
+```
+
+进行强制平仓。完整交易日通常对应 **15:59 minute bar close**。它不是：
+
+- 交易所官方 closing auction 成交价；
+- 独立日线 official close；
+- 对收盘集合竞价冲击和排队的模拟。
+
+当前 closing 的完整操作规则是：
+
+| 项目 | 当前实现 |
+|---|---|
+| 触发条件 | 当日 minute 循环结束后仍有非零持仓 |
+| 正常日平仓价 | 15:59 minute bar 的 close |
+| 更精确的代码定义 | 当日最后一个 executable minute bar 的 close |
+| 15:59 缺失或不可执行 | 使用更早的最后一个 executable close，同时暴露为 unknown-tail 风险；不能把该价格解释成真实收盘成交价 |
+| 当日完全没有 executable bar | 没有可用 EOD fill price，不能虚构成交 |
+| 未成交的 pending order | 在 session 结束时取消，不能与旧仓位的 EOD flatten 混为一笔 |
+| 最后一根计划 bar 的新信号 | 不建立新仓，避免在同一价格立刻开仓再平仓并重复收费 |
+| 订单标识 | 记为 `end_of_session` |
+| 平仓成本 | 按实际平仓股数收取佣金和所选 per-share slippage |
+| 平仓后状态 | position 归零；当日 gross PnL 计到该 close，成本独立扣除 |
+
+上述规则适用于引擎的 EOD 强制归零逻辑；不同 profile 的日内建仓价虽然不同，
+都不能把隔夜仓位带到下一交易日。
+
+因此当前 EOD fill 只是分钟数据约束下的代理。尾盘 minute 缺失时，
+“最后一个可得 close”更不能自动解释为真实可成交收盘价；未知尾部还可能使
+当日退出和后续 AUM 路径失去可靠性。
+
+EOD flatten 在成交量和策略 PnL 中占比不可忽略，所以后续应单独实验：
+
+1. 当前 `15:59 close + intraday slippage`；
+2. official daily close 作为 MOC 价格代理，并另加 auction cost；
+3. 尾盘 VWAP/TWAP 执行。
+
+这些实验必须重算完整持仓、成本和 AUM 路径，不能只在冻结账本上静态替换价格后
+宣称得到新的 CAGR。
+
+### 28.4 每股成本与滑点网格
+
+论文口径佣金为：
+
+```text
+$0.0035/share = 0.35¢/share
+```
+
+`corrected_execution` 当前默认滑点为 `$0.005/share`，所以不考虑最低佣金
+对小订单的额外影响时：
+
+```text
+commission 0.35¢ + slippage 0.50¢ = 0.85¢/traded share
+```
+
+这里的 **0.85 是美分，不是 0.85 美元**。反手会先平旧仓再开新仓，成交股数和
+成本都按两个方向累计。
+
+`$0.001 / $0.0025 / $0.005` 不应被描述成已经由本项目数据估计出的唯一真实滑点。
+更合适的解释是：
+
+| 滑点 | 用途 |
+|---|---|
+| `$0.001/share` | 偏乐观、接近论文摩擦假设的场景 |
+| `$0.0025/share` | 中间场景 |
+| `$0.005/share` | 当前 headline 使用的保守场景 |
+
+`$0.010/share` 可保留为更严厉的 appendix stress。选择哪一个作为主场景，
+最终应由订单规模、参与率、时段、spread、波动率和实盘/券商成交数据支持；
+固定 per-share 滑点本身不能表达 market impact、queue position 或 partial fill。
+
+### 28.5 Funding spread、short proceeds 与借券
+
+正式 v2 的点时融资设定为：
+
+```text
+positive cash rate = benchmark - 50 bps p.a.
+borrowed cash rate = benchmark + 100 bps p.a.
+SPY stock-borrow fee = 25 bps p.a.
+day count = ACT/360
+```
+
+`benchmark` 不是一个全样本常数，而是每个 session open 前已经可得的点时利率：
+
+- 2008-01-22 至 2023-06-30：公开 USD 3M LIBOR proxy，使用上一个已经完成的
+  calendar month average；
+- 2023-07-03 起：SOFR，使用严格早于该 session 的最新观测；
+- 不使用事后才能知道的当日或未来利率，也不使用 synthetic LIBOR。
+
+#### 28.5.1 盘中现金余额
+
+设 session 开始时 equity/AUM 为 \(E\)，持仓按当时 mark 计算的 signed notional 为
+\(N\)：
+
+```text
+long:  N > 0
+short: N < 0
+cash balance = E - N
+positive cash = max(E - N, 0)
+borrowed cash = max(N - E, 0)
+short notional = max(-N, 0)
+```
+
+因此：
+
+- 多头名义金额不超过 equity 时，剩余正现金赚取 cash rate；
+- 多头名义金额超过 equity 时，超出的 borrowed cash 支付 funding rate；
+- 做空时 \(N<0\)，所以 `cash = E + |N|`；当前模型把 short-sale proceeds
+  放入正现金，并对整个正现金余额按 cash rate 计息；
+- 同时对空头名义金额收取 SPY borrow fee。
+
+引擎按每个持仓区间累计 minute-dollar integral，再除以当日 scheduled minutes，
+得到：
+
+```text
+avg_positive_cash
+avg_borrowed_cash
+avg_short_notional
+```
+
+这意味着融资不是简单地按“当日收盘仓位”或“最大杠杆”收费；仓位几点建立、
+何时反手、何时归零都会改变计息金额。正现金、借入现金和空头名义金额分别累计，
+不能先相互净额抵消。
+
+#### 28.5.2 隔夜现金与盘中计息
+
+策略每天 EOD 强制归零，因此不持有隔夜 SPY 仓位。上一 session 结束到本
+session 盘中开始之间，整笔上一日 AUM 视为 flat cash，并按 calendar-day gap
+计息；周末和节假日包含在 ACT/360 的 elapsed days 中。
+
+正式 daily curve 下：
+
+```text
+total_dcf = 自上一 session 起经过的 calendar days / 360
+intraday_dcf = scheduled session minutes / (24 × 60 × 360)
+overnight_dcf = total_dcf - intraday_dcf
+```
+
+首个 evaluation session 没有前一 session 可锚定时，只计算本 session 的
+intraday fraction。
+
+#### 28.5.3 具体入账公式
+
+当日现金利息：
+
+```text
+cash_interest
+= previous_AUM × cash_rate × overnight_dcf
+ + avg_positive_cash × cash_rate × intraday_dcf
+```
+
+当日 funding/borrow 扣款：
+
+```text
+financing
+= - avg_borrowed_cash × funding_rate × intraday_dcf
+   - avg_short_notional × borrow_rate × intraday_dcf
+```
+
+最终会计恒等式：
+
+```text
+net
+= gross
+ - commission
+ - slippage
+ + cash_interest
+ + financing
+```
+
+其中 `financing` 报告列把 leveraged-long funding 与 stock-borrow fee 合在一起；
+`cash_interest` 列则同时包含 base cash return 和 short-proceeds 带来的现金利息。
+因此仅看合并列无法直接判断 short rebate 对结果的贡献。
+
+所以当前做空融资并不是只扣 25 bps 借券费；它同时包含 short proceeds 的现金
+利息收入。这更接近能获得较好 rebate 的机构/prime-broker 账户，可能明显优于
+不给 short-proceeds 利息的零售账户。
+
+报告时应拆开：
+
+```text
+base cash return
+long financing spread
+short-proceeds interest/rebate
+stock-borrow fee
+```
+
+建议至少增加以下敏感性：funding spread 上调、borrow fee 上调、
+short proceeds 不计息。否则单列一个合并后的“financing cost”会掩盖空头现金
+利息对净收益的贡献，也不利于映射到具体券商账户。
+
+---
+
+## 29. 最终总结
 
 论文策略的核心并不复杂：
 
