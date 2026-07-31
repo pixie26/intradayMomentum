@@ -88,11 +88,18 @@ Run reports (tied to a specific `data/processed/runs/<run_id>/`):
 
 Frozen: data-v1.0 begins on 2008-01-22; engine has three profiles; evaluation
 spec v2 uses the independent daily benchmark and point-in-time
-LIBOR-proxy/SOFR financing release. The formal headline
+LIBOR-proxy/SOFR financing release. The original frozen headline
 (`corrected_execution × paper_ready × with-dividends × $0.005/share`) is
 15.35% full-sample CAGR / 0.99 Sharpe and 7.01% post-publication CAGR /
 0.27 Sharpe, versus 21.74% SPY total-return CAGR post-publication. See
 `docs/POST_PUBLICATION_EVALUATION_V2_ZH.md` and its linked HTML.
+
+The post-result reporting amendment uses
+`corrected_execution × halt_aware × with-dividends × $0.0025/share` as the
+primary economic display: 16.70% full-sample CAGR / 1.07 Sharpe and 7.52%
+post-publication CAGR / 0.30 Sharpe. The original headline remains preserved.
+See `docs/POST_PUBLICATION_EVALUATION_V2_HALT0025_ZH.md` and the interactive
+attribution report linked there.
 
 Pending: market-impact/capacity and queue-position/partial-fill models.
 HAC and block bootstrap are explicitly deferred; v2 reports point estimates.

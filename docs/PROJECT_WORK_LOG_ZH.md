@@ -530,6 +530,27 @@ trading edge 仍为 +1.153¢/share。
 但风险调整收益很弱，并且大幅跑输同期 SPY。下一步如继续研究，应集中在
 market impact、容量和执行模型，而不是参数优化。
 
+### 10.2 halt-aware × $0.0025 headline amendment 与归因（2026-08-01）
+
+按 2026-07-31 的 post-result reporting amendment，主要经济展示口径改为
+`corrected_execution × halt_aware × with_dividends × $0.0025/share`。
+原始 frozen v2 及其 `$0.005 paper_ready` headline 保持不变。
+
+clean-state 正式 run：
+`20260731T200227Z_formal_spec2_58205b0c130f`，commit `050b031`，
+spec SHA-256 `58205b0c130f...`。72 cells / 216 rows 全部完成；与此前 headline
+variant 矩阵按 cell key 对账，所有数值差异为 0。
+
+新 headline full / pre / post CAGR 分别为 16.70% / 18.00% / 7.52%，
+Sharpe 为 1.07 / 1.18 / 0.30。post 的主要毛收益来自 short；execution、
+funding 和 borrow 没有吞掉全部交易边际，但现金收益对 post 累计回报贡献明显。
+
+已新增完整交互归因报告，覆盖 long/short、commission、slippage、cash interest、
+leveraged funding、SPY borrow、SPY total-return 相关性、rolling correlation、
+最差/最好季度和年度情景。详见
+`POST_PUBLICATION_EVALUATION_V2_HALT0025_ZH.md` 与
+`POST_PUBLICATION_EVALUATION_V2_HALT0025_ATTRIBUTION.html`。
+
 ---
 
 ## 11. 项目当前状态
