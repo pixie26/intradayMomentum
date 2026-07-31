@@ -1,0 +1,148 @@
+# Candidate only. This file is NOT frozen and cannot authorize a formal run.
+# Promote it to evaluation_spec_v2.yml only after financing/borrow sources are
+# approved and the clean Git checkpoint records all hashes.
+spec_version: 2
+status: candidate
+drafted_utc: "2026-07-31"
+
+evaluation_start: "2024-05-01"
+evaluation_end: "2026-07-09"
+subperiods:
+  - full_sample
+  - pre_publication
+  - post_publication
+
+data_release:
+  release_id: data-v1.0
+  manifest_sha256: fc63122dff1d13df95735ba2e1df0a9763db100e0c3efbfa99adf948d602c530
+  expected_start: "2008-01-22"
+  expected_end: "2026-07-09"
+
+capital_path: continuous_full_run_then_slice_returns
+
+profiles:
+  - official_sample_compatible
+  - paper_spec
+  - corrected_execution
+
+tiers:
+  headline: paper_ready
+  also_report: [halt_aware, exploratory]
+
+dividends:
+  headline: with_dividends
+  also_report: ignore_dividends
+
+slippage_per_share: [0.001, 0.0025, 0.005, 0.010]
+
+headline:
+  profile: corrected_execution
+  tier: paper_ready
+  dividend_mode: with_dividends
+  slippage_per_share: 0.005
+  note: Q24 matching is a separate replication experiment and does not tune this headline.
+
+decomposition:
+  - long_vs_short
+  - entry_time_bucket
+  - volatility_regime_quintile
+  - signal_count
+  - average_holding_minutes
+  - turnover
+  - gross_edge_per_traded_share
+  - cost_per_traded_share
+
+decomposition_definitions:
+  entry_time_bucket:
+    open: [1, 120]
+    midday: [121, 270]
+    close: [271, 390]
+  volatility_regime_quintile:
+    boundary_sample_end: "2024-04-30"
+    variable: lagged_14_session_daily_volatility
+
+financing:
+  status: pending_rate_source
+  cash_rate_annual: 0.0
+  cash_rate_decision: usd_3m_libor_then_sofr_minus_50_bps_pa
+  cash_rate:
+    spread_bps: -50
+    observation_policy: latest_rate_published_before_session_open
+    day_count: ACT/360
+    segments:
+      - start: "2008-01-22"
+        end: "2023-06-30"
+        benchmark: USD_3M_LIBOR_PUBLIC_PROXY
+      - start: "2023-07-03"
+        end: "2026-07-09"
+        benchmark: SOFR
+  funding_rate_annual: 0.0
+  funding_rate_decision: usd_3m_libor_then_sofr_plus_100_bps_pa
+  funding_rate:
+    spread_bps: 100
+    observation_policy: latest_rate_published_before_session_open
+    day_count: ACT/360
+    segments:
+      - start: "2008-01-22"
+        end: "2023-06-30"
+        benchmark: USD_3M_LIBOR_PUBLIC_PROXY
+        source_policy: public_reproducible_source
+      - start: "2023-07-03"
+        end: "2026-07-09"
+        benchmark: SOFR
+        source: Federal Reserve Bank of New York
+    transition_note: Representative USD LIBOR panel ended after 2023-06-30;
+      synthetic LIBOR is not used.
+  borrow_rate_annual: 0.0025
+  borrow_rate_decision: fixed_25_bps_pa
+  note: Positive cash earns the applicable benchmark minus 50 bps. SPY borrow
+    is fixed at 25 bps p.a. Funding is the applicable benchmark plus 100 bps.
+    The pre-transition LIBOR input may be a documented public proxy rather
+    than licensed ICE fixing data. Scalar cash/funding values remain smoke
+    placeholders until the point-in-time rate release is wired into the runner.
+
+benchmark:
+  computed_in_engine: false
+  external_file_required: true
+  release_id: spy-daily-benchmark-v1
+  daily_close_file: spy_daily_raw_close.csv
+  daily_close_sha256: 5dc28af7090d155da99939928170bfc2bf799d853e11c212d40f6564b836bc28
+  source_sha256: a305d2ceb4bbc3aeec9937e113841e439d75c835d793cfab2d7ef0e3576f9c08
+  price_source: Yahoo Finance daily raw close
+  dividend_source: data-v1.0 State Street cash distributions
+  series: [spy_price_return, spy_total_return]
+  metrics: [excess_cagr, beta, alpha_annualised, information_ratio]
+
+statistics:
+  status: candidate
+  sharpe_risk_free_rate: same_as_cash_rate
+  alpha_standard_errors: HAC
+  hac_lags: 5
+  bootstrap:
+    method: moving_block
+    block_sessions: 20
+    replications: 5000
+    random_seed: 20260731
+
+decision_rule: |
+  The question is not the full-sample CAGR. It is whether, after 2024-05-01,
+  gross edge per traded share still exceeds execution + financing + borrow cost
+  per traded share.
+  - gross edge ~ 0        -> the signal is gone; parameter optimisation must stop.
+  - gross edge > 0, eaten -> study execution, trade frequency and capacity.
+
+provenance_required:
+  - spec_sha256
+  - engine_script_sha256
+  - data_script_sha256
+  - data_run_id
+  - data_release_manifest_sha256
+  - source_sha256
+  - dividend_sha256
+  - benchmark_sha256
+  - git_commit
+  - git_dirty
+
+naming: |
+  Call this the "post-publication evaluation period", not an untouched
+  out-of-sample test.
