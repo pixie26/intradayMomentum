@@ -46,6 +46,16 @@ def main() -> int:
         "cash_rate_annual", "funding_rate_annual", "borrow_rate_annual"
     ]].notna().all(axis=None)
 
+    frozen_v2 = R.load_spec(Path("config/evaluation_spec_v2.yml"))[0]
+    amended_v2 = R.load_spec(
+        Path("config/evaluation_spec_v2_halt_headline.yml"))[0]
+    assert R.headline_label(frozen_v2) == (
+        "corrected_execution × paper_ready × with-dividends × "
+        "$0.0050/share slippage")
+    assert R.headline_label(amended_v2) == (
+        "corrected_execution × halt_aware × with-dividends × "
+        "$0.0025/share slippage")
+
     import pandas as pd
     cell = cells[0]
     idx = pd.to_datetime(["2024-05-01", "2024-05-02"])

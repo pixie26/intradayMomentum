@@ -1,9 +1,9 @@
-# Headline-designation variant of the frozen v2 spec (sha256 b4d7a8f805b9...).
-# Economic content is byte-identical to config/evaluation_spec_v2.yml; the ONLY
-# change is which pre-existing matrix cell is designated the reporting headline
-# (paper_ready x $0.005 -> halt_aware x $0.0025), requested 2026-07-31.
-# The frozen spec file itself is untouched; this variant is the durable copy
-# (the formal run that used it recorded spec_sha256 10a9f44dfac6...).
+# Reporting-headline amendment to the frozen v2 spec (sha256 b4d7a8f805b9...).
+# The full 72-cell economic matrix is unchanged. This variant designates
+# halt_aware x $0.0025/share as the primary economic tier and reporting
+# headline instead of paper_ready x $0.005/share, requested 2026-07-31.
+# This is a post-result reporting amendment; the original frozen spec remains
+# untouched and continues to define the original v2 headline.
 # Frozen economic evaluation specification. Q24 paper matching remains a
 # separate replication experiment and did not tune this specification.
 spec_version: 2
@@ -32,8 +32,8 @@ profiles:
   - corrected_execution
 
 tiers:
-  headline: paper_ready
-  also_report: [halt_aware, exploratory]
+  headline: halt_aware
+  also_report: [paper_ready, exploratory]
 
 dividends:
   headline: with_dividends
@@ -46,9 +46,10 @@ headline:
   tier: halt_aware
   dividend_mode: with_dividends
   slippage_per_share: 0.0025
-  note: Reporting-headline variant only. The cell belongs to the frozen v2
-    matrix; no economic parameter, rate, cost or date changed versus the
-    frozen spec (sha256 b4d7a8f805b9dd3dacdaf3f2c0f286db2c8ed3d797a7ea3d21764ae09b0eb1b4).
+  note: Post-result reporting-headline amendment. The full economic matrix,
+    rate assumptions and evaluation dates are unchanged versus the frozen
+    spec (sha256 b4d7a8f805b9dd3dacdaf3f2c0f286db2c8ed3d797a7ea3d21764ae09b0eb1b4),
+    but the selected headline cell changes the tier and slippage assumption.
     Q24 matching is a separate replication experiment and does not tune this headline.
 
 decomposition:

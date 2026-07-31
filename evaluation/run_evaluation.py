@@ -581,6 +581,16 @@ def headline_cell_id(spec: dict[str, Any]) -> str:
         float(headline["slippage_per_share"])).cell_id
 
 
+def headline_label(spec: dict[str, Any]) -> str:
+    """Return the human-readable headline selector recorded in the spec."""
+    headline = spec["headline"]
+    dividend_mode = str(headline["dividend_mode"]).replace("_", "-")
+    return (
+        f"{headline['profile']} × {headline['tier']} × {dividend_mode} × "
+        f"${float(headline['slippage_per_share']):.4f}/share slippage"
+    )
+
+
 def headline_calendar_tables(
         result: pd.DataFrame, close: pd.Series,
         dividends: pd.Series) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -808,8 +818,8 @@ padding:3px 8px;border-radius:99px;font-weight:650}}
 <div class="card"><div class="label">After-cost edge / share</div><div class="value">
 {cents(after_costs)}</div></div>
 </div>
-<p class="note">Headline: corrected_execution × paper_ready × with-dividends ×
-$0.005/share slippage. Cash earns LIBOR-proxy/SOFR −50bp, borrowed cash costs
+<p class="note">Headline: {html.escape(headline_label(spec))}. Cash earns
+LIBOR-proxy/SOFR −50bp, borrowed cash costs
 benchmark +100bp, and SPY borrow is 25bp p.a. HAC and block bootstrap are
 deferred; this report does not provide confidence intervals.</p>
 <div class="scroll">{headline_table}</div>
