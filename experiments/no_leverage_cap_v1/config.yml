@@ -1,0 +1,29 @@
+experiment_id: no-leverage-cap-v1
+classification: exploratory_post_result_sizing_sensitivity
+created_date: "2026-08-01"
+
+base:
+  profile: corrected_execution
+  tier: halt_aware
+  dividend_mode: with_dividends
+  slippage_per_share: 0.0025
+  target_daily_volatility: 0.02
+  data_release: data_release_v1
+  financing_rates: data/reference/financing_rates_v1/financing_rates_daily.csv
+  formal_baseline_run: evaluation/results/20260731T200227Z_formal_spec2_58205b0c130f
+  formal_baseline_cell: corrected_execution__halt_aware__with_dividends__slip_0p0025
+  evaluation_start: "2024-05-01"
+  evaluation_end: "2026-07-09"
+
+variants:
+  - id: cap_4x
+    label: 4x leverage cap
+    max_leverage: 4.0
+  - id: uncapped
+    label: No leverage cap
+    max_leverage: null
+
+interpretation:
+  uncapped_formula: target_daily_volatility / lagged_14_session_daily_volatility
+  note: This is a post-result sizing sensitivity. All other signal, execution,
+    cost, financing, dividend, tier and continuous-AUM assumptions are fixed.
