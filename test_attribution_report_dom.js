@@ -13,6 +13,16 @@ if (script.includes("__DAILY__") || html.includes("__PLACEHOLDER__")) {
   throw new Error("unresolved report placeholder");
 }
 new Function(script);
+for (const token of [
+  "FORMAL HEADLINE DERIVED ANALYSIS", "Performance vs benchmark",
+  "Post headline portfolio CAGR", "Gross P&L", "Win rate",
+  "Cash interest annualized", "Event (descriptive)",
+]) {
+  if (html.includes(token)) throw new Error(`reader-facing English remains: ${token}`);
+}
+for (const token of ["正式主口径派生分析", "表现与基准对比", "发表后组合 CAGR", "毛损益"]) {
+  if (!html.includes(token)) throw new Error(`Chinese report label missing: ${token}`);
+}
 
 const ids = [
   "start", "end", "scenarioMode", "scenarioN", "cards", "nav",

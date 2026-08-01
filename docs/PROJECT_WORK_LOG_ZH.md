@@ -563,6 +563,9 @@ cash diagnostics 和极端日利润集中度。Post 最佳单个 trading day 占
 trading P&L 的 7.5%；将该日 trading-only return 置零后，post trading-only
 累计收益由 +7.29% 变为 −2.04%，显示结果对少数极端日较敏感。
 
+报告 v3 进一步把动态生成的卡片、表头、图例、季度事件标签和说明统一为中文；
+仅保留 CAGR、SPY、AUM、Beta 等行业缩写及底部可审计的原始字段名。
+
 ---
 
 ## 11. 项目当前状态

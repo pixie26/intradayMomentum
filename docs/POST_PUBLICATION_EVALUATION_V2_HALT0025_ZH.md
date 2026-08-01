@@ -163,9 +163,10 @@ Post-publication 点估计：
   benchmark 相关性、rolling correlation、季度情景和年度归因。
 
 本次扩展归因派生目录：
-`evaluation/results/20260731T200227Z_formal_spec2_58205b0c130f_attribution_v2/`。
+`evaluation/results/20260731T200227Z_formal_spec2_58205b0c130f_attribution_v3/`。
 其中 daily/quarterly/annual、round-trip、decomposition CSV、report、manifest 和
-`_SUCCESS` 均已生成；旧 attribution 派生目录保留不覆盖。
+`_SUCCESS` 均已生成。v3 将读者界面、动态表头、图例和事件标签统一为中文；
+旧 attribution 派生目录保留不覆盖。
 该目录与正式 run 分离，不修改正式 run 的 hash 清单。
 
 本轮仍只报告点估计。HAC 和 block bootstrap 按决定继续暂缓。
