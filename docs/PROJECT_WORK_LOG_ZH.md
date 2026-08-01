@@ -551,6 +551,18 @@ leveraged funding、SPY borrow、SPY total-return 相关性、rolling correlatio
 `POST_PUBLICATION_EVALUATION_V2_HALT0025_ZH.md` 与
 `POST_PUBLICATION_EVALUATION_V2_HALT0025_ATTRIBUTION.html`。
 
+2026-08-01 对报告口径进一步修正：正式 portfolio CAGR 与 same-path
+trading-only CAGR 必须并列，cash interest 单独显示。Pre / post 的 cash-interest
+年化分别为 0.88% / 4.06%，占窗口简单加总收益 5.0% / 48.6%；post 的
+portfolio CAGR 7.52% 中含明显高利率 cash carry，而 trading-only CAGR 仅
+3.27%。因此 7.52% 不再单独作为策略表现 headline。
+
+交互报告同时扩展资本投入、持仓时杠杆、active-day、long/short round trips、
+冻结 entry-time buckets、lagged-volatility quintiles、年度 signal/entry 数量、
+cash diagnostics 和极端日利润集中度。Post 最佳单个 trading day 占盈利日
+trading P&L 的 7.5%；将该日 trading-only return 置零后，post trading-only
+累计收益由 +7.29% 变为 −2.04%，显示结果对少数极端日较敏感。
+
 ---
 
 ## 11. 项目当前状态

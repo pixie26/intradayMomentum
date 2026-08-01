@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import pandas as pd
 
-from evaluation.make_attribution_report import COMPONENTS, linked_contributions
+from evaluation.make_attribution_report import (
+    COMPONENTS, linked_contributions, reporting_metrics,
+)
 
 
 def main() -> int:
@@ -29,6 +31,15 @@ def main() -> int:
     total = (1.10 * 0.97) - 1.0
     assert abs(sum(linked.values()) - total) < 1e-12
     assert abs(linked["long"] - (0.08 * 0.97 - 0.03)) < 1e-12
+
+    frame.index = pd.to_datetime(["2024-01-02", "2025-01-02"])
+    frame["ret_cash_interest"] = [0.001, 0.001]
+    frame["trading_only_ret"] = frame["ret"] - frame["ret_cash_interest"]
+    metrics = reporting_metrics(frame)
+    expected_trading = (1.099 * 0.969) - 1.0
+    assert abs(metrics["trading_only_total_return"] - expected_trading) < 1e-12
+    assert abs(metrics["cash_interest_annualized"] - 0.252) < 1e-12
+    assert abs(metrics["cash_share_simple_sum_return"] - (0.002 / 0.07)) < 1e-12
     print("ATTRIBUTION REPORT TESTS PASSED")
     return 0
 

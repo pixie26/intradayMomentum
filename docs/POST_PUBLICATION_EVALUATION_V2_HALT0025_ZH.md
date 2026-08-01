@@ -23,16 +23,25 @@
 `profile/tier/dividend/slippage/subperiod` 对齐后，所有数值列最大差异为
 **0.0**；文件 hash 的变化来自 tier 输出顺序及新的 provenance/报告文字。
 
-## Headline performance
+## Headline performance 与 cash-interest 口径修正
 
-| 窗口 | 策略 CAGR | SPY total-return CAGR | Excess CAGR | Sharpe vs cash | MDD |
-|---|---:|---:|---:|---:|---:|
-| Full sample | 16.70% | 11.96% | +4.74pp | 1.07 | −28.26% |
-| Pre-publication | 18.00% | 10.70% | +7.30pp | 1.18 | −28.26% |
-| Post-publication | 7.52% | 21.74% | −14.22pp | 0.30 | −17.06% |
+正式 portfolio CAGR 与 same-path trading-only CAGR 必须并列。后者逐日使用
+`portfolio return − cash-interest return` 后重新复利；它保留实际 AUM、仓位和
+融资路径，是分析口径，不是另一条自融资回测。
 
-因此 headline 变化没有改变核心结论：post-publication 毛交易边际仍为正，
-但风险调整收益较弱，并大幅跑输同期 SPY total return。
+| 窗口 | Portfolio CAGR（含现金） | Trading-only CAGR | Cash interest 年化 | Cash 占简单加总收益 | SPY TR CAGR | Sharpe vs cash | MDD |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Full sample | 16.70% | 15.25% | 1.26% | 7.6% | 11.96% | 1.07 | −28.26% |
+| Pre-publication | 18.00% | 16.97% | 0.88% | 5.0% | 10.70% | 1.18 | −28.26% |
+| Post-publication | **7.52%** | **3.27%** | **4.06%** | **48.6%** | 21.74% | 0.30 | −17.06% |
+
+`Cash interest 年化 = mean(daily cash-interest return) × 252`；
+`Cash 占简单加总收益 = Σ cash-interest return / Σ portfolio return`。
+Post 的 portfolio CAGR 有约 4.25pp 来自 cash-carry uplift；2024–2026 的高利率
+现金收益不是策略 alpha。因此不得再把 7.52% 单独作为策略 headline 解读。
+
+核心结论相应收紧：post 毛交易边际仍为正，但 trading-only CAGR 只有 3.27%，
+Sharpe vs cash 只有 0.30，并大幅跑输同期 SPY total return。
 
 ## Post-publication P&L 来源
 
@@ -54,11 +63,58 @@
 主要发现：
 
 - post 毛交易收益主要来自 short，而不是 long；
-- 剔除 cash-interest 组件后，同一已实现仓位路径的 linked trading contribution
-  约为 +8.35pp；这不是重新回测的自融资组合；
+- 逐日剔除 cash-interest return 后，same-path trading-only 累计收益为 +7.29%，
+  CAGR 为 3.27%；linked components 中 cash 以外的贡献为 +8.35pp，两者因
+  复利链接定义不同而不应混用；
 - execution 合计约拖累 −2.49pp，funding + borrow 约拖累 −0.57pp；
 - borrow 25bp 本身不是 post 表现弱的主要原因；
 - with-dividends 是信号锚点定义，不是日内持仓收到的 dividend cash P&L。
+
+## 资本使用、交易切片与利润集中度
+
+| 指标 | Pre | Post |
+|---|---:|---:|
+| 全交易时段平均 gross exposure / AUM | 65.2% | 68.7% |
+| 有持仓分钟 / scheduled minutes | 25.2% | 25.4% |
+| 有持仓时平均 gross leverage | 2.57× | 2.71× |
+| Active-day rate | 60.6% | 60.2% |
+| 平均正现金余额 / AUM | 114.1% | 116.9% |
+| 平均借款余额 / AUM | 22.6% | 24.2% |
+
+正现金余额可因 short proceeds 超过 100%，不能直接解释为“闲置资本比例”。
+实际资本投入强度使用引擎的 notional-minute ledger 计算。
+
+Post 的 488 个 round trips 中 long 261、short 227。long gross P&L 为
++$27,526，short 为 +$124,629。按冻结 entry bucket：
+
+| Entry bucket | Entries | Gross P&L | 平均 gross / entry |
+|---|---:|---:|---:|
+| Open，分钟 1–120 | 227 | +$254,317 | +$1,120 |
+| Midday，121–270 | 163 | −$102,720 | −$630 |
+| Close，271+ | 98 | +$558 | +$6 |
+
+这说明 post 的毛利润集中在开盘 bucket；midday 明显为负，close 几乎为零。
+该表未把 commission、slippage、funding 或 cash interest 分摊到单个 round trip。
+
+冻结 volatility regime 使用 lagged 14-session daily volatility，并只用
+2024-04-30 以前样本确定五分位边界。Post gross P&L 从 Q1 到 Q5 分别为
++$213,137、+$146,994、−$110,321、−$175,486、+$77,831；对应 entries 为
+77、118、159、103、31。中高但非极高波动的 Q3/Q4 是主要亏损区间；Q5 样本较少。
+
+Post 每年 headline signal observations / non-flat observations / entries 为：
+
+| 年份 | Signal observations | Non-flat observations | Entries |
+|---|---:|---:|---:|
+| 2024-05-01 起 | 2,179 | 586 | 142 |
+| 2025 | 3,232 | 862 | 216 |
+| 2026 至 07-09 | 1,677 | 520 | 130 |
+
+Signal observations 包含 flat 状态，entries 才是 round trips，不能混称。
+
+Post trading-only 利润明显集中：最佳 1 / 5 / 10 / 20 日分别占所有盈利日
+trading P&L 的 7.5% / 22.3% / 33.5% / 47.0%。完整 post trading-only 累计收益
+为 +7.29%；仅把最佳 1 日的 trading-only return 置零，累计收益即变为 −2.04%。
+这不是可交易反事实，但说明 3.27% trading-only CAGR 对少数极端盈利日较敏感。
 
 ## 与 SPY total return 的相关性
 
@@ -106,9 +162,10 @@ Post-publication 点估计：
 - `POST_PUBLICATION_EVALUATION_V2_HALT0025_ATTRIBUTION.html`：完整交互式 P&L 归因、
   benchmark 相关性、rolling correlation、季度情景和年度归因。
 
-归因派生目录：
-`evaluation/results/20260731T200227Z_formal_spec2_58205b0c130f_attribution/`。
-其中 daily/quarterly/annual CSV、report、manifest 和 `_SUCCESS` 均已生成；
+本次扩展归因派生目录：
+`evaluation/results/20260731T200227Z_formal_spec2_58205b0c130f_attribution_v2/`。
+其中 daily/quarterly/annual、round-trip、decomposition CSV、report、manifest 和
+`_SUCCESS` 均已生成；旧 attribution 派生目录保留不覆盖。
 该目录与正式 run 分离，不修改正式 run 的 hash 清单。
 
 本轮仍只报告点估计。HAC 和 block bootstrap 按决定继续暂缓。

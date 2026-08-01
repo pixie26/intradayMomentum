@@ -97,7 +97,9 @@ LIBOR-proxy/SOFR financing release. The original frozen headline
 The post-result reporting amendment uses
 `corrected_execution × halt_aware × with-dividends × $0.0025/share` as the
 primary economic display: 16.70% full-sample CAGR / 1.07 Sharpe and 7.52%
-post-publication CAGR / 0.30 Sharpe. The original headline remains preserved.
+post-publication portfolio CAGR / 0.30 Sharpe. Because that 7.52% includes
+cash interest, always show it beside the 3.27% same-path trading-only CAGR;
+cash carry is not strategy alpha. The original headline remains preserved.
 See `docs/POST_PUBLICATION_EVALUATION_V2_HALT0025_ZH.md` and the interactive
 attribution report linked there.
 
