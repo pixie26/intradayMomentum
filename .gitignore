@@ -12,6 +12,7 @@ benchmark_release_v1/
 tmp/
 __pycache__/
 evaluation/results/
+experiments/eod_close_source_v1/results/
 
 # Superseded local paper-replication drafts; the dividend comparison is tracked.
 experiments/paper_replication_v1/results/data-v1.0_q24_20260730/

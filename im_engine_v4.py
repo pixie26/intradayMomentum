@@ -446,7 +446,8 @@ def config_validity(d: pd.DataFrame, daily: pd.DataFrame, vsess: pd.DataFrame,
 # --------------------------------------------------------------------------- #
 
 def _session_pnl(g: pd.DataFrame, signal: np.ndarray, admissible: np.ndarray,
-                 shares: int, cfg: Cfg, equity: float | None = None) -> dict:
+                 shares: int, cfg: Cfg, equity: float | None = None,
+                 eod_execution: dict | None = None) -> dict:
     """One session, as an order/fill state machine.
 
     Marking: P&L accrues to the position held *before* a fill, marked from the
@@ -516,7 +517,8 @@ def _session_pnl(g: pd.DataFrame, signal: np.ndarray, admissible: np.ndarray,
         last_mark_clock = clock
 
     def execute(target: float, price: float, minute_value: int, clock: float,
-                order: dict, reason: str) -> None:
+                order: dict, reason: str,
+                extra_slippage_per_share: float = 0.0) -> None:
         nonlocal pos, fill_events, trade_units, shares_traded, traded_notional
         nonlocal commission, slippage
         nonlocal active_trip
@@ -530,7 +532,8 @@ def _session_pnl(g: pd.DataFrame, signal: np.ndarray, admissible: np.ndarray,
         n_orders = 2 if (delta > 1.0 and cfg.reversal_order_model == "two_orders") else 1
         fill_commission = n_orders * max(
             cfg.min_comm, cfg.comm_per_share * qty / n_orders)
-        fill_slippage = cfg.slip_per_share * qty
+        extra_slippage = extra_slippage_per_share * qty
+        fill_slippage = cfg.slip_per_share * qty + extra_slippage
         commission += fill_commission
         slippage += fill_slippage
         if active_trip is not None and previous_pos != target:
@@ -562,6 +565,7 @@ def _session_pnl(g: pd.DataFrame, signal: np.ndarray, admissible: np.ndarray,
             "order_count": int(n_orders),
             "commission": float(fill_commission),
             "slippage": float(fill_slippage),
+            "extra_eod_cost": float(extra_slippage),
             "reason": reason,
         })
         if target != 0.0:
@@ -646,9 +650,23 @@ def _session_pnl(g: pd.DataFrame, signal: np.ndarray, admissible: np.ndarray,
         })
     if pos != 0.0 and len(exec_idx):
         exit_minute = int(minute[exec_idx[-1]])
+        exit_price = float(close[exec_idx[-1]])
+        extra_cost_per_share = 0.0
+        if eod_execution is not None:
+            exit_price = float(eod_execution["price"])
+            extra_cost_per_share = float(
+                eod_execution.get("extra_cost_per_share", 0.0))
+            if not np.isfinite(exit_price) or exit_price <= 0:
+                raise ValueError(
+                    f"invalid EOD execution price {exit_price!r}")
+            if (not np.isfinite(extra_cost_per_share)
+                    or extra_cost_per_share < 0):
+                raise ValueError(
+                    "EOD extra_cost_per_share must be finite and nonnegative")
         order = new_order(0.0, exit_minute, exit_minute, "end_of_session")
-        execute(0.0, close[exec_idx[-1]], exit_minute, float(exit_minute),
-                order, "end_of_session")
+        execute(0.0, exit_price, exit_minute, float(exit_minute),
+                order, "end_of_session", extra_cost_per_share)
+    eod_fills = [fill for fill in fills if fill["reason"] == "end_of_session"]
     return {"gross": gross, "commission": commission, "slippage": slippage,
             "fill_events": float(fill_events), "trade_units": trade_units,
             "shares_traded": shares_traded,
@@ -667,6 +685,11 @@ def _session_pnl(g: pd.DataFrame, signal: np.ndarray, admissible: np.ndarray,
             "short_notional_minute_dollars":
                 float(short_notional_minute_dollars),
             "scheduled_minutes": scheduled_minutes,
+            "eod_exit_fills": float(len(eod_fills)),
+            "eod_exit_notional": float(sum(
+                fill["shares"] * fill["price"] for fill in eod_fills)),
+            "eod_extra_cost": float(sum(
+                fill.get("extra_eod_cost", 0.0) for fill in eod_fills)),
             "exit_at_scheduled_close": tail_ok,
             "exposed_to_unknown_tail": bool(exposed_to_unknown_tail),
             "signals": signals, "orders": orders, "fills": fills,
@@ -832,7 +855,8 @@ def _session_pnl_notebook(g: pd.DataFrame, signal: np.ndarray,
 
 def backtest(
         data: dict, cfg: Cfg, collect_ledger: bool = False,
-        financing_rates: pd.DataFrame | None = None) -> pd.DataFrame:
+        financing_rates: pd.DataFrame | None = None,
+        eod_execution: pd.DataFrame | None = None) -> pd.DataFrame:
     validate(cfg)
     bars, vmin, vsess = data["bars"], data["vmin"], data["vsess"]
     d, daily = build_features(bars, vmin, vsess, cfg, data["dividends"])
@@ -865,6 +889,31 @@ def backtest(
         if not np.isfinite(rates.to_numpy()).all():
             raise ValueError("financing rates contain non-finite values")
 
+    eod = None
+    if eod_execution is not None:
+        eod = eod_execution.copy()
+        if "session_date" in eod.columns:
+            eod["session_date"] = pd.to_datetime(
+                eod["session_date"]).dt.normalize()
+            eod = eod.set_index("session_date")
+        eod.index = pd.DatetimeIndex(eod.index).tz_localize(None).normalize()
+        if eod.index.duplicated().any():
+            raise ValueError("EOD execution input contains duplicate sessions")
+        if "price" not in eod.columns:
+            raise ValueError("EOD execution input must contain a price column")
+        if "extra_cost_per_share" not in eod.columns:
+            eod["extra_cost_per_share"] = 0.0
+        eod = eod[["price", "extra_cost_per_share"]].apply(
+            pd.to_numeric, errors="coerce")
+        invalid = (
+            ~np.isfinite(eod["price"]) | (eod["price"] <= 0)
+            | ~np.isfinite(eod["extra_cost_per_share"])
+            | (eod["extra_cost_per_share"] < 0)
+        )
+        if invalid.any():
+            raise ValueError(
+                f"EOD execution input has {int(invalid.sum())} invalid rows")
+
     tier_col = {"paper_ready": "is_paper_ready", "halt_aware": "is_halt_usable",
                 "exploratory": "is_exploratory"}[cfg.tier]
     tradable = set(bars.loc[bars[tier_col], "session_date"].unique())
@@ -892,6 +941,7 @@ def backtest(
         known_partial_financing = 0.0
         signal_count = 0
         traded_notional = long_gross = short_gross = 0.0
+        eod_exit_fills = eod_exit_notional = eod_extra_cost = 0.0
         row = daily.loc[day]
         g = groups.get(day)
         res = None
@@ -950,8 +1000,15 @@ def backtest(
                             res = _session_pnl_notebook(
                                 g, s, adm, shares, cfg=cfg, equity=prev_aum)
                         else:
+                            eod_row = None
+                            if eod is not None:
+                                if day not in eod.index:
+                                    raise ValueError(
+                                        f"EOD execution input misses {day.date()}")
+                                eod_row = eod.loc[day].to_dict()
                             res = _session_pnl(
-                                g, s, adm, shares, cfg, equity=prev_aum)
+                                g, s, adm, shares, cfg, equity=prev_aum,
+                                eod_execution=eod_row)
                         gross = res["gross"]
                         fill_events = res["fill_events"]
                         if res["commission"] is None:
@@ -969,6 +1026,9 @@ def backtest(
                         traded_notional = res.get("traded_notional", 0.0)
                         long_gross = res.get("long_gross", 0.0)
                         short_gross = res.get("short_gross", 0.0)
+                        eod_exit_fills = res.get("eod_exit_fills", 0.0)
+                        eod_exit_notional = res.get("eod_exit_notional", 0.0)
+                        eod_extra_cost = res.get("eod_extra_cost", 0.0)
                         holding_minutes = res.get("holding_minutes", 0.0)
                         positive_cash_integral = res.get(
                             "positive_cash_minute_dollars", 0.0)
@@ -1070,6 +1130,7 @@ def backtest(
                      cash_interest, financing, net, signal_count, fill_events,
                      units, traded_shares, holding_minutes,
                      traded_notional, long_gross, short_gross,
+                     eod_exit_fills, eod_exit_notional, eod_extra_cost,
                      positive_cash_integral, borrowed_cash_integral,
                      long_notional_integral, short_notional_integral,
                      known_partial_gross, known_partial_commission,
@@ -1088,6 +1149,8 @@ def backtest(
                                     "shares_traded", "holding_minutes",
                                     "traded_notional", "long_gross",
                                     "short_gross",
+                                    "eod_exit_fills", "eod_exit_notional",
+                                    "eod_extra_cost",
                                     "positive_cash_minute_dollars",
                                     "borrowed_cash_minute_dollars",
                                     "long_notional_minute_dollars",
@@ -1117,6 +1180,7 @@ def backtest(
             name: pd.DataFrame(items) for name, items in ledgers.items()}
         r.attrs["daily_features"] = daily[["dvol"]].copy()
     r.attrs["financing_rates_supplied"] = financing_rates is not None
+    r.attrs["eod_execution_supplied"] = eod_execution is not None
     return r
 
 

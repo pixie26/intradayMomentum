@@ -1,0 +1,839 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EOD 价格来源实验 v1</title><style>
+body{font-family:Segoe UI,Arial,sans-serif;margin:0;background:#f5f7fb;color:#172033}
+main{max-width:1250px;margin:auto;padding:28px} .card{background:white;border:1px solid #dfe5ef;
+border-radius:12px;padding:20px;margin:16px 0;box-shadow:0 2px 8px #15213a10}
+h1,h2{margin-top:0} .badge{display:inline-block;background:#fff3cd;color:#745500;padding:6px 10px;
+border-radius:99px;font-weight:600} table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:8px;border-bottom:1px solid #e8edf5;text-align:right} th:first-child,td:first-child{text-align:left}
+.scroll{overflow:auto} code,pre{font-family:Consolas,monospace} pre{white-space:pre-wrap;background:#111827;color:#dbeafe;padding:14px;border-radius:8px}
+.note{color:#526079;line-height:1.6} ul{line-height:1.65}</style></head><body><main>
+<span class="badge">POST-RESULT EXECUTION SENSITIVITY · POINT ESTIMATES</span>
+<h1>EOD 价格来源实验 v1</h1><p class="note">固定 corrected_execution × halt_aware × with-dividends ×
+$0.0025/share、融资曲线及信号路径，只替换 EOD flatten 腿。独立 daily close 是代理，不是真实 MOC 成交。</p>
+<section class="card"><h2>Full / Pre / Post 结果</h2><div class="scroll"><table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>label</th>
+      <th>period</th>
+      <th>cagr_pct</th>
+      <th>delta_cagr_pct</th>
+      <th>sharpe_calendar</th>
+      <th>delta_sharpe_calendar</th>
+      <th>mdd_pct</th>
+      <th>total_return_pct</th>
+      <th>delta_total_return_pct</th>
+      <th>eod_extra_cost</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>15:59 minute close</td>
+      <td>full_sample</td>
+      <td>16.70</td>
+      <td>0.00</td>
+      <td>1.07</td>
+      <td>0.00</td>
+      <td>-28.30</td>
+      <td>1,616.10</td>
+      <td>0.00</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <td>15:59 minute close</td>
+      <td>pre_publication</td>
+      <td>18.00</td>
+      <td>0.00</td>
+      <td>1.18</td>
+      <td>0.00</td>
+      <td>-28.30</td>
+      <td>1,364.40</td>
+      <td>0.00</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <td>15:59 minute close</td>
+      <td>post_publication</td>
+      <td>7.52</td>
+      <td>0.00</td>
+      <td>0.30</td>
+      <td>0.00</td>
+      <td>-17.10</td>
+      <td>17.20</td>
+      <td>0.00</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <td>Independent daily close, no extra auction cost</td>
+      <td>full_sample</td>
+      <td>16.91</td>
+      <td>0.21</td>
+      <td>1.09</td>
+      <td>0.02</td>
+      <td>-26.90</td>
+      <td>1,675.00</td>
+      <td>58.90</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <td>Independent daily close, no extra auction cost</td>
+      <td>pre_publication</td>
+      <td>18.01</td>
+      <td>0.01</td>
+      <td>1.18</td>
+      <td>0.00</td>
+      <td>-26.90</td>
+      <td>1,366.80</td>
+      <td>2.40</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <td>Independent daily close, no extra auction cost</td>
+      <td>post_publication</td>
+      <td>9.11</td>
+      <td>1.59</td>
+      <td>0.40</td>
+      <td>0.10</td>
+      <td>-16.40</td>
+      <td>21.00</td>
+      <td>3.80</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <td>Independent daily close + 0.5 bp auction cost</td>
+      <td>full_sample</td>
+      <td>15.82</td>
+      <td>-0.88</td>
+      <td>1.02</td>
+      <td>-0.05</td>
+      <td>-28.10</td>
+      <td>1,392.10</td>
+      <td>-224.00</td>
+      <td>89,215.35</td>
+    </tr>
+    <tr>
+      <td>Independent daily close + 0.5 bp auction cost</td>
+      <td>pre_publication</td>
+      <td>16.92</td>
+      <td>-1.08</td>
+      <td>1.12</td>
+      <td>-0.06</td>
+      <td>-28.10</td>
+      <td>1,160.90</td>
+      <td>-203.50</td>
+      <td>55,601.04</td>
+    </tr>
+    <tr>
+      <td>Independent daily close + 0.5 bp auction cost</td>
+      <td>post_publication</td>
+      <td>8.00</td>
+      <td>0.48</td>
+      <td>0.33</td>
+      <td>0.03</td>
+      <td>-17.30</td>
+      <td>18.30</td>
+      <td>1.10</td>
+      <td>33,614.31</td>
+    </tr>
+    <tr>
+      <td>Independent daily close + 1 bp auction cost</td>
+      <td>full_sample</td>
+      <td>14.73</td>
+      <td>-1.97</td>
+      <td>0.96</td>
+      <td>-0.11</td>
+      <td>-29.30</td>
+      <td>1,154.40</td>
+      <td>-461.70</td>
+      <td>157,923.71</td>
+    </tr>
+    <tr>
+      <td>Independent daily close + 1 bp auction cost</td>
+      <td>pre_publication</td>
+      <td>15.83</td>
+      <td>-2.17</td>
+      <td>1.06</td>
+      <td>-0.12</td>
+      <td>-29.30</td>
+      <td>983.90</td>
+      <td>-380.50</td>
+      <td>100,784.16</td>
+    </tr>
+    <tr>
+      <td>Independent daily close + 1 bp auction cost</td>
+      <td>post_publication</td>
+      <td>6.90</td>
+      <td>-0.62</td>
+      <td>0.26</td>
+      <td>-0.04</td>
+      <td>-18.30</td>
+      <td>15.70</td>
+      <td>-1.50</td>
+      <td>57,139.55</td>
+    </tr>
+    <tr>
+      <td>Last 5 scheduled-minute TWAP</td>
+      <td>full_sample</td>
+      <td>15.38</td>
+      <td>-1.32</td>
+      <td>1.01</td>
+      <td>-0.06</td>
+      <td>-27.20</td>
+      <td>1,291.90</td>
+      <td>-324.20</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <td>Last 5 scheduled-minute TWAP</td>
+      <td>pre_publication</td>
+      <td>16.31</td>
+      <td>-1.69</td>
+      <td>1.10</td>
+      <td>-0.08</td>
+      <td>-27.20</td>
+      <td>1,058.60</td>
+      <td>-305.80</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <td>Last 5 scheduled-minute TWAP</td>
+      <td>post_publication</td>
+      <td>8.75</td>
+      <td>1.23</td>
+      <td>0.38</td>
+      <td>0.08</td>
+      <td>-14.60</td>
+      <td>20.10</td>
+      <td>2.90</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <td>Last 10 scheduled-minute TWAP</td>
+      <td>full_sample</td>
+      <td>14.87</td>
+      <td>-1.83</td>
+      <td>0.99</td>
+      <td>-0.08</td>
+      <td>-27.60</td>
+      <td>1,183.00</td>
+      <td>-433.10</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <td>Last 10 scheduled-minute TWAP</td>
+      <td>pre_publication</td>
+      <td>15.82</td>
+      <td>-2.18</td>
+      <td>1.08</td>
+      <td>-0.10</td>
+      <td>-27.60</td>
+      <td>981.90</td>
+      <td>-382.50</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <td>Last 10 scheduled-minute TWAP</td>
+      <td>post_publication</td>
+      <td>8.11</td>
+      <td>0.59</td>
+      <td>0.35</td>
+      <td>0.05</td>
+      <td>-13.70</td>
+      <td>18.60</td>
+      <td>1.40</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <td>Last 15 scheduled-minute TWAP</td>
+      <td>full_sample</td>
+      <td>14.51</td>
+      <td>-2.19</td>
+      <td>0.98</td>
+      <td>-0.09</td>
+      <td>-27.70</td>
+      <td>1,111.40</td>
+      <td>-504.70</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <td>Last 15 scheduled-minute TWAP</td>
+      <td>pre_publication</td>
+      <td>15.34</td>
+      <td>-2.66</td>
+      <td>1.06</td>
+      <td>-0.12</td>
+      <td>-27.70</td>
+      <td>912.30</td>
+      <td>-452.10</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <td>Last 15 scheduled-minute TWAP</td>
+      <td>post_publication</td>
+      <td>8.56</td>
+      <td>1.04</td>
+      <td>0.38</td>
+      <td>0.08</td>
+      <td>-13.30</td>
+      <td>19.70</td>
+      <td>2.50</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <td>Last 30 scheduled-minute TWAP</td>
+      <td>full_sample</td>
+      <td>13.81</td>
+      <td>-2.89</td>
+      <td>0.95</td>
+      <td>-0.12</td>
+      <td>-28.00</td>
+      <td>980.90</td>
+      <td>-635.20</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <td>Last 30 scheduled-minute TWAP</td>
+      <td>pre_publication</td>
+      <td>14.35</td>
+      <td>-3.65</td>
+      <td>1.02</td>
+      <td>-0.16</td>
+      <td>-28.00</td>
+      <td>779.70</td>
+      <td>-584.70</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <td>Last 30 scheduled-minute TWAP</td>
+      <td>post_publication</td>
+      <td>9.87</td>
+      <td>2.35</td>
+      <td>0.47</td>
+      <td>0.17</td>
+      <td>-11.60</td>
+      <td>22.90</td>
+      <td>5.70</td>
+      <td>0.00</td>
+    </tr>
+  </tbody>
+</table></div></section>
+<section class="card"><h2>Post-publication P&amp;L 与 EOD 成本</h2><div class="scroll"><table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>label</th>
+      <th>gross_pnl</th>
+      <th>execution_cost</th>
+      <th>net_pnl</th>
+      <th>eod_exit_fills</th>
+      <th>eod_exit_notional</th>
+      <th>eod_extra_cost</th>
+      <th>delta_gross_pnl</th>
+      <th>delta_execution_cost</th>
+      <th>delta_net_pnl</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>15:59 minute close</td>
+      <td>152,155.11</td>
+      <td>43,080.50</td>
+      <td>252,118.13</td>
+      <td>159</td>
+      <td>775,365,342.74</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <td>Independent daily close, no extra auction cost</td>
+      <td>206,999.94</td>
+      <td>43,908.49</td>
+      <td>308,713.65</td>
+      <td>159</td>
+      <td>791,053,449.30</td>
+      <td>0.00</td>
+      <td>54,844.83</td>
+      <td>827.99</td>
+      <td>56,595.52</td>
+    </tr>
+    <tr>
+      <td>Independent daily close + 0.5 bp auction cost</td>
+      <td>178,695.85</td>
+      <td>70,947.27</td>
+      <td>231,654.75</td>
+      <td>159</td>
+      <td>672,286,206.66</td>
+      <td>33,614.31</td>
+      <td>26,540.74</td>
+      <td>27,866.77</td>
+      <td>-20,463.39</td>
+    </tr>
+    <tr>
+      <td>Independent daily close + 1 bp auction cost</td>
+      <td>154,209.41</td>
+      <td>88,884.35</td>
+      <td>170,762.68</td>
+      <td>159</td>
+      <td>571,395,501.49</td>
+      <td>57,139.55</td>
+      <td>2,054.30</td>
+      <td>45,803.85</td>
+      <td>-81,355.45</td>
+    </tr>
+    <tr>
+      <td>Last 5 scheduled-minute TWAP</td>
+      <td>154,000.96</td>
+      <td>34,428.78</td>
+      <td>233,735.41</td>
+      <td>159</td>
+      <td>620,195,994.01</td>
+      <td>0.00</td>
+      <td>1,845.86</td>
+      <td>-8,651.72</td>
+      <td>-18,382.72</td>
+    </tr>
+    <tr>
+      <td>Last 10 scheduled-minute TWAP</td>
+      <td>128,068.98</td>
+      <td>31,687.30</td>
+      <td>201,464.28</td>
+      <td>159</td>
+      <td>570,742,636.61</td>
+      <td>0.00</td>
+      <td>-24,086.13</td>
+      <td>-11,393.21</td>
+      <td>-50,653.85</td>
+    </tr>
+    <tr>
+      <td>Last 15 scheduled-minute TWAP</td>
+      <td>130,817.78</td>
+      <td>29,661.47</td>
+      <td>199,502.43</td>
+      <td>159</td>
+      <td>534,321,492.05</td>
+      <td>0.00</td>
+      <td>-21,337.33</td>
+      <td>-13,419.04</td>
+      <td>-52,615.70</td>
+    </tr>
+    <tr>
+      <td>Last 30 scheduled-minute TWAP</td>
+      <td>141,344.04</td>
+      <td>26,006.21</td>
+      <td>201,494.73</td>
+      <td>159</td>
+      <td>468,662,660.62</td>
+      <td>0.00</td>
+      <td>-10,811.07</td>
+      <td>-17,074.30</td>
+      <td>-50,623.40</td>
+    </tr>
+  </tbody>
+</table></div></section>
+<section class="card"><h2>价格源差异分布</h2><div class="scroll"><table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>scope</th>
+      <th>difference</th>
+      <th>sessions</th>
+      <th>mean</th>
+      <th>median</th>
+      <th>mean_abs</th>
+      <th>p95_abs</th>
+      <th>p99_abs</th>
+      <th>max_abs</th>
+      <th>over_0p01</th>
+      <th>over_0p05</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>all_matched_sessions</td>
+      <td>daily_minus_minute</td>
+      <td>4,645.0000</td>
+      <td>0.0012</td>
+      <td>0.0000</td>
+      <td>0.0482</td>
+      <td>0.1300</td>
+      <td>0.4556</td>
+      <td>5.2500</td>
+      <td>3,697.0000</td>
+      <td>1,156.0000</td>
+    </tr>
+    <tr>
+      <td>all_matched_sessions</td>
+      <td>twap_minus_minute</td>
+      <td>4,644.0000</td>
+      <td>-0.0020</td>
+      <td>-0.0090</td>
+      <td>0.1960</td>
+      <td>0.6677</td>
+      <td>1.1218</td>
+      <td>3.8014</td>
+      <td>4,404.0000</td>
+      <td>3,344.0000</td>
+    </tr>
+    <tr>
+      <td>baseline_eod_exit_sessions</td>
+      <td>daily_minus_minute</td>
+      <td>1,355.0000</td>
+      <td>0.0062</td>
+      <td>0.0000</td>
+      <td>0.0541</td>
+      <td>0.1500</td>
+      <td>0.5338</td>
+      <td>5.2500</td>
+      <td>1,068.0000</td>
+      <td>364.0000</td>
+    </tr>
+    <tr>
+      <td>baseline_eod_exit_sessions</td>
+      <td>twap_minus_minute</td>
+      <td>1,355.0000</td>
+      <td>0.0158</td>
+      <td>0.0020</td>
+      <td>0.2130</td>
+      <td>0.7263</td>
+      <td>1.2684</td>
+      <td>3.5370</td>
+      <td>1,301.0000</td>
+      <td>990.0000</td>
+    </tr>
+  </tbody>
+</table></div>
+<p class="note">差值均为候选价格减去 15:59 minute close；跨源差异不等于可交易 auction edge。</p></section>
+<section class="card"><h2>实际 EOD exit 日的最大价格差异</h2><div class="scroll"><table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>session_date</th>
+      <th>minute_close</th>
+      <th>daily_close</th>
+      <th>tail_twap</th>
+      <th>daily_minus_minute</th>
+      <th>twap_minus_minute</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>2025-04-09</td>
+      <td>543.3700</td>
+      <td>548.6200</td>
+      <td>544.1605</td>
+      <td>5.2500</td>
+      <td>0.7905</td>
+    </tr>
+    <tr>
+      <td>2020-03-12</td>
+      <td>248.1000</td>
+      <td>248.1100</td>
+      <td>251.6370</td>
+      <td>0.0100</td>
+      <td>3.5370</td>
+    </tr>
+    <tr>
+      <td>2020-03-18</td>
+      <td>241.0100</td>
+      <td>240.0000</td>
+      <td>238.2280</td>
+      <td>-1.0100</td>
+      <td>-2.7820</td>
+    </tr>
+    <tr>
+      <td>2024-12-18</td>
+      <td>586.3000</td>
+      <td>586.2800</td>
+      <td>588.9605</td>
+      <td>-0.0200</td>
+      <td>2.6605</td>
+    </tr>
+    <tr>
+      <td>2021-12-01</td>
+      <td>450.5100</td>
+      <td>450.5000</td>
+      <td>452.3165</td>
+      <td>-0.0100</td>
+      <td>1.8065</td>
+    </tr>
+    <tr>
+      <td>2024-10-31</td>
+      <td>568.5500</td>
+      <td>568.6400</td>
+      <td>570.2730</td>
+      <td>0.0900</td>
+      <td>1.7230</td>
+    </tr>
+    <tr>
+      <td>2025-04-08</td>
+      <td>496.7400</td>
+      <td>496.4800</td>
+      <td>495.0345</td>
+      <td>-0.2600</td>
+      <td>-1.7055</td>
+    </tr>
+    <tr>
+      <td>2020-02-27</td>
+      <td>297.5500</td>
+      <td>297.5100</td>
+      <td>299.2460</td>
+      <td>-0.0400</td>
+      <td>1.6960</td>
+    </tr>
+    <tr>
+      <td>2020-10-29</td>
+      <td>329.9900</td>
+      <td>329.9800</td>
+      <td>331.5524</td>
+      <td>-0.0100</td>
+      <td>1.5624</td>
+    </tr>
+    <tr>
+      <td>2020-10-30</td>
+      <td>326.5300</td>
+      <td>326.5400</td>
+      <td>324.9890</td>
+      <td>0.0100</td>
+      <td>-1.5410</td>
+    </tr>
+    <tr>
+      <td>2008-09-29</td>
+      <td>112.8200</td>
+      <td>111.3800</td>
+      <td>112.8580</td>
+      <td>-1.4400</td>
+      <td>0.0380</td>
+    </tr>
+    <tr>
+      <td>2026-06-10</td>
+      <td>725.4200</td>
+      <td>725.4300</td>
+      <td>726.7900</td>
+      <td>0.0100</td>
+      <td>1.3700</td>
+    </tr>
+    <tr>
+      <td>2018-02-08</td>
+      <td>257.7200</td>
+      <td>257.6300</td>
+      <td>259.0780</td>
+      <td>-0.0900</td>
+      <td>1.3580</td>
+    </tr>
+    <tr>
+      <td>2020-03-23</td>
+      <td>222.5100</td>
+      <td>222.9500</td>
+      <td>223.7905</td>
+      <td>0.4400</td>
+      <td>1.2805</td>
+    </tr>
+    <tr>
+      <td>2025-02-28</td>
+      <td>594.0700</td>
+      <td>594.1800</td>
+      <td>592.7925</td>
+      <td>0.1100</td>
+      <td>-1.2775</td>
+    </tr>
+  </tbody>
+</table></div></section>
+<section class="card"><h2>Post 单日集中度审计</h2><div class="scroll"><table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>variant_id</th>
+      <th>relative_wealth_vs_baseline</th>
+      <th>top_relative_day</th>
+      <th>top_day_baseline_ret</th>
+      <th>top_day_variant_ret</th>
+      <th>variant_cagr_replacing_top_day_with_baseline_pct</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>minute_1559_close</td>
+      <td>0.000%</td>
+      <td>2024-05-01</td>
+      <td>-3.098%</td>
+      <td>-3.098%</td>
+      <td>7.52%</td>
+    </tr>
+    <tr>
+      <td>independent_daily_close_no_auction_cost</td>
+      <td>3.262%</td>
+      <td>2025-04-09</td>
+      <td>3.547%</td>
+      <td>4.548%</td>
+      <td>8.63%</td>
+    </tr>
+    <tr>
+      <td>independent_daily_close_auction_0p5bp</td>
+      <td>0.985%</td>
+      <td>2025-04-09</td>
+      <td>3.547%</td>
+      <td>4.543%</td>
+      <td>7.53%</td>
+    </tr>
+    <tr>
+      <td>independent_daily_close_auction_1bp</td>
+      <td>-1.246%</td>
+      <td>2025-04-09</td>
+      <td>3.547%</td>
+      <td>4.539%</td>
+      <td>6.44%</td>
+    </tr>
+    <tr>
+      <td>tail_twap_5m</td>
+      <td>2.520%</td>
+      <td>2024-12-18</td>
+      <td>5.608%</td>
+      <td>4.573%</td>
+      <td>9.24%</td>
+    </tr>
+    <tr>
+      <td>tail_twap_10m</td>
+      <td>1.197%</td>
+      <td>2024-12-18</td>
+      <td>5.608%</td>
+      <td>3.846%</td>
+      <td>8.94%</td>
+    </tr>
+    <tr>
+      <td>tail_twap_15m</td>
+      <td>2.123%</td>
+      <td>2024-12-18</td>
+      <td>5.608%</td>
+      <td>3.883%</td>
+      <td>9.38%</td>
+    </tr>
+    <tr>
+      <td>tail_twap_30m</td>
+      <td>4.845%</td>
+      <td>2024-12-18</td>
+      <td>5.608%</td>
+      <td>3.357%</td>
+      <td>10.96%</td>
+    </tr>
+  </tbody>
+</table></div>
+<p class="note">最后一列把各变体相对基线影响最大的单日收益替换回基线后重新计算 CAGR。</p></section>
+<section class="card"><h2>口径与限制</h2><ul>
+<li>Daily close：Yahoo raw daily close；1 bp 为基础 per-share slippage 之外、仅 EOD 退出腿的增量。</li>
+<li>TWAP：最后 10 个计划分钟 close 等份成交的等价平均价；未模拟 queue、partial fill、participation 和 impact。</li>
+<li>各变体从完整样本起点连续复利，因此后续 share sizing 随各自 AUM 变化。</li>
+<li>不修改 frozen v2；本实验是看过结果后的敏感性，只报告点估计。</li></ul></section>
+<section class="card"><h2>研究判断</h2><ol>
+<li>EOD close 口径具有经济显著影响，但没有跨时期占优的执行方案。</li>
+<li>30-minute TWAP 在 post 最好、在 full/pre 最差，不能事后挑作新 headline。</li>
+<li>Daily-close 优势的 post 增量成本 break-even 约 0.72 bp；1 bp 已低于基线。</li>
+<li>保持 frozen v2 不变；下一步需要 official auction/TAQ 与 impact/partial-fill 证据。</li>
+</ol></section>
+<section class="card"><h2>Provenance</h2><pre>{
+  "run_id": "20260801T104328Z_eod_close_source_v1",
+  "classification": "exploratory_post_result_execution_sensitivity",
+  "created_at_utc": "2026-08-01T10:43:28.956581+00:00",
+  "experiment_id": "eod-close-source-v1",
+  "sample": {
+    "start": "2008-01-22",
+    "end": "2026-07-09",
+    "post_publication_start": "2024-05-01"
+  },
+  "base_config": {
+    "profile": "corrected_execution",
+    "tier": "halt_aware",
+    "dividend_mode": "with_dividends",
+    "slippage_per_share": 0.0025,
+    "data_release": "data_release_v1",
+    "daily_close": "benchmark_release_v1/spy_daily_raw_close.csv",
+    "financing_rates": "data/reference/financing_rates_v1/financing_rates_daily.csv",
+    "evaluation_start": "2024-05-01",
+    "evaluation_end": "2026-07-09"
+  },
+  "variants": [
+    {
+      "id": "minute_1559_close",
+      "label": "15:59 minute close",
+      "price_source": "minute_close",
+      "extra_cost_bps": 0.0
+    },
+    {
+      "id": "independent_daily_close_no_auction_cost",
+      "label": "Independent daily close, no extra auction cost",
+      "price_source": "independent_daily_close",
+      "extra_cost_bps": 0.0
+    },
+    {
+      "id": "independent_daily_close_auction_0p5bp",
+      "label": "Independent daily close + 0.5 bp auction cost",
+      "price_source": "independent_daily_close",
+      "extra_cost_bps": 0.5
+    },
+    {
+      "id": "independent_daily_close_auction_1bp",
+      "label": "Independent daily close + 1 bp auction cost",
+      "price_source": "independent_daily_close",
+      "extra_cost_bps": 1.0
+    },
+    {
+      "id": "tail_twap_5m",
+      "label": "Last 5 scheduled-minute TWAP",
+      "price_source": "tail_twap",
+      "twap_minutes": 5,
+      "extra_cost_bps": 0.0
+    },
+    {
+      "id": "tail_twap_10m",
+      "label": "Last 10 scheduled-minute TWAP",
+      "price_source": "tail_twap",
+      "twap_minutes": 10,
+      "extra_cost_bps": 0.0
+    },
+    {
+      "id": "tail_twap_15m",
+      "label": "Last 15 scheduled-minute TWAP",
+      "price_source": "tail_twap",
+      "twap_minutes": 15,
+      "extra_cost_bps": 0.0
+    },
+    {
+      "id": "tail_twap_30m",
+      "label": "Last 30 scheduled-minute TWAP",
+      "price_source": "tail_twap",
+      "twap_minutes": 30,
+      "extra_cost_bps": 0.0
+    }
+  ],
+  "git": {
+    "commit": "6072b428ffa9941da053037f8cf1bceea77b8fd7",
+    "dirty": true,
+    "dirty_paths": [
+      ".gitignore",
+      "AGENTS.md",
+      "docs/README_ENGINE.md",
+      "im_engine_v4.py",
+      "test_engine.py",
+      "docs/EOD_CLOSE_SOURCE_EXPERIMENT_V1_ZH.html",
+      "docs/EOD_CLOSE_SOURCE_EXPERIMENT_V1_ZH.md",
+      "experiments/eod_close_source_v1/"
+    ]
+  },
+  "hashes": {
+    "config_sha256": "bb0c986f851188bd0f830818157443358d8e24e850901a58892b0d8b3426acca",
+    "runner_sha256": "6d7edba1d0fb20b2c690a388f1b94bcc0aa9171194dd09b79b5f71510432583a",
+    "engine_sha256": "c2b6062e5da0471fde245d3cae8f62dee434667a6a34eb0a876ebd2bc0875e3f",
+    "data_release_manifest_sha256": "fc63122dff1d13df95735ba2e1df0a9763db100e0c3efbfa99adf948d602c530",
+    "daily_close_sha256": "5dc28af7090d155da99939928170bfc2bf799d853e11c212d40f6564b836bc28",
+    "financing_sha256": "3f4addb685cbbdf5f887aec7837825b3fbefff13d4fdfd2192673b5458698be8"
+  },
+  "coverage": {
+    "summary_rows": 24,
+    "daily_rows": 37160,
+    "minute_daily_matched_sessions": 4645
+  },
+  "accounting_audit": {
+    "variants": 8,
+    "max_net_identity_residual": 1.308442243441732e-11,
+    "max_aum_identity_residual": 1.1641532182693481e-10
+  }
+}</pre></section>
+</main></body></html>

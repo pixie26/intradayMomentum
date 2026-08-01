@@ -132,7 +132,7 @@ file's SHA and event count, and the full engine config.
 
 ## Tests
 
-`python test_engine.py` — 75 checks covering halt fill semantics, reversal unit
+`python test_engine.py` — 79 checks covering halt fill semantics, reversal unit
 accounting and minimum-commission conventions, the final-bar round-trip guard,
 `exec_lag_minutes` fill timing, strict eligible-session rolling, validity
 filtering of the volatility window, `ignore_dividends`, unknown-exit exclusion,
@@ -148,3 +148,13 @@ Market impact and a queue-position model for the passive fill assumption remain
 out of scope. Formal v2 now includes leverage funding, positive-cash interest
 and short-borrow cost; the earlier zero-financing mechanics baselines remain
 labelled as such and are not the economic headline.
+
+## Isolated EOD execution experiments
+
+`backtest(..., eod_execution=frame)` can replace only the end-of-session exit
+leg while leaving signals and intraday fills unchanged. The frame is indexed by
+`session_date`, requires a positive `price`, and may include a nonnegative
+`extra_cost_per_share`; both are audited in the daily result and fill ledger.
+The default is unchanged and still exits at the final scheduled minute close.
+This hook is for named `paper_spec` or `corrected_execution` experiments, not
+for silently changing a frozen profile. See `experiments/eod_close_source_v1/`.

@@ -138,6 +138,29 @@ def test_reversal_units_and_costs() -> None:
           "round trips must identify long and short legs separately")
 
 
+def test_eod_execution_override() -> None:
+    g = make_session(60)
+    sig = np.zeros(60); adm = np.zeros(60, dtype=bool)
+    sig[9] = 1.0; adm[9] = True
+    cfg = profile_cfg("paper_spec", comm_per_share=0.0, min_comm=0.0,
+                      slip_per_share=0.0)
+    base = E._session_pnl(g, sig, adm, 100, cfg)
+    changed = E._session_pnl(
+        g, sig, adm, 100, cfg,
+        eod_execution={"price": 101.0, "extra_cost_per_share": 0.02})
+    check(abs(changed["gross"] - base["gross"] - 100.0) < 1e-9,
+          "EOD price override did not change gross P&L by position x price")
+    check(abs(changed["slippage"] - 2.0) < 1e-9,
+          "incremental EOD cost was not charged per exiting share")
+    check(changed["eod_exit_fills"] == 1
+          and abs(changed["eod_extra_cost"] - 2.0) < 1e-9,
+          "EOD override audit fields are inconsistent")
+    exit_fill = changed["fills"][-1]
+    check(exit_fill["reason"] == "end_of_session"
+          and exit_fill["price"] == 101.0,
+          "EOD override was not preserved in the fill ledger")
+
+
 def test_exposure_time_integrals() -> None:
     g = make_session(60, halt=(20, 29), gap_at_reopen=5.0)
     sig = np.zeros(60); adm = np.zeros(60, dtype=bool)
@@ -588,6 +611,7 @@ def main() -> int:
         test_halt_semantics()
         test_no_trading_inside_halt()
         test_reversal_units_and_costs()
+        test_eod_execution_override()
         test_exposure_time_integrals()
         test_no_final_bar_round_trip()
         test_exec_lag_timing()
