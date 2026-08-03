@@ -1,0 +1,21 @@
+experiment_id: ibkr_section31_v1
+classification: post_result_transaction_cost_sensitivity
+base:
+  data_release: data_release_v1
+  financing_rates: data/reference/financing_rates_v1/financing_rates_daily.csv
+  section31_rates: data/reference/sec_section31_rates.csv
+  formal_baseline_run: evaluation/results/20260731T200227Z_formal_spec2_58205b0c130f
+  formal_baseline_cell: corrected_execution__halt_aware__with_dividends__slip_0p0025
+  profile: corrected_execution
+  tier: halt_aware
+  dividend_mode: with_dividends
+  slippage_per_share: 0.0025
+  evaluation_start: "2024-05-01"
+  evaluation_end: "2026-07-09"
+variants:
+  - id: legacy
+    label: Frozen legacy explicit-cost convention
+    explicit_cost_model: legacy
+  - id: legacy_plus_section31
+    label: Legacy plus historical SEC Section 31
+    explicit_cost_model: legacy_plus_section31

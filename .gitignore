@@ -14,6 +14,9 @@ __pycache__/
 evaluation/results/
 experiments/eod_close_source_v1/results/
 experiments/no_leverage_cap_v1/results/
+experiments/no_leverage_v1/results/
+experiments/constant_2x_vs_vol_target_v1/results/
+experiments/ibkr_section31_v1/results/
 
 # Superseded local paper-replication drafts; the dividend comparison is tracked.
 experiments/paper_replication_v1/results/data-v1.0_q24_20260730/

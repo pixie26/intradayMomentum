@@ -169,4 +169,8 @@ Post-publication 点估计：
 旧 attribution 派生目录保留不覆盖。
 该目录与正式 run 分离，不修改正式 run 的 hash 清单。
 
-本轮仍只报告点估计。HAC 和 block bootstrap 按决定继续暂缓。
+本报告发布时仍只报告点估计。后续 post-result 统计附录已对同一正式 headline
+补做 8,000 次、20-session circular moving-block bootstrap 与 Sharpe HAC：
+pre − post Sharpe 差的 90% bootstrap 区间为 `[−0.163, 1.978]`，包含 0，
+因此不得把 `1.18 → 0.30`表述为“统计显著衰减”。该附录不修改 frozen v2
+点估计或正式 run；详见 `STATISTICAL_UNCERTAINTY_V1_ZH.md`。

@@ -566,6 +566,24 @@ trading P&L 的 7.5%；将该日 trading-only return 置零后，post trading-on
 报告 v3 进一步把动态生成的卡片、表头、图例、季度事件标签和说明统一为中文；
 仅保留 CAGR、SPY、AUM、Beta 等行业缩写及底部可审计的原始字段名。
 
+### 10.3 杠杆与仓位规则敏感性（2026-08-02）
+
+在 frozen v2 之后运行三组明确标为 post-result 的 sizing sensitivity：取消 4x
+上限的无上限压力测试、1x 不使用杠杆测试，以及恒定 2x 对 Paper inverse-vol
+动态定仓。三组共同固定 `corrected_execution × halt_aware × with-dividends ×
+$0.0025/share`、point-in-time financing 和连续 AUM 路径；4x baseline 均与正式
+72-cell run 数值完全一致。
+
+主要结论：无上限只小幅提高 CAGR，却把机械目标杠杆推到最高 13.27x；1x 显著
+降低回撤，但 post trading-only CAGR 仅 0.15%；恒定 2x 的 full CAGR 17.22%
+略高于 Paper 16.70%，但该优势由 2008 驱动，17 个逐年移动起点中只胜 1 个，
+从 2009 开始 Paper / 恒定 2x CAGR 为 14.64% / 12.40%。Post Paper / 恒定 2x
+trading-only CAGR 为 3.27% / 0.47%。因此不修改当前动态定仓和 4x cap。
+
+完整口径、结果、provenance、起点敏感性和限制见
+`LEVERAGE_SIZING_SENSITIVITY_ZH.md` 与
+`LEVERAGE_SIZING_SENSITIVITY_ZH.html`。
+
 ---
 
 ## 11. 项目当前状态

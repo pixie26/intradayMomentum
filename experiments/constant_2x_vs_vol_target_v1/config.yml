@@ -1,0 +1,39 @@
+experiment_id: constant-2x-vs-vol-target-v1
+classification: exploratory_post_result_sizing_rule_sensitivity
+created_date: "2026-08-02"
+
+base:
+  profile: corrected_execution
+  tier: halt_aware
+  dividend_mode: with_dividends
+  slippage_per_share: 0.0025
+  target_daily_volatility: 0.02
+  data_release: data_release_v1
+  financing_rates: data/reference/financing_rates_v1/financing_rates_daily.csv
+  formal_baseline_run: evaluation/results/20260731T200227Z_formal_spec2_58205b0c130f
+  formal_baseline_cell: corrected_execution__halt_aware__with_dividends__slip_0p0025
+  evaluation_start: "2024-05-01"
+  evaluation_end: "2026-07-09"
+
+variants:
+  - id: cap_4x
+    label: Paper vol target, 4x cap
+    sizing: vol_target
+    max_leverage: 4.0
+  - id: constant_2x
+    label: Constant 2x, same dvol eligibility
+    sizing: flat
+    flat_leverage: 2.0
+    max_leverage: 2.0
+  - id: constant_2x_independent
+    label: Constant 2x, no dvol requirement
+    sizing: flat
+    flat_leverage: 2.0
+    max_leverage: 2.0
+
+interpretation:
+  question: Does lagged-volatility sizing add value versus a constant 2x exposure?
+  note: The primary constant-2x comparison inherits the paper rule's dvol
+    eligibility so only the leverage value changes. A secondary operational
+    variant does not require dvol. Signal, execution, costs, financing,
+    dividends, tier and continuous AUM are otherwise fixed.

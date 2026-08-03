@@ -40,7 +40,7 @@ Run reports (tied to a specific `data/processed/runs/<run_id>/`):
 | `data/reference/spy_dividends_state_street_20260730.csv` | Exact 74-row State Street dividend input for the data-v1.0 candidate; metadata and extraction script are tracked beside/in `scripts/`. |
 | `prepare_spy_data.py` | Data layer v5 candidate: explicit release boundaries, duplicate conflict classes, return-gap audit, dependency lock, component validity, and atomic publish. `--self-test` = 28 checks. |
 | `im_engine_v4.py` | Engine: three profiles (`official_sample_compatible`, `paper_spec`, `corrected_execution`). Working copy. |
-| `test_engine.py` | 79 engine checks. Run: `python test_engine.py`. |
+| `test_engine.py` | 86 engine checks. Run: `python test_engine.py`. |
 | `experiments/paper_replication_v1/` | Isolated Q24 monthly-return replication; never a substitute for the frozen economic evaluation. |
 | `config/evaluation_spec_v1.yml` | Pre-registered evaluation; do not edit in response to results. |
 | `config/data_release_v1.yml` | Candidate data-v1.0 contract. Currently blocked by 13 missing leading XNYS sessions. |
@@ -104,7 +104,11 @@ See `docs/POST_PUBLICATION_EVALUATION_V2_HALT0025_ZH.md` and the interactive
 attribution report linked there.
 
 Pending: market-impact/capacity and queue-position/partial-fill models.
-HAC and block bootstrap are explicitly deferred; v2 reports point estimates.
+Frozen v2 still reports point estimates. A later post-result addendum supplies
+Sharpe HAC and an 8,000-draw, 20-session circular block bootstrap for the
+amended headline; its pre-minus-post 90% interval includes zero, so do not call
+the observed decline statistically significant. See
+`docs/STATISTICAL_UNCERTAINTY_V1_ZH.md`.
 
 Explicitly deferred: parameter optimisation, Qlib, machine learning, live
 deployment.

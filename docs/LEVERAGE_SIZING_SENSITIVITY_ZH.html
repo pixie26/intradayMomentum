@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>杠杆与仓位规则敏感性实验汇总</title>
+  <style>
+    :root{--ink:#172033;--muted:#60708a;--line:#dfe5ef;--bg:#f5f7fb;--card:#fff;--blue:#1957d2;--warn:#8a5b00}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,Arial,"Microsoft YaHei",sans-serif}
+    main{max-width:1240px;margin:auto;padding:28px} h1{margin:10px 0 6px} h2{margin:0 0 14px} p,li{line-height:1.65}
+    .badge{display:inline-block;padding:7px 11px;border-radius:999px;background:#fff2cc;color:var(--warn);font-weight:700;font-size:13px}
+    .sub{color:var(--muted);margin-top:0}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin:16px 0;box-shadow:0 3px 12px #15213a0b}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.tabs button{border:1px solid #b9c7dc;background:white;color:var(--ink);padding:8px 13px;border-radius:9px;cursor:pointer;font-weight:600}
+    .tabs button.active{background:var(--blue);border-color:var(--blue);color:white}.scroll{overflow:auto}table{border-collapse:collapse;width:100%;font-size:13px}
+    th,td{padding:9px;border-bottom:1px solid #e8edf5;text-align:right;white-space:nowrap}th:first-child,td:first-child{text-align:left}th{background:#f8faff}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.kpi{border:1px solid var(--line);border-radius:12px;padding:15px;background:#fbfcff}.kpi b{font-size:24px;display:block;margin-top:5px}.note{color:var(--muted);font-size:14px}
+    code,pre{font-family:Consolas,monospace}pre{white-space:pre-wrap;background:#111827;color:#dbeafe;padding:14px;border-radius:9px;font-size:12px}
+    .good{color:#087443}.bad{color:#b42318}@media(max-width:700px){main{padding:16px}th,td{padding:7px}}
+  </style>
+</head>
+<body><main>
+  <span class="badge">POST-RESULT SENSITIVITY · FROZEN V2 UNCHANGED</span>
+  <h1>杠杆与仓位规则敏感性实验汇总</h1>
+  <p class="sub">2026-08-02 · corrected_execution × halt_aware × with-dividends × $0.0025/share</p>
+
+  <section class="card">
+    <h2>核心判断</h2>
+    <div class="grid">
+      <div class="kpi">不取消 4x cap<b>最高目标 13.27x</b><span class="note">无上限收益改善很小，尾部显著变差</span></div>
+      <div class="kpi">1x 是风险压缩<b>Post trading 0.15%</b><span class="note">组合收益主要来自现金 carry</span></div>
+      <div class="kpi">不改恒定 2x<b>仅 1/17 起点胜出</b><span class="note">Full 优势由 2008 危机期驱动</span></div>
+      <div class="kpi">保留当前动态规则<b>但 post 仍弱</b><span class="note">Paper trading-only CAGR 3.27%</span></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Full / Pre / Post 对照</h2>
+    <div class="tabs" id="tabs">
+      <button data-period="full" class="active">Full sample</button>
+      <button data-period="pre">Pre-publication</button>
+      <button data-period="post">Post-publication</button>
+    </div>
+    <div class="scroll"><table>
+      <thead><tr><th>仓位规则</th><th>Portfolio CAGR</th><th>Trading-only CAGR</th><th>年化波动</th><th>Sharpe</th><th>MDD</th><th>最差单日</th><th>Held gross lev</th></tr></thead>
+      <tbody id="metric-body"></tbody>
+    </table></div>
+    <p class="note">Trading-only 逐日扣除 cash-interest return 后重新复利；cash carry 不是策略 alpha。</p>
+  </section>
+
+  <section class="card">
+    <h2>为什么恒定 2x 的 full CAGR 会看起来更好</h2>
+    <ul>
+      <li>Full CAGR：Paper 16.70%，恒定 2x 17.22%；但 Sharpe 为 1.07 vs 1.06。</li>
+      <li>从 2009 开始：Paper 14.64%，恒定 2x 12.40%。</li>
+      <li>17 个逐年移动起点中，恒定 2x 只在包含 2008 的唯一一个起点胜出。</li>
+      <li>恒定 2x 最差日为 2020-03-18 的 <span class="bad">−9.60%</span>；Paper 当日为 −1.52%。</li>
+      <li>Paper 在高波动时主动降到 2x 以下；它的 4x 通常发生在低滞后波动环境。</li>
+    </ul>
+    <div class="scroll"><table>
+      <thead><tr><th>Paper ex-ante 杠杆状态</th><th>Post 恒定2x相对Paper wealth</th><th>解释</th></tr></thead>
+      <tbody>
+        <tr><td>&lt;2x</td><td class="good">+4.20%</td><td>恒定2x在Paper降仓时承担更多风险</td></tr>
+        <tr><td>2x–&lt;4x</td><td class="bad">−4.56%</td><td>恒定2x少配了Paper的中高杠杆盈利路径</td></tr>
+        <tr><td>4x cap</td><td class="bad">−5.44%</td><td>恒定2x少配了Paper撞cap的盈利路径</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note">三项是乘法 relative-wealth 贡献，不能直接相加。</p>
+  </section>
+
+  <section class="card">
+    <h2>三个实验的正确定位</h2>
+    <ol>
+      <li><b>无上限：</b>第一次需求理解偏差后保留的压力测试；不是用户澄清后的原问题。</li>
+      <li><b>1x：</b>按 session open sizing 的不使用杠杆版本；next-open 和价格漂移使 held leverage 短暂最高 1.04x。</li>
+      <li><b>恒定2x：</b>主要比较强制沿用 Paper dvol eligibility；另报不要求 dvol 的 operational sensitivity。</li>
+    </ol>
+  </section>
+
+  <section class="card">
+    <h2>审计与限制</h2>
+    <ul>
+      <li>三条 4x baseline 与 clean 72-cell run 的最大数值差均为 0.0。</li>
+      <li>恒定 2x 主要对照与 Paper 的 evaluation mask / holding presence mismatch 均为 0。</li>
+      <li>会计恒等式通过；frozen v2 和原始 frozen headline 未修改。</li>
+      <li>未运行 HAC、block bootstrap、market impact、capacity、queue、partial fill 或严格动态 margin/cash constraint。</li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2>Run registry</h2>
+    <pre>uncapped: 20260801T160549Z_no_leverage_cap_v1 (git c859248, dirty=false)
+1x cap: 20260801T161359Z_no_leverage_v1 (git c859248, dirty=true)
+constant 2x: 20260801T162713Z_constant_2x_vs_vol_target_v1 (git c859248, dirty=true)
+formal baseline: 20260731T200227Z_formal_spec2_58205b0c130f</pre>
+    <p class="note">完整 hashes、公式、逐年结果、文件索引和下一步见同目录 Markdown 研究记录。</p>
+  </section>
+</main>
+<script>
+const DATA = {
+  full: [
+    ["Paper动态、4x cap",16.70,15.25,14.27,1.07,-28.26,-5.19,2.62],
+    ["1x上限",8.66,7.35,6.69,1.10,-9.36,-3.46,0.99],
+    ["恒定2x、同eligibility",17.22,15.77,14.98,1.06,-18.94,-9.60,2.00],
+    ["无上限",16.91,15.46,15.56,1.01,-29.71,-7.87,2.77]
+  ],
+  pre: [
+    ["Paper动态、4x cap",18.00,16.97,14.21,1.18,-28.26,-5.19,2.57],
+    ["1x上限",9.29,8.36,6.81,1.22,-9.36,-3.46,0.99],
+    ["恒定2x、同eligibility",19.04,18.01,15.34,1.16,-18.94,-9.60,2.00],
+    ["无上限",18.14,17.11,15.50,1.10,-29.71,-7.87,2.74]
+  ],
+  post: [
+    ["Paper动态、4x cap",7.52,3.27,14.73,0.30,-17.06,-3.10,2.71],
+    ["1x上限",4.13,0.15,5.80,0.05,-5.64,-1.41,0.99],
+    ["恒定2x、同eligibility",4.54,0.47,11.95,0.10,-14.39,-2.82,2.00],
+    ["无上限",8.24,3.95,15.99,0.33,-17.95,-3.73,2.83]
+  ]
+};
+function render(period){
+  const body=document.getElementById("metric-body");
+  body.innerHTML=DATA[period].map(r=>`<tr><td>${r[0]}</td><td>${r[1].toFixed(2)}%</td><td>${r[2].toFixed(2)}%</td><td>${r[3].toFixed(2)}%</td><td>${r[4].toFixed(2)}</td><td>${r[5].toFixed(2)}%</td><td>${r[6].toFixed(2)}%</td><td>${r[7].toFixed(2)}x</td></tr>`).join("");
+  document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("active",b.dataset.period===period));
+}
+document.getElementById("tabs").addEventListener("click",e=>{if(e.target.dataset.period)render(e.target.dataset.period)});
+render("full");
+</script></body></html>

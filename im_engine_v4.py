@@ -104,6 +104,7 @@ class Cfg:
     reversal_order_model: str = "single_order"  # single_order | two_orders
 
     # costs
+    explicit_cost_model: str = "legacy"       # legacy | legacy_plus_section31
     comm_per_share: float = 0.0035
     min_comm: float = 0.35
     slip_per_share: float = 0.001             # paper's figure
@@ -142,6 +143,7 @@ _ENUMS = {
     "pending_order_policy": ("cancel_if_next_unavailable", "queue_until_executable"),
     "share_rounding": ("floor", "round"),
     "reversal_order_model": ("single_order", "two_orders"),
+    "explicit_cost_model": ("legacy", "legacy_plus_section31"),
     "unknown_exit_policy": ("terminate", "exclude_session_and_freeze_aum",
                             "impute_last_observed"),
     "tier": ("paper_ready", "halt_aware", "exploratory"),
@@ -159,6 +161,8 @@ def validate(cfg: "Cfg") -> None:
                          "exec_lag_minutes must be >= 1")
     if cfg.dvol_lag < 1:
         raise ValueError("dvol_lag must be >= 1 (0 would use today's return)")
+    if min(cfg.comm_per_share, cfg.min_comm, cfg.slip_per_share) < 0:
+        raise ValueError("commission, minimum commission and slippage must be nonnegative")
 
 
 def profile_cfg(profile: str, **over) -> Cfg:
@@ -194,6 +198,82 @@ def _sha(path: Path) -> str:
         while b := fh.read(8 << 20):
             h.update(b)
     return h.hexdigest()
+
+
+def load_section31_rates(path: str | Path) -> pd.DataFrame:
+    """Load and strictly validate an effective-date Section 31 schedule.
+
+    Intervals are calendar-date intervals because SEC advisories specify charge
+    dates, not exchange sessions. A continuous calendar schedule makes weekend
+    transition dates (for example 2026-04-04) explicit and auditable.
+    """
+    path = Path(path)
+    rates = pd.read_csv(path, dtype={"source_url": "string", "notes": "string"})
+    required = (
+        "effective_from", "effective_to", "rate_per_million", "rate_decimal",
+        "source_url", "notes",
+    )
+    missing = sorted(set(required) - set(rates.columns))
+    if missing:
+        raise ValueError(f"Section 31 schedule missing columns: {missing}")
+    rates = rates.loc[:, required].copy()
+    rates["effective_from"] = pd.to_datetime(
+        rates["effective_from"], errors="coerce").dt.normalize()
+    rates["effective_to"] = pd.to_datetime(
+        rates["effective_to"], errors="coerce").dt.normalize()
+    rates["rate_per_million"] = pd.to_numeric(
+        rates["rate_per_million"], errors="coerce")
+    rates["rate_decimal"] = pd.to_numeric(
+        rates["rate_decimal"], errors="coerce")
+    rates = rates.sort_values("effective_from").reset_index(drop=True)
+    if rates.empty or rates["effective_from"].isna().any():
+        raise ValueError("Section 31 schedule has no rows or an invalid start date")
+    if rates["effective_from"].duplicated().any():
+        raise ValueError("Section 31 schedule has duplicate effective_from dates")
+    if rates["effective_to"].iloc[:-1].isna().any():
+        raise ValueError("only the last Section 31 interval may be open-ended")
+    finite_rates = rates[["rate_per_million", "rate_decimal"]].to_numpy()
+    if not np.isfinite(finite_rates).all() or (finite_rates < 0).any():
+        raise ValueError("Section 31 schedule rates must be finite and nonnegative")
+    expected_decimal = rates["rate_per_million"] / 1_000_000.0
+    if not np.allclose(rates["rate_decimal"], expected_decimal, rtol=0, atol=1e-15):
+        raise ValueError("Section 31 decimal rates do not match rate_per_million")
+    closed = rates["effective_to"].notna()
+    if (rates.loc[closed, "effective_to"]
+            < rates.loc[closed, "effective_from"]).any():
+        raise ValueError("Section 31 schedule contains a reversed interval")
+    for i in range(len(rates) - 1):
+        expected_next = rates.loc[i, "effective_to"] + pd.Timedelta(days=1)
+        if rates.loc[i + 1, "effective_from"] != expected_next:
+            raise ValueError(
+                "Section 31 schedule has a gap or overlap between "
+                f"{rates.loc[i, 'effective_from'].date()} and "
+                f"{rates.loc[i + 1, 'effective_from'].date()}")
+    if not rates["source_url"].str.startswith("https://www.sec.gov/").all():
+        raise ValueError("every Section 31 interval must cite an SEC HTTPS URL")
+    rates.attrs["path"] = str(path.resolve())
+    rates.attrs["sha256"] = _sha(path)
+    return rates
+
+
+def section31_rates_for_sessions(
+        schedule: pd.DataFrame, sessions: pd.DatetimeIndex) -> pd.Series:
+    """Map each session to its effective Section 31 decimal rate."""
+    sessions = pd.DatetimeIndex(sessions).tz_localize(None).normalize()
+    out = pd.Series(np.nan, index=sessions, dtype=float,
+                    name="section31_rate_decimal")
+    for row in schedule.itertuples(index=False):
+        end = row.effective_to
+        mask = sessions >= row.effective_from
+        if pd.notna(end):
+            mask &= sessions <= end
+        out.loc[mask] = float(row.rate_decimal)
+    missing = out.index[out.isna()]
+    if len(missing):
+        sample = ", ".join(str(day.date()) for day in missing[:5])
+        raise ValueError(
+            f"Section 31 schedule misses {len(missing)} sessions (first: {sample})")
+    return out
 
 
 def _git() -> dict:
@@ -447,7 +527,8 @@ def config_validity(d: pd.DataFrame, daily: pd.DataFrame, vsess: pd.DataFrame,
 
 def _session_pnl(g: pd.DataFrame, signal: np.ndarray, admissible: np.ndarray,
                  shares: int, cfg: Cfg, equity: float | None = None,
-                 eod_execution: dict | None = None) -> dict:
+                 eod_execution: dict | None = None,
+                 section31_rate_decimal: float = 0.0) -> dict:
     """One session, as an order/fill state machine.
 
     Marking: P&L accrues to the position held *before* a fill, marked from the
@@ -471,6 +552,8 @@ def _session_pnl(g: pd.DataFrame, signal: np.ndarray, admissible: np.ndarray,
     shares_traded = 0.0
     traded_notional = 0.0
     commission = 0.0
+    ibkr_commission = 0.0
+    section31_fee = 0.0
     slippage = 0.0
     pending: float | None = None
     pending_due: int | None = None
@@ -520,7 +603,7 @@ def _session_pnl(g: pd.DataFrame, signal: np.ndarray, admissible: np.ndarray,
                 order: dict, reason: str,
                 extra_slippage_per_share: float = 0.0) -> None:
         nonlocal pos, fill_events, trade_units, shares_traded, traded_notional
-        nonlocal commission, slippage
+        nonlocal commission, ibkr_commission, section31_fee, slippage
         nonlocal active_trip
         delta = abs(target - pos)
         if delta == 0.0:
@@ -532,9 +615,18 @@ def _session_pnl(g: pd.DataFrame, signal: np.ndarray, admissible: np.ndarray,
         n_orders = 2 if (delta > 1.0 and cfg.reversal_order_model == "two_orders") else 1
         fill_commission = n_orders * max(
             cfg.min_comm, cfg.comm_per_share * qty / n_orders)
+        sell_qty = max((previous_pos - target) * shares, 0.0)
+        sell_notional = sell_qty * price
+        fill_section31 = sell_notional * section31_rate_decimal
+        fill_explicit_cost = fill_commission + fill_section31
         extra_slippage = extra_slippage_per_share * qty
         fill_slippage = cfg.slip_per_share * qty + extra_slippage
-        commission += fill_commission
+        ibkr_commission += fill_commission
+        section31_fee += fill_section31
+        # Backward-compatible aggregate: downstream code historically calls
+        # this column "commission". Under the opt-in model it means all
+        # explicit costs currently implemented (IBKR base + Section 31).
+        commission += fill_explicit_cost
         slippage += fill_slippage
         if active_trip is not None and previous_pos != target:
             active_trip.update({
@@ -562,10 +654,19 @@ def _session_pnl(g: pd.DataFrame, signal: np.ndarray, admissible: np.ndarray,
             "to_position": float(target),
             "trade_units": float(delta),
             "shares": float(qty),
+            "buy_shares": float(max((target - previous_pos) * shares, 0.0)),
+            "sell_shares": float(sell_qty),
+            "sell_notional": float(sell_notional),
             "order_count": int(n_orders),
-            "commission": float(fill_commission),
+            "ibkr_commission": float(fill_commission),
+            "section31_rate_decimal": float(section31_rate_decimal),
+            "section31_fee": float(fill_section31),
+            "total_explicit_cost": float(fill_explicit_cost),
+            "commission": float(fill_explicit_cost),
             "slippage": float(fill_slippage),
             "extra_eod_cost": float(extra_slippage),
+            "market_impact": 0.0,
+            "total_execution_cost": float(fill_explicit_cost + fill_slippage),
             "reason": reason,
         })
         if target != 0.0:
@@ -667,7 +768,13 @@ def _session_pnl(g: pd.DataFrame, signal: np.ndarray, admissible: np.ndarray,
         execute(0.0, exit_price, exit_minute, float(exit_minute),
                 order, "end_of_session", extra_cost_per_share)
     eod_fills = [fill for fill in fills if fill["reason"] == "end_of_session"]
-    return {"gross": gross, "commission": commission, "slippage": slippage,
+    return {"gross": gross, "commission": commission,
+            "ibkr_commission": ibkr_commission,
+            "section31_fee": section31_fee,
+            "total_explicit_cost": commission,
+            "slippage": slippage,
+            "market_impact": 0.0,
+            "total_execution_cost": commission + slippage,
             "fill_events": float(fill_events), "trade_units": trade_units,
             "shares_traded": shares_traded,
             "traded_notional": float(traded_notional),
@@ -699,7 +806,8 @@ def _session_pnl(g: pd.DataFrame, signal: np.ndarray, admissible: np.ndarray,
 def _session_pnl_notebook(g: pd.DataFrame, signal: np.ndarray,
                           admissible: np.ndarray, shares: int,
                           cfg: Cfg | None = None,
-                          equity: float | None = None) -> dict:
+                          equity: float | None = None,
+                          section31_rate_decimal: float = 0.0) -> dict:
     """Bit-compatible with the published notebook: exposure shifted one *data
     row*, PnL = exposure * close.diff(). Retained only for parity; it is the
     formula that hands a reopening gap to an unfilled order."""
@@ -747,6 +855,10 @@ def _session_pnl_notebook(g: pd.DataFrame, signal: np.ndarray,
             2 if delta > 1.0 and cfg.reversal_order_model == "two_orders" else 1)
         fill_commission = n_orders * max(
             cfg.min_comm, cfg.comm_per_share * qty / n_orders)
+        sell_qty = max((ledger_pos - target) * shares, 0.0)
+        sell_notional = sell_qty * close[j]
+        fill_section31 = sell_notional * section31_rate_decimal
+        fill_explicit_cost = fill_commission + fill_section31
         fill_slippage = cfg.slip_per_share * qty
         order_id = len(orders) + 1
         orders.append({
@@ -767,9 +879,18 @@ def _session_pnl_notebook(g: pd.DataFrame, signal: np.ndarray,
             "to_position": target,
             "trade_units": float(delta),
             "shares": float(qty),
+            "buy_shares": float(max((target - ledger_pos) * shares, 0.0)),
+            "sell_shares": float(sell_qty),
+            "sell_notional": float(sell_notional),
             "order_count": int(n_orders),
-            "commission": float(fill_commission),
+            "ibkr_commission": float(fill_commission),
+            "section31_rate_decimal": float(section31_rate_decimal),
+            "section31_fee": float(fill_section31),
+            "total_explicit_cost": float(fill_explicit_cost),
+            "commission": float(fill_explicit_cost),
             "slippage": float(fill_slippage),
+            "market_impact": 0.0,
+            "total_execution_cost": float(fill_explicit_cost + fill_slippage),
             "reason": "notebook_shifted_close",
         })
         if active_trip is not None:
@@ -793,6 +914,12 @@ def _session_pnl_notebook(g: pd.DataFrame, signal: np.ndarray,
     if ledger_pos != 0.0:
         delta = abs(ledger_pos)
         qty = delta * shares
+        fill_commission = max(cfg.min_comm, cfg.comm_per_share * qty)
+        sell_qty = max(ledger_pos * shares, 0.0)
+        sell_notional = sell_qty * close[-1]
+        fill_section31 = sell_notional * section31_rate_decimal
+        fill_explicit_cost = fill_commission + fill_section31
+        fill_slippage = cfg.slip_per_share * qty
         order_id = len(orders) + 1
         orders.append({
             "order_id": order_id,
@@ -812,10 +939,18 @@ def _session_pnl_notebook(g: pd.DataFrame, signal: np.ndarray,
             "to_position": 0.0,
             "trade_units": float(delta),
             "shares": float(qty),
+            "buy_shares": float(max(-ledger_pos * shares, 0.0)),
+            "sell_shares": float(sell_qty),
+            "sell_notional": float(sell_notional),
             "order_count": 1,
-            "commission": float(max(
-                cfg.min_comm, cfg.comm_per_share * qty)),
-            "slippage": float(cfg.slip_per_share * qty),
+            "ibkr_commission": float(fill_commission),
+            "section31_rate_decimal": float(section31_rate_decimal),
+            "section31_fee": float(fill_section31),
+            "total_explicit_cost": float(fill_explicit_cost),
+            "commission": float(fill_explicit_cost),
+            "slippage": float(fill_slippage),
+            "market_impact": 0.0,
+            "total_execution_cost": float(fill_explicit_cost + fill_slippage),
             "reason": "end_of_session",
         })
         if active_trip is not None:
@@ -829,7 +964,13 @@ def _session_pnl_notebook(g: pd.DataFrame, signal: np.ndarray,
     if abs(ledger_units - units) > 1e-9:
         raise RuntimeError(
             f"notebook ledger units {ledger_units} != accounting units {units}")
-    return {"gross": gross, "commission": None, "slippage": None,
+    return {"gross": gross, "commission": None,
+            "ibkr_commission": None,
+            "section31_fee": float(sum(
+                fill["section31_fee"] for fill in fills)),
+            "total_explicit_cost": None,
+            "slippage": None, "market_impact": 0.0,
+            "total_execution_cost": None,
             "fill_events": units, "trade_units": units,
             "shares_traded": units * shares,
             "traded_notional": float(sum(
@@ -856,7 +997,8 @@ def _session_pnl_notebook(g: pd.DataFrame, signal: np.ndarray,
 def backtest(
         data: dict, cfg: Cfg, collect_ledger: bool = False,
         financing_rates: pd.DataFrame | None = None,
-        eod_execution: pd.DataFrame | None = None) -> pd.DataFrame:
+        eod_execution: pd.DataFrame | None = None,
+        section31_rates: pd.DataFrame | None = None) -> pd.DataFrame:
     validate(cfg)
     bars, vmin, vsess = data["bars"], data["vmin"], data["vsess"]
     d, daily = build_features(bars, vmin, vsess, cfg, data["dividends"])
@@ -888,6 +1030,18 @@ def backtest(
                 f"(first: {sample})")
         if not np.isfinite(rates.to_numpy()).all():
             raise ValueError("financing rates contain non-finite values")
+
+    if cfg.explicit_cost_model == "legacy":
+        if section31_rates is not None:
+            raise ValueError(
+                "section31_rates were supplied but explicit_cost_model is legacy")
+        section31_daily = None
+    else:
+        if section31_rates is None:
+            raise ValueError(
+                "legacy_plus_section31 requires an explicit Section 31 schedule")
+        section31_daily = section31_rates_for_sessions(
+            section31_rates, daily.index)
 
     eod = None
     if eod_execution is not None:
@@ -932,11 +1086,13 @@ def backtest(
         prev_aum = aum
         status, gross, cost = "active", 0.0, 0.0
         fill_events = units = traded_shares = 0.0
-        commission = slippage = cash_interest = financing = 0.0
+        commission = ibkr_commission = section31_fee = 0.0
+        slippage = cash_interest = financing = 0.0
         holding_minutes = 0.0
         positive_cash_integral = borrowed_cash_integral = 0.0
         long_notional_integral = short_notional_integral = 0.0
         known_partial_gross = known_partial_commission = 0.0
+        known_partial_ibkr_commission = known_partial_section31_fee = 0.0
         known_partial_slippage = known_partial_cash_interest = 0.0
         known_partial_financing = 0.0
         signal_count = 0
@@ -945,6 +1101,9 @@ def backtest(
         row = daily.loc[day]
         g = groups.get(day)
         res = None
+        section31_rate = (
+            float(section31_daily.loc[day])
+            if section31_daily is not None else 0.0)
 
         if terminated_from is not None:
             status = "after_unknown_exit"
@@ -998,7 +1157,8 @@ def backtest(
                         adm = admissible_all.loc[g.index].to_numpy()
                         if cfg.profile == "official_sample_compatible":
                             res = _session_pnl_notebook(
-                                g, s, adm, shares, cfg=cfg, equity=prev_aum)
+                                g, s, adm, shares, cfg=cfg, equity=prev_aum,
+                                section31_rate_decimal=section31_rate)
                         else:
                             eod_row = None
                             if eod is not None:
@@ -1008,17 +1168,22 @@ def backtest(
                                 eod_row = eod.loc[day].to_dict()
                             res = _session_pnl(
                                 g, s, adm, shares, cfg, equity=prev_aum,
-                                eod_execution=eod_row)
+                                eod_execution=eod_row,
+                                section31_rate_decimal=section31_rate)
                         gross = res["gross"]
                         fill_events = res["fill_events"]
                         if res["commission"] is None:
                             # notebook path: charge per traded unit
-                            commission = res["trade_units"] * max(
+                            ibkr_commission = res["trade_units"] * max(
                                 cfg.min_comm, cfg.comm_per_share * shares)
+                            section31_fee = res["section31_fee"]
+                            commission = ibkr_commission + section31_fee
                             slippage = (res["trade_units"]
                                         * cfg.slip_per_share * shares)
                         else:
                             commission = res["commission"]
+                            ibkr_commission = res["ibkr_commission"]
+                            section31_fee = res["section31_fee"]
                             slippage = res["slippage"]
                         cost = commission + slippage
                         units = res["trade_units"]
@@ -1119,14 +1284,18 @@ def backtest(
                 # the frozen-AUM assumption.
                 known_partial_gross = gross
                 known_partial_commission = commission
+                known_partial_ibkr_commission = ibkr_commission
+                known_partial_section31_fee = section31_fee
                 known_partial_slippage = slippage
                 known_partial_cash_interest = cash_interest
                 known_partial_financing = financing
-                gross = commission = slippage = cost = 0.0
+                gross = commission = ibkr_commission = section31_fee = 0.0
+                slippage = cost = 0.0
                 cash_interest = financing = net = 0.0
 
         aum = prev_aum + net
-        rows.append((day, status, gross, commission, slippage, cost,
+        rows.append((day, status, gross, commission, ibkr_commission,
+                     section31_fee, commission, slippage, cost,
                      cash_interest, financing, net, signal_count, fill_events,
                      units, traded_shares, holding_minutes,
                      traded_notional, long_gross, short_gross,
@@ -1134,8 +1303,11 @@ def backtest(
                      positive_cash_integral, borrowed_cash_integral,
                      long_notional_integral, short_notional_integral,
                      known_partial_gross, known_partial_commission,
+                     known_partial_ibkr_commission,
+                     known_partial_section31_fee,
                      known_partial_slippage, known_partial_cash_interest,
                      known_partial_financing,
+                     section31_rate * 1_000_000.0,
                      cash_rate, funding_rate, borrow_rate,
                      total_dcf, intraday_dcf, cash_hurdle_ret,
                      prev_aum, aum,
@@ -1143,7 +1315,9 @@ def backtest(
         previous_day = day
 
     r = pd.DataFrame(rows, columns=["session_date", "status", "gross",
-                                    "commission", "slippage", "cost",
+                                    "commission", "ibkr_commission",
+                                    "section31_fee", "total_explicit_cost",
+                                    "slippage", "cost",
                                     "cash_interest", "financing", "net",
                                     "signal_count", "fill_events", "trade_units",
                                     "shares_traded", "holding_minutes",
@@ -1157,9 +1331,12 @@ def backtest(
                                     "short_notional_minute_dollars",
                                     "known_partial_gross",
                                     "known_partial_commission",
+                                    "known_partial_ibkr_commission",
+                                    "known_partial_section31_fee",
                                     "known_partial_slippage",
                                     "known_partial_cash_interest",
                                     "known_partial_financing",
+                                    "section31_rate_per_million_used",
                                     "cash_rate_annual_used",
                                     "funding_rate_annual_used",
                                     "borrow_rate_annual_used",
@@ -1169,6 +1346,8 @@ def backtest(
                                     "prev_aum", "aum",
                                     "close_valid"]).set_index("session_date")
     r["ret"] = r["net"] / r["prev_aum"]
+    r["market_impact"] = 0.0
+    r["total_execution_cost"] = r["cost"]
     # A session whose exit price is a guess does not belong in headline
     # performance, so it leaves the evaluation window entirely.
     r["is_evaluation"] = ~r["status"].isin(
@@ -1181,6 +1360,11 @@ def backtest(
         r.attrs["daily_features"] = daily[["dvol"]].copy()
     r.attrs["financing_rates_supplied"] = financing_rates is not None
     r.attrs["eod_execution_supplied"] = eod_execution is not None
+    r.attrs["explicit_cost_model"] = cfg.explicit_cost_model
+    r.attrs["section31_rates_supplied"] = section31_rates is not None
+    if section31_rates is not None:
+        r.attrs["section31_schedule_sha256"] = section31_rates.attrs.get("sha256")
+        r.attrs["section31_schedule_path"] = section31_rates.attrs.get("path")
     return r
 
 
@@ -1307,7 +1491,8 @@ def benchmark(data: dict, cfg: Cfg, r: pd.DataFrame) -> dict:
 
 
 def report(run_dir: str | Path, cfg: Cfg,
-           tiers: tuple[str, ...] = ("paper_ready", "halt_aware", "exploratory")
+           tiers: tuple[str, ...] = ("paper_ready", "halt_aware", "exploratory"),
+           section31_rates: pd.DataFrame | None = None,
            ) -> pd.DataFrame:
     """Full metric set per tier. Never mix metrics across tiers: they are
     different equity curves, so CAGR(A)/MDD(B) is not a defined quantity."""
@@ -1316,7 +1501,7 @@ def report(run_dir: str | Path, cfg: Cfg,
     rows = []
     for tier in tiers:
         c = replace(cfg, tier=tier)
-        st = stats(backtest(data, c), c.rf_annual)
+        st = stats(backtest(data, c, section31_rates=section31_rates), c.rf_annual)
         st["tier"] = tier
         st["DataSessions"] = int(man["outputs"][tier]["sessions"])
         rows.append(st)
@@ -1331,5 +1516,9 @@ def report(run_dir: str | Path, cfg: Cfg,
         "dividends": data["dividend_meta"],
         "data_bundle": data["data_bundle"],
         "engine_config": asdict(cfg),
+        "section31_schedule": ({
+            "path": section31_rates.attrs.get("path"),
+            "sha256": section31_rates.attrs.get("sha256"),
+        } if section31_rates is not None else None),
     }
     return out

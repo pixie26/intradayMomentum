@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "classification": "post_result_statistical_uncertainty_addendum",
+  "source_run": "evaluation/results/20260731T200227Z_formal_spec2_58205b0c130f",
+  "expected_run_manifest_sha256": "624d4a9956fdaccd8f1e276888a96e6d06b33bd6c86e3cdb772694dcd176d05b",
+  "headline_cell_id": "corrected_execution__halt_aware__with_dividends__slip_0p0025",
+  "post_publication_start": "2024-05-01",
+  "annualization_sessions": 252,
+  "bootstrap": {
+    "replications": 8000,
+    "seed": 20260802,
+    "primary_method": "circular_moving_block",
+    "primary_block_length_sessions": 20,
+    "sensitivity_methods": [
+      "circular_moving_block",
+      "moving_block"
+    ],
+    "sensitivity_block_lengths_sessions": [1, 5, 10, 20, 40, 60],
+    "confidence_levels": [0.9, 0.95]
+  },
+  "hac": {
+    "kernel": "bartlett_newey_west",
+    "primary_max_lag_sessions": 20,
+    "sensitivity_max_lags_sessions": [0, 5, 10, 20, 40, 60],
+    "confidence_levels": [0.9, 0.95]
+  }
+}

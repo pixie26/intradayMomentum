@@ -72,9 +72,16 @@ cumulative VWAP and from the mark-to-market path.
   and actual minute integrals for positive cash, borrowed cash and short
   notional. Long and short exposures never net each other. Crediting rf on all
   equity and then deducting a separate leverage fee would double-count.
-- **Costs are separable.** `commission = Σ max(min_comm, comm_per_share × qty)`,
-  `slippage = Σ slip_per_share × qty`. The minimum applies to commission only.
-  `shares <= 0` produces no order and no cost.
+- **Costs are separable.** The frozen/default `legacy` path remains
+  `commission = Σ max(min_comm, comm_per_share × qty)` and
+  `slippage = Σ slip_per_share × qty`. The opt-in
+  `legacy_plus_section31` model additionally charges the date-effective SEC
+  rate on sell notional only. It requires an explicit schedule loaded with
+  `load_section31_rates()`; missing session coverage hard-fails. Fill and daily
+  ledgers separate `ibkr_commission`, `section31_fee`,
+  `total_explicit_cost`, `slippage` and `total_execution_cost`. This is a
+  Section 31 sensitivity, not an all-in IBKR model. The minimum applies to the
+  IBKR base commission only. `shares <= 0` produces no order and no cost.
 - **No final-bar round trip.** A position is never opened on the last scheduled
   bar; it would be liquidated at the same price moments later for zero P&L and
   two charges.
@@ -132,14 +139,15 @@ file's SHA and event count, and the full engine config.
 
 ## Tests
 
-`python test_engine.py` — 79 checks covering halt fill semantics, reversal unit
+`python test_engine.py` — 86 checks covering halt fill semantics, reversal unit
 accounting and minimum-commission conventions, the final-bar round-trip guard,
 `exec_lag_minutes` fill timing, strict eligible-session rolling, validity
 filtering of the volatility window, `ignore_dividends`, unknown-exit exclusion,
 parameter plumbing (`trade_freq`, `sigma_window`, `use_vwap`, `sizing`),
 dividend band adjustment, cost decomposition, the calendar time axis, and
 equivalent loading from a pipeline run or immutable `data_release_v1` bundle,
-plus point-in-time rate coverage and ACT/360 weekend accrual.
+plus point-in-time financing coverage, ACT/360 weekend accrual, Section 31
+effective-date coverage and sell-side/reversal fee semantics.
 `python prepare_spy_data.py --self-test` — 28 data-layer checks.
 
 ## Not yet implemented

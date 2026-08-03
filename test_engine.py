@@ -236,12 +236,53 @@ def test_share_rounding() -> None:
 def test_config_validation() -> None:
     for bad in [{"share_rounding": "ceil"}, {"unknown_exit_policy": "hope"},
                 {"fill_price": "mid"}, {"tier": "everything"},
+                {"explicit_cost_model": "all_in_magic"},
                 {"exec_lag_minutes": 0}, {"dvol_lag": 0}]:
         try:
             profile_cfg("paper_spec", **bad)
             check(False, f"invalid config {bad} was accepted")
         except ValueError:
             check(True, "")
+
+
+def test_section31_schedule_and_sell_side_costs() -> None:
+    schedule = E.load_section31_rates(
+        Path("data/reference/sec_section31_rates.csv"))
+    sample_days = pd.to_datetime([
+        "2008-01-22", "2008-01-25", "2008-10-01", "2009-04-10",
+        "2025-05-14", "2026-04-06",
+    ])
+    mapped = E.section31_rates_for_sessions(schedule, sample_days)
+    expected = [15.30, 11.00, 5.60, 25.70, 0.00, 20.60]
+    check(np.allclose(mapped.to_numpy() * 1_000_000, expected),
+          f"Section 31 effective-date mapping is wrong: {mapped.to_dict()}")
+    check(schedule.attrs.get("sha256"),
+          "Section 31 schedule hash was not retained for provenance")
+
+    g = make_session(60)
+    sig = np.zeros(60); adm = np.zeros(60, dtype=bool)
+    sig[9] = 1.0; adm[9] = True
+    sig[19] = -1.0; adm[19] = True
+    cfg = Cfg(fill_price="signal_bar_close",
+              explicit_cost_model="legacy_plus_section31")
+    rate = 11.0 / 1_000_000
+    result = E._session_pnl(
+        g, sig, adm, shares=100, cfg=cfg,
+        section31_rate_decimal=rate)
+    # long entry buys 100; long-to-short sells 200; EOD cover buys 100.
+    expected_section31 = 200 * 100.0 * rate
+    check(abs(result["section31_fee"] - expected_section31) < 1e-12,
+          "Section 31 must apply only to the 200-share sell reversal")
+    check(abs(result["commission"]
+              - result["ibkr_commission"] - result["section31_fee"]) < 1e-12,
+          "explicit-cost components do not reconcile")
+    fills = pd.DataFrame(result["fills"])
+    check(fills["sell_shares"].tolist() == [0.0, 200.0, 0.0],
+          f"buy/sell fill classification is wrong: {fills['sell_shares'].tolist()}")
+    check(np.allclose(
+        fills["total_execution_cost"],
+        fills["total_explicit_cost"] + fills["slippage"]),
+        "fill-level explicit and execution costs do not reconcile")
 
 
 def test_unknown_exit() -> None:
@@ -619,6 +660,7 @@ def main() -> int:
         test_unknown_exit()
         test_share_rounding()
         test_config_validation()
+        test_section31_schedule_and_sell_side_costs()
         run_dir = build_run(tmp)
         test_release_bundle_loading(run_dir, tmp)
         test_parameter_plumbing(run_dir)

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IBKR / SEC Section 31 历史成本敏感性</title>
+<style>
+body{font-family:Segoe UI,Arial,sans-serif;background:#f4f7fb;color:#172033;margin:0}
+main{max-width:1050px;margin:auto;padding:32px}section{background:#fff;border:1px solid #dce3ee;border-radius:12px;padding:22px;margin:18px 0;box-shadow:0 4px 18px #1d29390a}
+h1{margin-bottom:6px}.sub{color:#667085}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}.card{background:#f8fafc;border-radius:9px;padding:14px}.label{color:#667085;font-size:13px}.value{font-size:25px;font-weight:700;margin-top:4px}.down{color:#b42318}table{border-collapse:collapse;width:100%}th,td{padding:10px;border-bottom:1px solid #e7ebf1;text-align:right}th:first-child,td:first-child{text-align:left}.scroll{overflow:auto}code{background:#eef2f6;padding:2px 5px;border-radius:4px}li{margin:7px 0}</style>
+</head><body><main>
+<h1>IBKR / SEC Section 31 历史成本敏感性</h1>
+<div class="sub">Post-result sensitivity · 2008-01-22—2026-07-09 · frozen headline 未改写</div>
+<section><div class="cards">
+<div class="card"><div class="label">Post CAGR</div><div class="value">6.62%</div></div>
+<div class="card"><div class="label">Post Trading-only CAGR</div><div class="value">2.41%</div></div>
+<div class="card"><div class="label">相对 legacy</div><div class="value down">−0.896pp</div></div>
+<div class="card"><div class="label">Post Sharpe</div><div class="value">0.243</div></div>
+<div class="card"><div class="label">Post Section 31 / 总成交股</div><div class="value">0.4271¢</div></div>
+</div></section>
+<section><h2>完整结果</h2><div class="scroll"><table><thead><tr><th>时段</th><th>Legacy Portfolio CAGR</th><th>+ Section 31 Portfolio CAGR</th><th>Legacy Trading-only</th><th>+ Section 31 Trading-only</th><th>Portfolio 变化</th><th>Legacy Sharpe</th><th>+ Section 31 Sharpe</th><th>Section 31 总额</th><th>每成交股</th></tr></thead><tbody>
+<tr><td>Full sample</td><td>16.70%</td><td>15.57%</td><td>15.25%</td><td>14.13%</td><td class="down">−1.129pp</td><td>1.075</td><td>1.006</td><td>$78,275.65</td><td>0.2370¢</td></tr>
+<tr><td>Pre-publication</td><td>18.00%</td><td>16.84%</td><td>16.97%</td><td>15.82%</td><td class="down">−1.163pp</td><td>1.184</td><td>1.113</td><td>$52,459.45</td><td>0.1944¢</td></tr>
+<tr><td>Post-publication</td><td>7.52%</td><td>6.62%</td><td>3.27%</td><td>2.41%</td><td class="down">−0.896pp</td><td>0.300</td><td>0.243</td><td>$25,816.19</td><td>0.4271¢</td></tr>
+</tbody></table></div></section>
+<section><h2>如何解读</h2><p>只增加交易日有效的 Section 31：多头卖出、卖空开仓及 long→short 的卖出端计费；short cover 买入不计。名义价格上升使 post 的每成交股负担高于 pre。</p><p><strong>这不是 all-in IBKR 成本。</strong> TAF、CAT、clearing、pass-through、venue/rebate、账单舍入、月度佣金分档和 market impact 尚未建模。</p></section>
+<section><h2>审计</h2><ul><li>Legacy 对正式 run 最大逐日差：<code>0</code></li><li>最大 accounting residual：<code>1.16e-10</code></li><li>零费率窗口实际收费：<code>0</code></li><li>schedule SHA-256：<code>75fa80a576dfeb349e3e49c057981f0cd97018e575900a35b5f5d9ee2b4bcd81</code></li><li>run：<code>20260801T164756Z_ibkr_section31_v1</code></li></ul></section>
+</main></body></html>
