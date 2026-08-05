@@ -27,7 +27,7 @@
 
 完整 CLI:
 ```
-prepare_spy_data.py --input QQQ_1min_20260731.csv --symbol QQQ --calendar XNAS
+prepare_spy_data.py --input data/raw/QQQ_1min_20260731.csv --symbol QQQ --calendar XNAS
   --input-timezone America/New_York --expected-start 2007-04-25
   --expected-end 2026-07-31 --invalid-row-policy drop
   --output-dir data/candidates/qqq_v1_observed
@@ -319,7 +319,7 @@ XNAS 半日市(7/3 前后、感恩节后、圣诞前夜)在日历中已按缩短
 
 ### 复现
 ```
-python prepare_spy_data.py --input QQQ_1min_20260731.csv --symbol QQQ \
+python prepare_spy_data.py --input data/raw/QQQ_1min_20260731.csv --symbol QQQ \
   --calendar XNAS --input-timezone America/New_York \
   --expected-start 2007-04-25 --expected-end 2026-07-31 \
   --invalid-row-policy drop --output-dir data/candidates/qqq_v1_observed \

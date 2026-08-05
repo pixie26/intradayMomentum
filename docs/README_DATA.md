@@ -9,7 +9,7 @@ python prepare_spy_data.py --self-test        # 28 checks, no market data needed
 python prepare_spy_data.py \
   --release-config config/data_release_v1.yml \
   --preflight-self-test \
-  --input SPY_1min_2008_202607_merged.parquet \
+  --input data/raw/SPY_1min_2008_202607_merged.parquet \
   --dividends data/reference/spy_dividends_state_street_20260730.csv \
   --output-dir data/processed \
   --input-timezone America/New_York \

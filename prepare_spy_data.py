@@ -71,8 +71,8 @@ Usage
 python prepare_spy_data.py --self-test
 
 python prepare_spy_data.py \
-  --input SPY_1min_2008_202607_merged.parquet \
-  --dividends spy_dividends_full.csv \
+  --input data/raw/SPY_1min_2008_202607_merged.parquet \
+  --dividends data/raw/spy_dividends_full.csv \
   --output-dir data/processed \
   --input-timezone America/New_York \
   --bar-label start

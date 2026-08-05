@@ -357,7 +357,7 @@ python experiments/eod_close_source_v1/run.py
 - [data-v1.0 contract](config/data_release_v1.yml)
 - [原始 evaluation spec v2](config/evaluation_spec_v2.yml)
 - [halt-aware reporting amendment](config/evaluation_spec_v2_halt_headline.yml)
-- [论文原文 PDF](Intraday-momentum.pdf)
+- [论文原文 PDF](docs/Intraday-momentum.pdf)
 
 HTML 报告包含内嵌数据和 JavaScript；GitHub 通常不会直接执行，请下载后在本地浏览器打开。
 

@@ -3,7 +3,7 @@
 release_id: data-v1.0
 status: frozen_contract
 
-input: SPY_1min_2008_202607_merged.parquet
+input: data/raw/SPY_1min_2008_202607_merged.parquet
 dividends: data/reference/spy_dividends_state_street_20260730.csv
 calendar: XNYS
 input_timezone: America/New_York

@@ -384,13 +384,13 @@ def main() -> None:
     parser.add_argument(
         "--merged-parquet",
         type=str,
-        default="SPY_1min_2008_202607_merged.parquet",
+        default="data/raw/SPY_1min_2008_202607_merged.parquet",
         help="Pre-merged parquet file",
     )
     parser.add_argument(
         "--dividend-file",
         type=str,
-        default="spy_dividends_full.csv",
+        default="data/raw/spy_dividends_full.csv",
         help="Dividend csv file",
     )
     parser.add_argument(
@@ -416,7 +416,7 @@ def main() -> None:
     if not merged_parquet.exists():
         raise FileNotFoundError(
             f"Merged parquet not found: {merged_parquet}. "
-            "Please place SPY_1min_2008_202607_merged.parquet in workdir."
+            "Please place data/raw/SPY_1min_2008_202607_merged.parquet in workdir."
         )
 
     df, df_daily = load_intraday_data(merged_parquet)

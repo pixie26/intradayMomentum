@@ -1566,7 +1566,7 @@ execution + financing + borrow + impact cost per traded share
 
 | 文件 | 什么时候读 |
 |---|---|
-| `../Intraday-momentum.pdf` | 查看论文原文、公式、图表和Q24 |
+| `Intraday-momentum.pdf` | 查看论文原文、公式、图表和Q24 |
 | `PAPER_SAMPLE_CURRENT_COMPARISON_ZH.md` | 逐项查看论文、作者sample和当前实现差异 |
 | `README_DATA.md` | 理解数据发布、validity、tier和halt语义 |
 | `README_ENGINE.md` | 理解三profile、状态机、成本和统计 |

@@ -35,8 +35,8 @@ Run reports (tied to a specific `data/processed/runs/<run_id>/`):
 
 | Path | Role |
 |---|---|
-| `SPY_1min_2008_202607_merged.parquet` | Raw 1-min bars (1.8M rows). Read-only input. |
-| `spy_dividends_full.csv` | Legacy rounded 74-row dividend input. Preserve for provenance; not the data-v1.0 candidate. |
+| `data/raw/SPY_1min_2008_202607_merged.parquet` | Raw 1-min bars (1.8M rows). Read-only input. |
+| `data/raw/spy_dividends_full.csv` | Legacy rounded 74-row dividend input. Preserve for provenance; not the data-v1.0 candidate. |
 | `data/reference/spy_dividends_state_street_20260730.csv` | Exact 74-row State Street dividend input for the data-v1.0 candidate; metadata and extraction script are tracked beside/in `scripts/`. |
 | `prepare_spy_data.py` | Data layer v5 candidate: explicit release boundaries, duplicate conflict classes, return-gap audit, dependency lock, component validity, and atomic publish. `--self-test` = 28 checks. |
 | `im_engine_v4.py` | Engine: three profiles (`official_sample_compatible`, `paper_spec`, `corrected_execution`). Working copy. |
@@ -46,7 +46,7 @@ Run reports (tied to a specific `data/processed/runs/<run_id>/`):
 | `config/data_release_v1.yml` | Candidate data-v1.0 contract. Currently blocked by 13 missing leading XNYS sessions. |
 | `docs/` | All documentation (see above). |
 | `previous_research/` | Archived original baseline scripts + charts. Historical reference only; do not extend them. |
-| `manifest/`, `original_uploads/` | 2026-07-29 delivery record (hashes + original filenames). Historical only. |
+| `manifest/` | 2026-07-29 delivery record (hashes + original filenames). Historical only. |
 | `data/processed/` | Generated pipeline runs. Not yet created in this workspace. |
 
 ## Core invariants

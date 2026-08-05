@@ -11,7 +11,7 @@
 
 | 项 | 值 |
 |---|---|
-| 命令 | `python prepare_spy_data.py --input SPY_1min_2008_202607_merged.parquet --dividends spy_dividends_full.csv --output-dir data/processed --input-timezone America/New_York --bar-label start --source-split 2016-01-04` |
+| 命令 | `python prepare_spy_data.py --input data/raw/SPY_1min_2008_202607_merged.parquet --dividends data/raw/spy_dividends_full.csv --output-dir data/processed --input-timezone America/New_York --bar-label start --source-split 2016-01-04` |
 | 自测 | `python prepare_spy_data.py --self-test` → **18 项通过** |
 | 运行时长 | 19.07s（manifest 记录） |
 | source_sha256 | `dedcc3cd460dfdd4fd90495f197868519b513a36e0d0723fc12ee47858714218` |
