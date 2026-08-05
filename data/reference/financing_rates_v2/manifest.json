@@ -1,0 +1,100 @@
+{
+  "benchmark_session_counts": {
+    "SOFR": 773,
+    "USD_3M_LIBOR_PUBLIC_PROXY": 4075
+  },
+  "borrow_bps": 25.0,
+  "calendar": "XNYS",
+  "cash_spread_bps": -50.0,
+  "classification": "point_in_time_financing_rates",
+  "created_at_utc": "2026-08-04T17:00:12.740293+00:00",
+  "day_count": "ACT/360",
+  "expected_end": "2026-07-31",
+  "expected_start": "2007-04-25",
+  "files": {
+    "financing_rates_daily.csv": {
+      "bytes": 587330,
+      "sha256": "09bcce804741b897db5b609b5c2e7c0d1863630ea60c58059aea9afaac7745f1"
+    },
+    "source_ecb_usd_3m_libor_monthly.csv": {
+      "bytes": 99838,
+      "sha256": "0c8d5aeb198e8fac75f82a563d5078335f49b32311ae9f29135aac9c953fff9f"
+    },
+    "source_ofr_sofr.json": {
+      "bytes": 47188,
+      "sha256": "f16dbc01ecb7a2bb480ad6e0737e50a5d1d058c62d2b572dd345d930e2cff9fc"
+    }
+  },
+  "funding_spread_bps": 100.0,
+  "observed_end": "2026-07-31",
+  "observed_start": "2007-04-25",
+  "point_in_time_policy": {
+    "libor_proxy": "Use the previous completed calendar month's ECB monthly average; the current month's final average is never backfilled into that month.",
+    "sofr": "Use the latest SOFR observation whose observation date is strictly before the XNYS session date."
+  },
+  "release_id": "financing-rates-v2",
+  "script_sha256": "545bb6cebc114b857ff93d64490f94fd5712e113ec10b6ab42f48bcd14ac9d36",
+  "sessions": 4848,
+  "sources": {
+    "libor_proxy": {
+      "collection": "average_of_observations_through_period",
+      "frequency": "monthly",
+      "provider": "European Central Bank Data Portal",
+      "series": "RTD.M.S0.N.C_USL3M.U",
+      "source_file": "source_ecb_usd_3m_libor_monthly.csv",
+      "source_sha256": "0c8d5aeb198e8fac75f82a563d5078335f49b32311ae9f29135aac9c953fff9f",
+      "unit": "percent_per_annum",
+      "url": "https://data-api.ecb.europa.eu/service/data/RTD/M.S0.N.C_USL3M.U?startPeriod=2007-03&endPeriod=2023-06&format=csvdata"
+    },
+    "sofr": {
+      "frequency": "daily",
+      "metadata": {
+        "children": [],
+        "description": {
+          "description": "The volume-weighted median, which is the rate associated with transactions at the 50th percentile of transaction volume. Volume is calculated as the sum of overnight transaction volume used to calculate each reference rate, rounded to the nearest $1 billion.",
+          "name": "Secured Overnight Financing Rate",
+          "notes": "It is possible that revisions to the rates could occur after the data are retrieved by the OFR, or that other errors could be introduced, so parties seeking to use these data in contracts should retrieve them directly from the Federal Reserve Bank of New York. Users of these rates are subject to the New York Fed\u2019s <a href='https://www.newyorkfed.org/markets/reference-rates-terms-of-use'>terms of use.</a>",
+          "subsetting": "None",
+          "subtype": "Interest Rate",
+          "vintage": "",
+          "vintage_approach": "Current vintage, as of last update"
+        },
+        "mnemonic": "FNYR-SOFR-A",
+        "parents": [],
+        "release": {
+          "frequency": "Daily",
+          "href": "/short-term-funding-monitor/datasets/fnyr/",
+          "long_name": "Federal Reserve Bank of New York Reference Rates",
+          "short_name": "Reference Rates"
+        },
+        "rights": {
+          "description": "Use of this data is subject to the terms included on the Federal Reserve Bank of New York\u2019s website: https://www.newyorkfed.org/markets/reference-rates-terms-of-use"
+        },
+        "schedule": {
+          "last_update": "2026-08-03 12:05:01",
+          "observation_frequency": "Daily",
+          "observation_period": "Single Day",
+          "seasonal_adjustment": "None",
+          "start_date": "2018-04-02"
+        },
+        "unit": {
+          "display_magnitude": 0,
+          "magnitude": 0,
+          "name": "Percent",
+          "precision": 2,
+          "type": "Rate"
+        }
+      },
+      "provider": "Office of Financial Research API, Federal Reserve Bank of New York reference-rate series",
+      "series": "FNYR-SOFR-A",
+      "source_file": "source_ofr_sofr.json",
+      "source_sha256": "f16dbc01ecb7a2bb480ad6e0737e50a5d1d058c62d2b572dd345d930e2cff9fc",
+      "unit": "percent",
+      "url": "https://data.financialresearch.gov/v1/series/full?mnemonic=FNYR-SOFR-A&start_date=2018-04-01&end_date=2026-07-31&remove_nulls=true"
+    }
+  },
+  "transition": {
+    "libor_proxy_end": "2023-06-30",
+    "sofr_start": "2023-07-03"
+  }
+}

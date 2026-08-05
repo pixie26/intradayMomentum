@@ -1,0 +1,77 @@
+{
+  "classification": "post_result_statistical_uncertainty_addendum",
+  "config": {
+    "annualization_sessions": 252,
+    "bootstrap": {
+      "confidence_levels": [
+        0.9,
+        0.95
+      ],
+      "primary_block_length_sessions": 20,
+      "primary_method": "circular_moving_block",
+      "replications": 8000,
+      "seed": 20260804,
+      "sensitivity_block_lengths_sessions": [
+        1,
+        5,
+        10,
+        20,
+        40,
+        60
+      ],
+      "sensitivity_methods": [
+        "circular_moving_block",
+        "moving_block"
+      ]
+    },
+    "hac": {
+      "confidence_levels": [
+        0.9,
+        0.95
+      ],
+      "kernel": "bartlett_newey_west",
+      "primary_max_lag_sessions": 20,
+      "sensitivity_max_lags_sessions": [
+        0,
+        5,
+        10,
+        20,
+        40,
+        60
+      ]
+    },
+    "post_publication_start": "2024-05-01"
+  },
+  "created_at_utc": "2026-08-04T17:10:35.300590+00:00",
+  "decision": {
+    "conclusion": "QQQ shows no post-publication Sharpe decay (point estimate is essentially flat: pre 1.00, post 1.00, difference -0.001). The primary 90% bootstrap interval for the pre-minus-post difference includes zero. The post-publication Sharpe is above zero at the 90% level under both bootstrap (lower bound 0.01) and HAC (lower bound 0.06), but the interval is wide because only 318 post-publication sessions are resampled. Same qualitative read as the SPY addendum's 'not a statistically significant decline', but here because there is no decline to begin with.",
+    "difference_bootstrap_90_interval": [
+      -1.0128211058064758,
+      1.056033397973855
+    ],
+    "headline_cell": "corrected_execution__halt_aware__slip_0p0025 (with dividends)",
+    "post_bootstrap_90_interval": [
+      0.004218233828832055,
+      1.9205486393014213
+    ],
+    "primary_block_length_sessions": 20,
+    "primary_bootstrap_method": "circular_moving_block",
+    "replications": 8000,
+    "sharpe_difference_pre_minus_post": 0.0006724065158210113,
+    "sharpe_post": 0.9942712834613442,
+    "sharpe_pre": 0.9949436899771652
+  },
+  "headline_cell": "corrected_execution__halt_aware__slip_0p0025 (with dividends)",
+  "interpretation_limits": [
+    "post-result statistical addendum; QQQ point estimates are unchanged",
+    "bootstrap intervals are conditional on events observed in each period",
+    "percentile intervals are not posterior probabilities for the true Sharpe",
+    "bootstrap P(draw <= 0) is diagnostic and is not labeled a p-value",
+    "concentration N_eff is not a serial-independence effective sample size",
+    "financing uses financing-rates-v2 (cash SOFR/LIBOR-proxy - 50bp); cash_hurdle_ret read from CSV"
+  ],
+  "reused_module_sha256": "e1fab07dde04b8be71c0da01156b491570de8bc635ede9a8abcf3d602cf43279",
+  "reuses_estimators_from": "experiments/statistical_uncertainty_v1/run_uncertainty.py",
+  "source_daily_returns_csv": "experiments/qqq_with_dividends_v1/daily_returns/corrected_execution__halt_aware__slip_0p0025.csv",
+  "source_daily_returns_sha256": "af43684ab013a2ace822bc69cc95f96e5d03aa64d350f8ffc11a29838ad49dac"
+}

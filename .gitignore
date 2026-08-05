@@ -1,4 +1,5 @@
 SPY_1min_2008_202607_merged.csv
+QQQ_1min_20260731.csv
 
 # Rebuildable data-pipeline outputs. Frozen releases are identified by
 # manifest hashes and Git tags, not committed as large binary artifacts.
@@ -9,6 +10,7 @@ benchmark_release_v1/
 
 # Local validation scratch space.
 .codex_spreadsheet_tmp/
+.zcode/
 tmp/
 __pycache__/
 evaluation/results/

@@ -1,0 +1,69 @@
+{
+  "checks": {
+    "max_abs_aum_identity_residual": 1.1641532182693481e-10,
+    "max_abs_financing_split_residual": 1.4210854715202004e-14,
+    "max_abs_gross_identity_residual": 4.3655745685100555e-11,
+    "max_abs_net_identity_residual": 3.637978807091713e-11,
+    "max_abs_return_identity_residual": 2.7755575615628914e-17,
+    "post_cash_interest_annualized": 0.03978453889905795,
+    "post_cash_share_simple_sum_return": 0.222182144918824,
+    "post_portfolio_cagr": 0.18354284969436896,
+    "post_portfolio_total_return": 0.4605100453331199,
+    "post_trading_only_cagr": 0.13760957149925512,
+    "post_trading_only_total_return": 0.3361733684321744,
+    "pre_cash_interest_annualized": 0.010554266987054549,
+    "pre_cash_share_simple_sum_return": 0.07215672479095124,
+    "pre_portfolio_cagr": 0.14048836281332044,
+    "pre_portfolio_total_return": 8.36404083187311,
+    "pre_trading_only_cagr": 0.12900494778426275,
+    "pre_trading_only_total_return": 6.8827427248503055
+  },
+  "classification": "derived_headline_attribution",
+  "created_at_utc": "2026-08-04T17:09:10.716216+00:00",
+  "files": {
+    "headline_attribution_annual.csv": {
+      "bytes": 5679,
+      "sha256": "b4819f4289b105cc3c11326ee2ca8aac647dfe668e9b760984f4bc438444300c"
+    },
+    "headline_attribution_daily.csv": {
+      "bytes": 1885799,
+      "sha256": "ab5639f16dae54c1fb37afd65c26c031f29659fad96ccea26b97e198bad5a192"
+    },
+    "headline_attribution_quarterly.csv": {
+      "bytes": 21936,
+      "sha256": "200598468e2a2571f0fc5187479a5f9854f719181d18632795b0ff224f997034"
+    },
+    "headline_decomposition.csv": {
+      "bytes": 4783,
+      "sha256": "d26103cac3279fe1e8ab7d087313700434a16bb8f28d9e6219faf7d8617e2306"
+    },
+    "headline_round_trips.csv": {
+      "bytes": 563451,
+      "sha256": "90834d95585f75221a83229ed005deb82929c7f18ad4f574cde7264c3dc1de59"
+    },
+    "report.html": {
+      "bytes": 5870781,
+      "sha256": "ebd3297d54142349d6f5a62816aa478d9ed01aa5d529a59bb2981cded0448535"
+    }
+  },
+  "source_git": {
+    "available": true,
+    "commit": "2214aed846eacc204ef5f3f85386ad8183a9b3cb",
+    "dirty": true,
+    "dirty_paths": [
+      "docs/POST_PUBLICATION_EVALUATION_V2_HALT0025_ATTRIBUTION.html",
+      "evaluation/make_attribution_report.py",
+      ".zcode/",
+      "QQQ_1min_20260731.csv",
+      "data/reference/financing_rates_v2/",
+      "data/reference/qqq_dividends_crossvalidated_20260804.csv",
+      "data/reference/qqq_dividends_crossvalidated_20260804_PROVENANCE.md",
+      "docs/QQQ_DATA_AUDIT_20260804_ZH.md",
+      "evaluation/make_qqq_attribution_report.py",
+      "experiments/qqq_first_pass_v1/",
+      "experiments/qqq_with_dividends_v1/"
+    ]
+  },
+  "source_run_id": "20260804T143705Z",
+  "source_spec_sha256": "14a538a88ca1d50bfa7a0c3bf2a534f0454825e86a9b2ea9978d101dbbe7f3ff"
+}
