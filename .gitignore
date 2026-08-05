@@ -1,3 +1,19 @@
+# Python, test and editor state.
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+
+# Large vendor exports that are not part of the reproducible Git surface.
 SPY_1min_2008_202607_merged.csv
 QQQ_1min_20260731.csv
 
@@ -12,7 +28,6 @@ benchmark_release_v1/
 .codex_spreadsheet_tmp/
 .zcode/
 tmp/
-__pycache__/
 evaluation/results/
 experiments/eod_close_source_v1/results/
 experiments/no_leverage_cap_v1/results/

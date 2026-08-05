@@ -1,5 +1,7 @@
 # Post-publication evaluation v2 正式结果
 
+> 本文保留 frozen v2 当时的正式点估计与 provenance。后续 post-result 统计附录已经完成 HAC 与 block bootstrap；`pre Sharpe 1.18 → post 0.30` 的方向为下降，但差值区间包含 0，不能表述为统计显著衰减。见[统计不确定性附录](STATISTICAL_UNCERTAINTY_V1_ZH.md)。
+
 正式运行：
 
 - run：`20260731T043943Z_formal_spec2_b4d7a8f805b9`
@@ -59,7 +61,7 @@ Post-publication 每股分解：
   不重启资本、不插值、不制造结果。
 - unknown-exit 日的正式 accounting 字段归零；可审计的已知部分保留在
   `known_partial_*` 列。
-- 当前只报告点估计；HAC 与 block bootstrap 明确延期。
+- frozen v2 发布当时只报告点估计；后来已由[统计不确定性附录](STATISTICAL_UNCERTAINTY_V1_ZH.md)补充 HAC 与 block bootstrap，但不回写本次冻结 run。
 - 2008 年从 2008-01-22 开始，2026 年截至 2026-07-09，年度表两端均为部分年度。
 
 正式 HTML：`docs/POST_PUBLICATION_EVALUATION_V2.html`。

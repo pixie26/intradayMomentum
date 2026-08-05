@@ -1,12 +1,12 @@
-# SPY 日内动量策略：可复现、可归因的经济评估
+# 日内动量研究框架：SPY 冻结评估与 QQQ 探索性扩展
 
 本项目复现并审计《Beat the Market: An Effective Intraday Momentum Strategy for S&P 500 ETF (SPY)》中的一分钟日内动量策略。研究重点不是生成一条更漂亮的历史净值曲线，而是回答一个更严格的问题：
 
 > 在修正数据、特征窗口、成交时点、交易成本、融资、借券和 benchmark 后，论文公开日 `2024-05-01` 之后的信号，是否仍有可交易的每股毛边际？
 
-当前结论是：**post-publication 毛交易边际没有归零，扣除冻结的执行、融资和借券假设后仍为正；但风险调整收益很弱，并显著跑输同期 SPY total return。** 这还不是可直接实盘的策略。下一阶段应先验证 market impact、容量、收盘执行和部分成交，而不是根据已经看过的 post 结果调参。
+当前结论是：**SPY post-publication 毛交易边际没有归零，扣除冻结的执行、融资和借券假设后仍为正；但风险调整收益很弱，并大幅跑输同期 SPY total return。** `pre Sharpe 1.18 → post 0.30` 是方向性下降，但后续 HAC 与 block bootstrap 显示估计很不精确，不能称为“统计显著衰减”。这还不是可直接实盘的策略。下一阶段应先验证 market impact、容量、收盘执行和部分成交，而不是根据已经看过的 post 结果调参。
 
-研究样本为 `2008-01-22` 至 `2026-07-09`。2008 年和 2026 年都是部分年度。本文所称 post-publication 是**论文公开后的评估期**，不是 untouched out-of-sample。
+SPY 冻结样本为 `2008-01-22` 至 `2026-07-09`；2008 年和 2026 年都是部分年度。本文所称 post-publication 是**论文公开后的评估期**，不是 untouched out-of-sample。仓库还包含 `2007-04-25` 至 `2026-07-31` 的 QQQ 探索性扩展；它验证跨资产迁移，但尚未达到正式发布标准。
 
 > 本仓库是研究与审计项目，不构成投资建议。
 
@@ -16,6 +16,7 @@
 - [方法论](#方法论)
 - [目前完成了什么](#目前完成了什么)
 - [核心结果](#核心结果)
+- [稳健性与跨资产扩展](#稳健性与跨资产扩展)
 - [主要 findings](#主要-findings)
 - [已知问题与研究边界](#已知问题与研究边界)
 - [下一步规划](#下一步规划)
@@ -132,7 +133,7 @@ signal → pending order → intended fill → actual fill
 | 正现金 | session open 前可得的 LIBOR proxy / SOFR − 50 bps，ACT/360 |
 | 借入现金 | 同一 PIT benchmark + 100 bps |
 | SPY borrow | 固定 25 bps p.a. |
-| 统计 | 点估计；HAC 与 block bootstrap 明确延期 |
+| 统计 | frozen v2 保留点估计；事后附录完成 8,000 次 circular block bootstrap 与 Newey-West/HAC 交叉核验 |
 | 决策变量 | post gross edge/share 是否高于 execution + funding + borrow cost/share |
 
 每个正式 run 都强制记录 spec、engine、data、dividend、benchmark、financing 和 Git hash；发布前检查 cell/row 完整性及逐日会计恒等式。
@@ -146,12 +147,16 @@ signal → pending order → intended fill → actual fill
 | `data-v1.0` 冻结 | 完成 | 两次 clean-HEAD 正式运行、19 个 deterministic files 字节一致、不可变本地 release |
 | 独立 SPY daily benchmark | 完成 | raw daily close 独立 release，分红来自 data-v1.0 |
 | 回测状态机与账户核算 | 完成 | signals、orders、fills、round trips、commission、slippage、cash、funding、borrow |
-| 引擎测试 | 完成 | 当前 79 项 engine checks；另有 evaluation 与归因报告测试 |
+| 引擎测试 | 完成 | 当前 86 项 engine checks；另有 evaluation 与归因报告测试 |
 | 论文 Q24 月收益复现 | 完成 | 18-cell 独立 replication matrix 与交互报告 |
 | evaluation spec v2 与 runner | 完成并冻结 | 72/72 cells、216/216 rows，原子发布与 hash 清单 |
 | 原始 v2 正式报告 | 完成 | frozen `paper_ready × $0.005/share` headline |
 | halt-aware 报告修订与 P&L 归因 | 完成 | 保留原始 headline，新增 post-result reporting amendment 与交互式归因 |
 | EOD close-source 敏感性 | 探索性完成 | daily-close/MOC proxy、0.5/1 bp auction cost、5/10/15/30-minute TWAP |
+| Sharpe 统计不确定性 | 事后附录完成 | 8,000 次、20-session circular block bootstrap；HAC 交叉核验；不改 frozen v2 |
+| 杠杆与定仓敏感性 | 事后完成 | 1× cap、无上限、恒定 2×；支持保留动态定仓与 4× cap |
+| SEC Section 31 | 事后完成 | 按卖出名义金额与历史费率逐笔计费；仍非 all-in IBKR 模型 |
+| QQQ 跨资产扩展 | 探索性完成 | 数据审计、股息/融资重跑、归因与统计附录；尚无 frozen QQQ spec |
 | Market impact / capacity | 待完成 | 需要 participation、ADV、波动率、时段和真实成交证据 |
 | Queue position / partial fill | 待完成 | 当前固定 per-share slippage 无法表达 |
 
@@ -238,6 +243,40 @@ Post 毛交易收益主要来自 short。剔除 cash-interest 组件后，同一
 
 详见 [EOD 实验说明](docs/EOD_CLOSE_SOURCE_EXPERIMENT_V1_ZH.md) 和 [可读 HTML 报告](docs/EOD_CLOSE_SOURCE_EXPERIMENT_V1_ZH.html)。
 
+## 稳健性与跨资产扩展
+
+以下工作都发生在观察 frozen v2 结果之后，因此用于约束解释或测试可迁移性，不回写原 headline。
+
+### 1. 统计不确定性
+
+对 halt-aware amendment 的精确账本进行 8,000 次、20-session circular moving-block bootstrap，并以 Newey-West/HAC 交叉核验：
+
+| 统计量 | 点估计 | 90% bootstrap 区间 | 90% HAC 区间 |
+|---|---:|---:|---:|
+| Pre Sharpe | 1.184 | [0.831, 1.528] | [0.833, 1.535] |
+| Post Sharpe | 0.300 | [−0.748, 1.281] | [−0.666, 1.266] |
+| Pre − post | 0.883 | [−0.163, 1.978] | [−0.145, 1.911] |
+
+差值区间包含 0；当前 548 个 post sessions 同时与“真实下降”和“较差的一次实现”相容。正确措辞是**点估计下降但精度不足**，不是“已证明无衰减”，也不是“显著衰减”。详见[统计不确定性附录](docs/STATISTICAL_UNCERTAINTY_V1_ZH.md)。
+
+### 2. 成本与定仓边界
+
+- 历史 SEC Section 31 按卖出名义金额加入后，SPY post portfolio CAGR 从 `7.52%` 降至 `6.62%`，same-path trading-only CAGR 从 `3.27%` 降至 `2.41%`。这仍不是 all-in IBKR 成本模型；TAF、CAT、venue、auction、impact 与 partial fills 仍未建模。详见 [Section 31 敏感性](docs/IBKR_SECTION31_COST_SENSITIVITY_ZH.md)。
+- 取消 4× cap 只带来很小的平均收益改善，却显著增加极端杠杆和尾部风险；1× cap 可压低风险，但 post 交易边际接近消失；恒定 2× 的全样本优势对 2008 起点敏感。因此保留 frozen Paper 动态定仓与 4× cap。详见[杠杆与定仓报告](docs/LEVERAGE_SIZING_SENSITIVITY_ZH.md)。
+
+### 3. QQQ 探索性扩展
+
+同一框架已迁移到 XNAS/QQQ，加入 81 个交叉验证股息事件与覆盖 `2007-04-25` 至 `2026-07-31` 的 financing-rates-v2。与 SPY amendment 类似的 `corrected_execution × halt_aware × $0.0025/share` cell 在 post 期的结果为：
+
+| 口径 | Post CAGR / 年化 | Sharpe | MDD |
+|---|---:|---:|---:|
+| QQQ portfolio（含现金利息） | 18.35% | 0.99 | −13.8% |
+| 同路径 trading-only | 13.76% | — | — |
+| 现金利息年化 | 3.98% | — | — |
+| QQQ total-return benchmark | 24.66% | — | — |
+
+QQQ 的 pre/post Sharpe 点估计约为 `0.995 / 0.994`，没有观察到 SPY 式点估计下降，但策略仍跑输 QQQ total return，且 18.35% 中包含大量现金 carry。该实验还缺 frozen QQQ spec、clean deterministic rerun、第二分钟源和最终 invalid-row 裁决，不能称为正式 OOS 或直接与 SPY frozen v2 等级等同。详见 [QQQ 数据审计](docs/QQQ_DATA_AUDIT_20260804_ZH.md)、[带股息/融资重跑摘要](experiments/qqq_with_dividends_v1/SUMMARY_ZH.md)与[交互式归因报告](experiments/qqq_with_dividends_v1/QQQ_ATTRIBUTION.html)。
+
 ## 主要 findings
 
 1. **作者 sample 偏乐观，但策略不是由单一 bug 制造。** 修正 14-session window、NaN vol → 4×、slippage、row-based rolling 和同 bar 成交后，全样本表现下降，但论文型信号仍有历史收益。
@@ -246,7 +285,7 @@ Post 毛交易收益主要来自 short。剔除 cash-interest 组件后，同一
 
 3. **论文 Q24 可较接近复现，但不是 bit parity。** 18-cell replication 中，`paper_spec × halt_aware × with_dividends` 在 206 个严格可比月份的 MAE 为 `0.3059` 个百分点；忽略分红为 `0.3539`。这支持 halt-aware 与分红锚点语义，但数据源、起始日期和部分月份仍不同。详见 [Q24 replication](experiments/paper_replication_v1/README.md)。
 
-4. **Post-publication 不是“信号完全死亡”，而是“质量显著衰减”。** 毛边际仍为正，当前固定执行与融资成本也未完全吞掉它；但低 Sharpe、负 excess CAGR 和对现金收益的依赖，使它不足以支持实盘结论。
+4. **SPY post-publication 不是“信号完全死亡”，但下降幅度估计不精确。** 毛边际仍为正，当前固定执行与融资成本也未完全吞掉它；Sharpe 点估计从 1.18 降至 0.30、excess CAGR 为负且对现金收益依赖较高，但 bootstrap/HAC 的差值区间包含 0。描述性弱化成立，统计显著性不成立。
 
 5. **亏损年份首先是毛 P&L 问题，不是成本故事。** 对 2016、2017 和 2026 YTD 的正式账本归因显示，即使去掉 commission/slippage，策略仍分别约为 `−11.8%`、`−5.9%`、`−3.3%`；2016/2017 的空头假突破尤其严重。2017 年滞后波动率很低，约 76.1% 的交易日触及 4× cap，窄 band 与高杠杆放大了均值回归损失。
 
@@ -256,7 +295,9 @@ Post 毛交易收益主要来自 short。剔除 cash-interest 组件后，同一
 
 8. **分红对 benchmark 比对策略更重要。** 分红主要改变策略的 previous-close band anchor，但会长期抬高 SPY total return benchmark；忽略分红会系统性高估策略 excess return。
 
-9. **全样本 CAGR 不是最终决策变量。** 当前固定的研究判断是：
+9. **QQQ 说明资产迁移可能改变点估计，却没有解决 beta 比较。** QQQ post Sharpe 没有观察到衰减，但 portfolio 和 trading-only CAGR 都低于 QQQ total return；这支持继续研究信号机制，不支持把 QQQ 事后结果升级为正式 headline。
+
+10. **全样本 CAGR 不是最终决策变量。** 当前固定的研究判断是：
 
    ```text
    post gross edge/share ≈ 0
@@ -274,12 +315,13 @@ Post 毛交易收益主要来自 short。剔除 cash-interest 组件后，同一
 | Queue position 与 partial fills 未建模 | next-open 全量成交可能不现实 | 待引入订单类型、参与率和成交概率 |
 | EOD/MOC 成交证据不足 | 15:59 minute close、daily close 与 auction print 不等价 | 保留 frozen v2；独立敏感性已完成，等待 official auction/TAQ |
 | Short proceeds 利息依赖账户类型 | 当前模型接近可获得 rebate 的机构账户，可能优于 retail | 后续做 institutional / conservative / no-rebate 场景 |
-| 统计不确定性未量化 | 当前 CAGR、Sharpe、alpha 都是点估计 | HAC 与 block bootstrap 明确延期，报告不暗示置信区间 |
+| Post 样本统计精度低 | 548 个 SPY post sessions 且收益高度集中于少数尾部日 | 已完成 Sharpe bootstrap/HAC；差值区间含 0；alpha、edge/share 与事件到达率仍需区间估计 |
 | Post 期已被观察 | 任何继续调参都会污染“未见样本”叙事 | 只称 post-publication evaluation；新假设需新冻结区间 |
 | 2016 数据源/volume regime 切换 | 跨期 volume、impact 与 capacity 比较会失真 | 单日 VWAP 可用；容量研究必须分 regime |
 | Pre-2016 除息日开盘存在来源疑点 | 可能系统性影响少量除息日 band 与空头信号 | 原始数据不改；需要独立分钟源复核 |
 | 2008/2026 为部分年度 | 年度表易被误读 | 所有报告显示精确起止日期 |
 | 实盘运营未研究 | 券商限制、订单拒绝、监控和风险控制不在当前模型内 | Live deployment 明确延期 |
+| QQQ 尚非正式发布 | 事后选资产、dirty run、单一 vendor 分钟源与 invalid-row drop 会弱化证据等级 | 保持 exploratory 标签；冻结独立 spec 后再 clean rerun |
 
 ## 下一步规划
 
@@ -288,9 +330,10 @@ Post 毛交易收益主要来自 short。剔除 cash-interest 组件后，同一
 1. **Market impact 与容量**：基于订单规模、minute/auction volume、参与率、spread、波动率和时段建立冲击曲线，并分别处理 pre/post-2016 volume regime。
 2. **真实收盘执行证据**：取得 official close/auction print、MOC 券商成交或 TAQ 级数据；把 auction participation、imbalance、partial fill 与增量成本纳入状态机。
 3. **账户类型融资敏感性**：拆分 base cash return、long funding、short-proceeds rebate 和 stock borrow；比较机构、保守机构和 no-rebate/retail 场景。
-4. **统计不确定性**：在不改变 frozen v2 点估计的前提下增加 HAC 与 block bootstrap，重点评估 post edge/share、Sharpe 和相对 SPY 的不确定性。
-5. **前瞻性路径特征研究**：只使用每个决策点当时可见的信息，预先定义方向效率、路径曲折度或突破持续度；不得直接使用当日 high/low/close 或 VIX 收盘变化。
-6. **交易模拟扩展**：订单有效期、复牌后重算信号、queue stress、部分成交、订单拒绝和风险限额。
+4. **统计扩展**：在已完成 Sharpe bootstrap/HAC 的基础上，对 gross edge/share、相对 benchmark、事件到达率与条件 payoff 建立事前定义的区间估计；不要只比较点估计。
+5. **QQQ 正式化门槛**：先冻结独立 spec、人工裁决 invalid row、取得第二分钟源/更完整发行方分红，再做 clean deterministic rerun；不得按已观察 QQQ 结果调参。
+6. **前瞻性路径特征研究**：只使用每个决策点当时可见的信息，预先定义方向效率、路径曲折度或突破持续度；不得直接使用当日 high/low/close 或 VIX 收盘变化。
+7. **交易模拟扩展**：订单有效期、复牌后重算信号、queue stress、部分成交、订单拒绝和风险限额。
 
 在上述问题解决前，以下方向继续明确暂缓：**参数优化、Qlib、机器学习和 live deployment**。如果未来进入新一轮信号研究，应使用新的冻结训练/验证设计，不能把当前 post 区间重新包装成 OOS。
 
@@ -304,6 +347,8 @@ python prepare_spy_data.py --self-test
 python test_engine.py
 python test_evaluation_runner.py
 python test_attribution_report.py
+node test_attribution_report_dom.js
+python scripts/check_markdown_links.py
 ```
 
 `requirements.txt` 解析到精确的 `requirements.lock`；正式数据发布会在读取和发布前核对锁定版本。
@@ -331,11 +376,16 @@ python experiments/paper_replication_v1/run.py --self-test
 
 # EOD close-source 探索性实验
 python experiments/eod_close_source_v1/run.py
+
+# 统计不确定性单元检查与正式账本对账（需要本地 ignored formal run）
+python experiments/statistical_uncertainty_v1/test_uncertainty.py
 ```
 
 大体积 parquet/CSV 研究中间产物可重建，不作为 GitHub 阅读入口；源码、冻结配置、审计文档和可读 HTML 报告应进入 Git。任何报告中的数字都应能追溯到 run manifest 和 hash。
 
 ## 文档与报告导航
+
+完整分类、权威层级、历史材料说明和维护规则见 [docs 文档索引](docs/README.md)。
 
 ### 推荐阅读顺序
 
@@ -351,6 +401,10 @@ python experiments/eod_close_source_v1/run.py
 | 想比较 profile/tier/dividend/slippage 或自选日期 | [交互比较报告](docs/POST_PUBLICATION_EVALUATION_V2_HALT0025_REPORT2.html) |
 | 想看论文 Q24 月收益复现 | [Replication README](experiments/paper_replication_v1/README.md)、[交互日期窗口报告](experiments/paper_replication_v1/results/data-v1.0_q24_detailed_report_20260730_v2/report2.html) |
 | 想看 EOD/MOC/TWAP 敏感性 | [EOD 实验说明](docs/EOD_CLOSE_SOURCE_EXPERIMENT_V1_ZH.md)、[HTML 报告](docs/EOD_CLOSE_SOURCE_EXPERIMENT_V1_ZH.html) |
+| 想判断 pre/post Sharpe 差异是否有统计证据 | [统计不确定性附录](docs/STATISTICAL_UNCERTAINTY_V1_ZH.md) |
+| 想看杠杆、1× cap、恒定 2× | [杠杆与定仓敏感性](docs/LEVERAGE_SIZING_SENSITIVITY_ZH.md) |
+| 想看 Section 31 对净收益的影响 | [Section 31 敏感性](docs/IBKR_SECTION31_COST_SENSITIVITY_ZH.md) |
+| 想看 QQQ 探索性扩展 | [QQQ 数据审计](docs/QQQ_DATA_AUDIT_20260804_ZH.md)、[带股息/融资摘要](experiments/qqq_with_dividends_v1/SUMMARY_ZH.md)、[归因 HTML](experiments/qqq_with_dividends_v1/QQQ_ATTRIBUTION.html) |
 
 ### 冻结配置
 
@@ -374,7 +428,11 @@ HTML 报告包含内嵌数据和 JavaScript；GitHub 通常不会直接执行，
 | `benchmark_release_v1/` | 本地独立 SPY daily raw-close benchmark release |
 | `experiments/paper_replication_v1/` | 与经济评估隔离的论文 Q24 replication |
 | `experiments/eod_close_source_v1/` | 不覆盖 v2 的 EOD close-source 执行敏感性 |
+| `experiments/statistical_uncertainty_v1/` | SPY amendment 的 post-result bootstrap/HAC 附录 |
+| `experiments/qqq_*` | QQQ 数据、策略、归因与统计探索；非 frozen 正式发布 |
 | `docs/` | 审计、研究过程、正式结果和可读 HTML 报告 |
+| `.github/` | Windows/Python 3.13 基础 CI 与研究型 PR 模板 |
+| `CONTRIBUTING.md` | 变更分类、产物政策、验证和交付规范 |
 | `test_engine.py` | 引擎合成回归检查 |
 | `test_evaluation_runner.py` | 评估矩阵、完整性与发布检查 |
 | `test_attribution_report.py` | 归因恒等式和交互报告逻辑检查 |

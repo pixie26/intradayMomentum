@@ -1,0 +1,50 @@
+name: quality
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  synthetic-and-static-checks:
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install the audited dependency set
+        run: python -m pip install -r requirements.txt
+
+      - name: Compile tracked Python sources
+        shell: pwsh
+        run: |
+          $files = git ls-files '*.py'
+          python -m py_compile $files
+
+      - name: Check repository-local Markdown links
+        run: python scripts/check_markdown_links.py
+
+      - name: Run synthetic data and engine checks
+        run: |
+          python prepare_spy_data.py --self-test
+          python test_engine.py
+
+      - name: Run standalone attribution checks
+        run: |
+          python test_attribution_report.py
+          node test_attribution_report_dom.js
+
+      # test_evaluation_runner.py and the statistical-uncertainty formal-run
+      # audit intentionally stay local: both require ignored immutable bundles.

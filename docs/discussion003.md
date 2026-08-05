@@ -2,6 +2,8 @@
 
 ---
 
+> **文档状态：批判性历史 review，不是权威结论。** 其中关于统计显著性、Section 31、融资、杠杆和跨资产的观点已有后续实证检验，部分被保留、部分被修正。请先读[根 README](../README.md)和[文档索引](README.md)，再把本文作为问题清单阅读。
+
 ## 一、结论先行
 
 **你的工程质量远高于你的推断质量。** 数据契约、freeze、manifest/SHA、双跑字节一致、三 profile 分离、订单状态机、post-result amendment 标注——这套 provenance 纪律比我见过的大多数机构内部研究都严。

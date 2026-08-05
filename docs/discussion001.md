@@ -1,3 +1,5 @@
+> **文档状态：历史讨论稿。** 后续已完成 EOD close-source、Section 31、杠杆/定仓与统计不确定性实验；当前结论及链接以[文档索引](README.md)为准。本文保留当时问题形成过程，不作为最新结论。
+
 这三项里，当前最可能实质改变结果的是 **EOD close代理**；pending cancel/queue在正式v2样本中实际上没有触发差异；融资假设有影响，但目前量级小于信号衰减和EOD价格口径。
 
 ## 1. Pending cancel 与 queue
@@ -15,7 +17,7 @@ due\_minute=m+1
 - `cancel_if_next_unavailable`：如果预定的下一分钟不能成交，订单取消；
 - `queue_until_executable`：订单保留，在下一可执行分钟的open全部成交。
 
-实现见[im_engine_v4.py](D:/projects/intradayMomentum/im_engine_v4.py:590)。
+实现见 [`backtest_day()` 的 pending-order 状态机](../im_engine_v4.py#L590)。
 
 无论哪种政策，订单都不会获得signal close到复牌open之间的gap：
 
@@ -122,7 +124,7 @@ Queue会在10:08 open买入，但原信号已经8分钟以前产生。期间可�
 
 ### 当前模型怎么做
 
-策略不在最后一根bar新开仓，但已有仓位在最后可执行一分钟的close平仓：[EOD实现](D:/projects/intradayMomentum/im_engine_v4.py:638)。
+策略不在最后一根 bar 新开仓，但已有仓位在最后可执行一分钟的 close 平仓，见 [`backtest_day()` 的 EOD 分支](../im_engine_v4.py#L638)。
 
 正常完整交易日中，最后一根分钟bar是：
 
@@ -263,7 +265,7 @@ EOD auction execution/impact
 SPY borrow fee = 25bp
 ```
 
-采用PIT日费率和ACT/360，见[evaluation_spec_v2.yml](D:/projects/intradayMomentum/config/evaluation_spec_v2.yml:64)。
+采用 PIT 日费率和 ACT/360，见 [evaluation spec v2](../config/evaluation_spec_v2.yml#L64)。
 
 ### 多头时怎么计算
 
